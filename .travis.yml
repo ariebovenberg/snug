@@ -4,5 +4,9 @@ python:
     - "3.6-dev"
     - "3.7-dev"
     - "nightly"
-install: "pip install -r requirements/test.txt"
-script: pytest
+install: 
+    - pip install -r requirements/test.txt
+    - pip install coveralls
+script: pytest --cov=omgorm
+after_success:
+    coveralls
