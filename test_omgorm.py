@@ -5,18 +5,24 @@ import omgorm as orm
 
 
 @pytest.fixture
-def session_class():
+def SessionSubclass():
     class MySiteSession(orm.Session):
-        pass
+
+        def __init__(self, username, **kwargs):
+            self.username = username
+            super().__init__(**kwargs)
+
+        def __repr__(self):
+            return f'<{self.__class__.__name__}({self.username})>'
 
     return MySiteSession
 
 
 class TestResource:
 
-    def test_fields_linked_to_resource(self, session_class):
+    def test_fields_linked_to_resource(self, SessionSubclass):
 
-        class Post(orm.Resource, session_cls=session_class):
+        class Post(orm.Resource, session_cls=SessionSubclass):
             title = orm.Field()
             body = orm.Field()
             user = orm.Field()
@@ -49,7 +55,17 @@ class TestSession:
             email = orm.Field()
             body = orm.Field()
 
-        assert Post.session_cls is MySiteSession
-        assert Comment.session_cls is MySiteSession
-
         assert MySiteSession.resources == {'Post': Post, 'Comment': Comment}
+
+    def test_resource_subclasses_per_session_instance(self, SessionSubclass):
+
+        class Post(orm.Resource, session_cls=SessionSubclass):
+            title = orm.Field()
+            body = orm.Field()
+            user = orm.Field()
+
+        bobs_session = SessionSubclass(username='bob')
+
+        assert bobs_session.Post is not Post
+        assert issubclass(bobs_session.Post, Post)
+        assert bobs_session.Post.session is bobs_session
