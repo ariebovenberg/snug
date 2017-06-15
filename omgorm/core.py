@@ -21,13 +21,6 @@ class Session(object):
         cls.resources[resource_cls.__name__] = resource_cls
 
 
-class Field(object):
-    """an attribute accessor for a resource"""
-
-    def __set_name__(self, resource, name):
-        self.resource, self.name = resource, name
-
-
 class Resource:
     """base class for API resources"""
 
@@ -74,3 +67,19 @@ class Resource:
         instance = cls.__new__(cls)
         instance.api_obj = api_obj
         return instance
+
+
+class Field(object):
+    """an attribute accessor for a resource"""
+
+    def __set_name__(self, resource, name):
+        self.resource, self.name = resource, name
+
+    def __get__(self, instance, cls):
+        if instance is not None:
+            return self.get_value(instance)
+        else:
+            return self
+
+    def get_value(self, instance: Resource) -> object:
+        raise NotImplementedError()
