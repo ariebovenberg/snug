@@ -38,7 +38,7 @@ class Resource:
         if session_cls:
             session_cls.register_resource(cls)
         elif cls.__bases__ == (Resource, ):
-            raise Exception(
+            raise TypeError(
                 'subclassing ``Resource`` requires a session class')
 
         if session:
@@ -81,5 +81,5 @@ class Field:
         else:
             return self
 
-    def get_value(self, instance: Resource) -> object:
+    def get_value(self, instance: Resource) -> object:  # pragma: no cover
         raise NotImplementedError()
