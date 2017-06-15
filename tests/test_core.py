@@ -1,5 +1,7 @@
-import pytest
 import collections
+from unittest import mock
+
+import pytest
 
 import omgorm as orm
 
@@ -27,6 +29,20 @@ def resource(SessionSubclass):
         user = orm.Field()
 
     return Post
+
+
+class TestField:
+
+    @mock.patch.object(orm.Field, 'get_value')
+    def test_field_accessor(self, value_getter, SessionSubclass):
+
+        class Email(orm.Resource, session_cls=SessionSubclass):
+            subject = orm.Field()
+
+        assert isinstance(Email.subject, orm.Field)
+
+        email = Email()
+        assert email.subject is value_getter.return_value
 
 
 class TestResource:
