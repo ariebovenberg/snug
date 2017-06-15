@@ -72,6 +72,12 @@ class TestResource:
         assert isinstance(instance, Post)
         assert instance.api_obj is api_obj
 
+    def test_resource_requires_session_cls(self):
+
+        with pytest.raises(TypeError):
+            class Poll(orm.Resource):
+                pass
+
 
 class TestSession:
 
