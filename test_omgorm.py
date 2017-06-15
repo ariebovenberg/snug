@@ -18,6 +18,17 @@ def SessionSubclass():
     return MySiteSession
 
 
+@pytest.fixture
+def resource(SessionSubclass):
+
+    class Post(orm.Resource, session_cls=SessionSubclass):
+        title = orm.Field()
+        body = orm.Field()
+        user = orm.Field()
+
+    return Post
+
+
 class TestResource:
 
     def test_fields_linked_to_resource(self, SessionSubclass):
@@ -36,6 +47,14 @@ class TestResource:
             ('user', Post.user),
         ])
         assert Post.fields == expect_fields
+
+    def test_from_api_obj(self, resource):
+        Post = resource
+        api_obj = object()
+
+        instance = Post.wrap_api_obj(api_obj)
+        assert isinstance(instance, Post)
+        assert instance.api_obj is api_obj
 
 
 class TestSession:
