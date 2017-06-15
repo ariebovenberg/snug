@@ -69,7 +69,7 @@ class Resource:
         return instance
 
 
-class Field(object):
+class Field:
     """an attribute accessor for a resource"""
 
     def __set_name__(self, resource, name):
