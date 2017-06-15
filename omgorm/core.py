@@ -1,4 +1,4 @@
-"""An ORM toolkit for wrapping REST APIs"""
+"""the core components of the ORM: sessions, resources, and fields"""
 import collections
 import types
 
@@ -59,7 +59,18 @@ class Resource:
 
     @classmethod
     def wrap_api_obj(cls, api_obj: object) -> 'Resource':
-        """wrap the API object in a resource instance"""
+        """wrap the API object in a resource instance
+
+        Parameters
+        ----------
+        api_obj
+            the API object to wrap
+
+        Returns
+        -------
+        Resource
+            the resource instance
+        """
         instance = cls.__new__(cls)
         instance.api_obj = api_obj
         return instance

@@ -1,5 +1,9 @@
 API reference
 =============
 
-.. automodule:: omgorm
+Core
+----
+
+.. automodule:: omgorm.core
    :members:
+..
