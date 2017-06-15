@@ -56,3 +56,10 @@ class Resource:
             if isinstance(obj, Field)
         )
         super().__init_subclass__(**kwargs)
+
+    @classmethod
+    def wrap_api_obj(cls, api_obj: object) -> 'Resource':
+        """wrap the API object in a resource instance"""
+        instance = cls.__new__(cls)
+        instance.api_obj = api_obj
+        return instance
