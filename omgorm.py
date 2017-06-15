@@ -1,12 +1,19 @@
 """An ORM toolkit for wrapping REST APIs"""
 import collections
+import types
 
 
 class Session(object):
     """the context in which resources are used"""
 
+    def __init__(self):
+        for name, resource_class in self.resources.items():
+            klass = types.new_class(name, bases=(resource_class, ),
+                                    kwds={'session': self})
+            setattr(self, name, klass)
+
     def __init_subclass__(cls, **kwargs):
-        cls.resources = {}
+        cls.resources: Mapping[str, type] = {}
         super().__init_subclass__(**kwargs)
 
     @classmethod
@@ -24,16 +31,26 @@ class Field(object):
 class Resource:
     """base class for API resources"""
 
-    def __init_subclass__(cls, session_cls: type, **kwargs):
+    def __init_subclass__(cls, session_cls: type=None,
+                          session: Session=None, **kwargs):
         """initialize a Resource subclass
 
         Parameters
         ----------
         session_cls
             the :class:`Session` subclass to bind to this resource
+        session
+            the :class:`Session` instance to bind this resource
         """
-        session_cls.register_resource(cls)
-        cls.session_cls = session_cls
+        if session_cls:
+            session_cls.register_resource(cls)
+        elif cls.__bases__ == (Resource, ):
+            raise Exception(
+                'subclassing ``Resource`` requires a session class')
+
+        if session:
+            cls.session = session
+
         cls.fields = collections.OrderedDict(
             (name, obj) for name, obj in cls.__dict__.items()
             if isinstance(obj, Field)
