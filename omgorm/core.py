@@ -4,6 +4,8 @@ import copy
 import itertools
 import types
 
+from typing import Mapping
+
 import requests
 
 
@@ -30,7 +32,7 @@ class Session:
 class Resource:
     """base class for API resources"""
 
-    fields = collections.OrderedDict()
+    fields: Mapping[str, 'Field'] = collections.OrderedDict()
 
     def __init_subclass__(cls, session_cls: type=None,
                           session: Session=None, **kwargs):
