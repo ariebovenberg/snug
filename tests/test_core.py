@@ -123,6 +123,9 @@ class TestResource:
         user = User()
         assert repr(user) == '<mysite.User: foo>'
 
+        del User.__str__
+        assert repr(user) == '<mysite.User: [no __str__]>'
+
 
 class TestSession:
 
@@ -168,3 +171,6 @@ class TestSession:
 
         session = MySession()
         assert repr(session) == '<mysite.MySession: foo>'
+
+        del MySession.__str__
+        assert repr(session) == '<mysite.MySession: [no __str__]>'
