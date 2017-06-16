@@ -80,6 +80,36 @@ class TestResource:
 
         assert BlogPost.title.resource is BlogPost
 
+    def test_repr(self):
+
+        class MySession(orm.Session):
+
+            def __str__(self):
+                return 'bla'
+
+        MySession.__module__ = 'mysite'
+
+        class User(orm.Resource, session_cls=MySession):
+            pass
+
+            def __str__(self):
+                return 'foo'
+
+        User.__module__ = 'mysite'
+
+        my_session = MySession()
+
+        # class repr
+        assert repr(User) == '<resource mysite.User>'
+
+        # bound class repr
+        assert repr(my_session.User) == (
+            '<resource mysite.User bound to <mysite.MySession: bla>>')
+
+        # instance repr
+        user = User()
+        assert repr(user) == '<mysite.User: foo>'
+
 
 class TestSession:
 
@@ -113,3 +143,15 @@ class TestSession:
         assert issubclass(my_session.Post, Post)
         assert my_session.Post.session is my_session
         assert isinstance(my_session.requests, requests.Session)
+
+    def test_repr(self):
+
+        class MySession(orm.Session):
+
+            def __str__(self):
+                return 'foo'
+
+        MySession.__module__ = 'mysite'
+
+        session = MySession()
+        assert repr(session) == '<mysite.MySession: foo>'
