@@ -16,6 +16,7 @@ class Session:
         for name, resource_class in self.resources.items():
             klass = types.new_class(name, bases=(resource_class, ),
                                     kwds={'session': self})
+            klass.__module__ = resource_class.__module__
             setattr(self, name, klass)
 
         self.requests = requests.Session()
@@ -28,8 +29,23 @@ class Session:
     def register_resource(cls, resource_cls: type) -> None:
         cls.resources[resource_cls.__name__] = resource_cls
 
+    def __str__(self):
+        return '[no __str__]'
 
-class Resource:
+    def __repr__(self):
+        return f'<{self.__module__}.{self.__class__.__name__}: {self}>'
+
+
+class ResourceMeta(type):
+
+    def __repr__(self):
+        if hasattr(self, 'session'):
+            return (f'<resource {self.__module__}.{self.__name__} '
+                    f'bound to {self.session!r}>')
+        return f'<resource {self.__module__}.{self.__name__}>'
+
+
+class Resource(metaclass=ResourceMeta):
     """base class for API resources"""
 
     fields: Mapping[str, 'Field'] = collections.OrderedDict()
@@ -92,6 +108,12 @@ class Resource:
         instance.api_obj = api_obj
         return instance
 
+    def __str__(self):
+        return '[no __str__]'
+
+    def __repr__(self):
+        return f'<{self.__module__}.{self.__class__.__name__}: {self}>'
+
 
 class Field:
     """an attribute accessor for a resource"""
@@ -107,3 +129,10 @@ class Field:
 
     def get_value(self, instance: Resource) -> object:  # pragma: no cover
         raise NotImplementedError()
+
+    def __repr__(self):
+        try:
+            return (f'<{self.__module__}.{self.__class__.__name__} '
+                    f'"{self.name}" of {self.resource!r}>')
+        except AttributeError:
+            return f'<{self.__module__}.{self.__class__.__name__} [no name]>'
