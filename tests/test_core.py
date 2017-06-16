@@ -49,8 +49,7 @@ class TestField:
         class PrivateField(orm.Field):
 
             def get_value(self, instance):
-                return self.to_internal_value(getattr(instance,
-                                                      f'_{self.name}'))
+                return getattr(instance, f'_{self.name}')
 
             def to_internal_value(self, value):
                 return f'value: {value}'
