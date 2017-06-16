@@ -31,6 +31,19 @@ class TestField:
         email = Email()
         assert email.subject is value_getter.return_value
 
+    def test_repr(self, SessionSubclass):
+
+        class MyField(orm.Field):
+            pass
+
+        MyField.__module__ = 'example'
+
+        class User(orm.Resource, session_cls=SessionSubclass):
+            name = MyField()
+
+        assert repr(User.name) == f'<example.MyField "name" of {User!r}>'
+        assert repr(MyField()) == f'<example.MyField [no name]>'
+
 
 class TestResource:
 
