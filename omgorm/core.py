@@ -1,9 +1,11 @@
 """the core components of the ORM: sessions, resources, and fields"""
 import collections
+import copy
+import itertools
 import types
 
 
-class Session(object):
+class Session:
     """the context in which resources are used"""
 
     def __init__(self):
@@ -23,6 +25,8 @@ class Session(object):
 
 class Resource:
     """base class for API resources"""
+
+    fields = collections.OrderedDict()
 
     def __init_subclass__(cls, session_cls: type=None,
                           session: Session=None, **kwargs):
@@ -44,10 +48,24 @@ class Resource:
         if session:
             cls.session = session
 
-        cls.fields = collections.OrderedDict(
-            (name, obj) for name, obj in cls.__dict__.items()
-            if isinstance(obj, Field)
-        )
+        # fields from superclasses must be explicitly copied.
+        # Otherwise they reference the superclass
+        def get_field_copy_linked_to_current_class(field):
+            field_copy = copy.copy(field)
+            field_copy.__set_name__(cls, field.name)
+            return field_copy
+
+        fields_from_superclass = [get_field_copy_linked_to_current_class(f)
+                                  for f in cls.fields.values()]
+
+        for field in fields_from_superclass:
+            setattr(cls, field.name, field)
+
+        cls.fields = collections.OrderedDict(itertools.chain(
+            ((field.name, field) for field in fields_from_superclass),
+            ((name, obj) for name, obj in cls.__dict__.items()
+             if isinstance(obj, Field))
+        ))
         super().__init_subclass__(**kwargs)
 
     @classmethod
