@@ -16,15 +16,13 @@ class Session(orm.Session):
     """github session with simple credentials"""
 
     def __init__(self, auth: Tuple[str, str]=None):
-        session = requests.Session()
+        super().__init__()
         if auth:
-            session.auth = auth
-        session.headers.update({
+            self.requests.auth = auth
+        self.requests.headers.update({
             # explicit API header recommended by docs
             'Accept': 'application/vnd.github.v3+json'
         })
-        self.requests = session
-        super().__init__()
 
     def get(self, resource: str) -> JsonListOrDict:
         """perform a GET request on a resource"""
