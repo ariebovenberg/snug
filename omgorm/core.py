@@ -4,6 +4,8 @@ import copy
 import itertools
 import types
 
+import requests
+
 
 class Session:
     """the context in which resources are used"""
@@ -13,6 +15,8 @@ class Session:
             klass = types.new_class(name, bases=(resource_class, ),
                                     kwds={'session': self})
             setattr(self, name, klass)
+
+        self.requests = requests.Session()
 
     def __init_subclass__(cls, **kwargs):
         cls.resources: Mapping[str, type] = {}
