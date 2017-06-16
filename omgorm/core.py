@@ -123,7 +123,7 @@ class Field:
 
     def __get__(self, instance, cls):
         if instance is not None:
-            return self.get_value(instance)
+            return self.to_internal_value(self.get_value(instance))
         else:
             return self
 
