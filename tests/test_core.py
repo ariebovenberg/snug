@@ -64,6 +64,21 @@ class TestResource:
             class Poll(orm.Resource):
                 pass
 
+    def test_subclassing_keeps_fields(self, resource):
+        Post = resource
+
+        class BlogPost(Post):
+            url = orm.Field()
+
+        assert BlogPost.fields == collections.OrderedDict([
+            ('title', BlogPost.title),
+            ('body', BlogPost.body),
+            ('user', BlogPost.user),
+            ('url', BlogPost.url),
+        ])
+
+        assert BlogPost.title.resource is BlogPost
+
 
 class TestSession:
 
