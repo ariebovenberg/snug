@@ -44,6 +44,25 @@ class TestField:
         assert repr(User.name) == f'<example.MyField "name" of {User!r}>'
         assert repr(MyField()) == f'<example.MyField [no name]>'
 
+    def test_hooks(self, SessionSubclass):
+
+        class PrivateField(orm.Field):
+
+            def get_value(self, instance):
+                return self.to_internal_value(getattr(instance,
+                                                      f'_{self.name}'))
+
+            def to_internal_value(self, value):
+                return f'value: {value}'
+
+        class User(orm.Resource, session_cls=SessionSubclass):
+            name = PrivateField()
+
+        user = User()
+        user._name = 'foo username'
+
+        assert user.name == 'value: foo username'
+
 
 class TestResource:
 
