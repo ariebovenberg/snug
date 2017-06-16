@@ -130,6 +130,9 @@ class Field:
     def get_value(self, instance: Resource) -> object:  # pragma: no cover
         raise NotImplementedError()
 
+    def to_internal_value(self, value):  # pragma: no cover
+        return value
+
     def __repr__(self):
         try:
             return (f'<{self.__module__}.{self.__class__.__name__} '
