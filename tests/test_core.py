@@ -2,6 +2,7 @@ import collections
 from unittest import mock
 
 import pytest
+import requests
 
 import omgorm as orm
 
@@ -99,15 +100,16 @@ class TestSession:
 
         assert MySiteSession.resources == {'Post': Post, 'Comment': Comment}
 
-    def test_resource_subclasses_per_session_instance(self, SessionSubclass):
+    def test_init(self, SessionSubclass):
 
         class Post(orm.Resource, session_cls=SessionSubclass):
             title = orm.Field()
             body = orm.Field()
             user = orm.Field()
 
-        bobs_session = SessionSubclass(username='bob')
+        my_session = SessionSubclass()
 
-        assert bobs_session.Post is not Post
-        assert issubclass(bobs_session.Post, Post)
-        assert bobs_session.Post.session is bobs_session
+        assert my_session.Post is not Post
+        assert issubclass(my_session.Post, Post)
+        assert my_session.Post.session is my_session
+        assert isinstance(my_session.requests, requests.Session)
