@@ -1,8 +1,16 @@
+"""Miscellaneous tools and boilerplate functions"""
 import functools
 
 
 class ppartial(functools.partial):
-    """functools.partial with support for positional args"""
+    '''like functools.partial, but allows positional arguments
+    by use of ellipsis (...).
+    Useful for builtin python functions which do not take keyword args
+
+        >>> count_down_from = partial(range, ..., 0, -1)
+        >>> list(count_down_from(3))
+        [3, 2, 1]
+    '''
 
     def __call__(self, *args, **keywords):
         iter_args = iter(args)

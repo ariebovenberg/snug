@@ -1,4 +1,4 @@
-"""the core components of the ORM: sessions, resources, and fields"""
+"""The core components of the ORM: sessions, resources, and fields"""
 import collections
 import copy
 import itertools
@@ -114,7 +114,7 @@ class Resource(metaclass=ResourceMeta):
 
         Returns
         -------
-        Resource
+        core.Resource
             the resource instance
         """
         instance = cls.__new__(cls)
@@ -141,8 +141,7 @@ def _identity(obj: T) -> T:
 
 class Field:
     """an attribute accessor for a resource.
-
-    implements python's descriptor protocol
+    Implements python's descriptor protocol
     """
     def __init__(self, *, load: Callable[[object], T]=None):
         self.load = load or _identity
