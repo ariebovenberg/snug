@@ -1,3 +1,4 @@
+from unittest import mock
 import collections
 
 import pytest
@@ -190,3 +191,14 @@ class TestSession:
 
         del MySession.__str__
         assert repr(session) == '<mysite.MySession: [no __str__]>'
+
+    def test_get(self):
+
+        session = orm.Session()
+
+        with mock.patch.object(session, 'requests') as req_session:
+            response = session.get('/my/url/', foo='bar')
+
+        req_session.get.assert_called_once_with('/my/url/', foo='bar')
+        assert response is req_session.get.return_value
+        assert response.raise_for_status.called

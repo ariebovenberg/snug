@@ -14,6 +14,7 @@ __all__ = ['Session', 'Resource', 'Field']
 
 class Session:
     """the context in which resources are used"""
+    resources = {}
 
     def __init__(self):
         for name, resource_class in self.resources.items():
@@ -31,6 +32,14 @@ class Session:
     @classmethod
     def register_resource(cls, resource_cls: type) -> None:
         cls.resources[resource_cls.__name__] = resource_cls
+
+    def get(self, url: str, **kwargs) -> requests.Response:
+        """perform a GET request. kwargs are passed to the
+        underlying requests session
+        """
+        response = self.requests.get(url, **kwargs)
+        response.raise_for_status()
+        return response
 
     def __str__(self):
         return '[no __str__]'
