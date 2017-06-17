@@ -1,20 +1,13 @@
 from datetime import datetime
 import urllib
-from functools import partial
+from typing import Tuple
 
 import omgorm as orm
 from omgorm.utils import ppartial
 
-from typing import Tuple, Union, List, Dict
 
-
-JsonListOrDict = Union[List, Dict[str, object]]
-
-API_URL = 'https://api.github.com/'
-DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
-get_full_url = partial(urllib.parse.urljoin, API_URL)
-
-parse_datetime = ppartial(datetime.strptime, ..., DATE_FORMAT)
+get_full_url = ppartial(urllib.parse.urljoin, 'https://api.github.com/')
+parse_datetime = ppartial(datetime.strptime, ..., '%Y-%m-%dT%H:%M:%SZ')
 
 
 class Session(orm.Session):
