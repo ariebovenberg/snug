@@ -1,7 +1,9 @@
+from datetime import datetime
 import urllib
-import requests
-import omgorm as orm
 from functools import partial
+
+import omgorm as orm
+from omgorm.utils import ppartial
 
 from typing import Tuple, Union, List, Dict
 
@@ -9,7 +11,10 @@ from typing import Tuple, Union, List, Dict
 JsonListOrDict = Union[List, Dict[str, object]]
 
 API_URL = 'https://api.github.com/'
+DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 get_full_url = partial(urllib.parse.urljoin, API_URL)
+
+parse_datetime = ppartial(datetime.strptime, ..., DATE_FORMAT)
 
 
 class Session(orm.Session):
@@ -24,30 +29,24 @@ class Session(orm.Session):
             'Accept': 'application/vnd.github.v3+json'
         })
 
-    def get(self, resource: str) -> JsonListOrDict:
-        """perform a GET request on a resource"""
-        assert not resource.endswith('/')
-        response = self.requests.get(resource)
-        response.raise_for_status()
-        return response.json()
 
-
-class Organization(orm.Resource, session_cls=Session):
-    name = orm.json.Field()
-    description = orm.json.Field()
-    email = orm.json.Field()
-    followers = orm.json.Field()
-    following = orm.json.Field()
-    has_organization_projects = orm.json.Field()
-    has_repository_projects = orm.json.Field()
-    id = orm.json.Field()
-    location = orm.json.Field()
-    login = orm.json.Field()
-    public_gists = orm.json.Field()
-    public_repos = orm.json.Field()
-    type = orm.json.Field()
+class Organization(orm.json.Resource, session_cls=Session):
+    name = orm.Field()
+    created_at = orm.Field(load=parse_datetime)
+    description = orm.Field()
+    email = orm.Field()
+    followers = orm.Field()
+    following = orm.Field()
+    has_organization_projects = orm.Field()
+    has_repository_projects = orm.Field()
+    id = orm.Field()
+    location = orm.Field()
+    login = orm.Field()
+    public_gists = orm.Field()
+    public_repos = orm.Field()
+    type = orm.Field()
 
     @classmethod
     def get(cls, name: str) -> 'Organization':
         return cls.wrap_api_obj(
-            cls.session.get(get_full_url('orgs/' + name)))
+            cls.session.get(get_full_url('orgs/' + name)).json())
