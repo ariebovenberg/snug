@@ -1,5 +1,4 @@
 import collections
-from unittest import mock
 
 import pytest
 import requests
@@ -20,16 +19,19 @@ def resource(SessionSubclass):
 
 class TestField:
 
-    @mock.patch.object(orm.Field, 'get_value')
-    def test_field_accessor(self, value_getter, SessionSubclass):
+    def test_descriptor__get__(self):
 
-        class Email(orm.Resource, session_cls=SessionSubclass):
+        class Email(orm.Resource, abstract=True):
             subject = orm.Field()
+
+            def __getitem__(self, key):
+                if key == 'subject':
+                    return 'foo'
 
         assert isinstance(Email.subject, orm.Field)
 
         email = Email()
-        assert email.subject is value_getter.return_value
+        assert email.subject == 'foo'
 
     def test_repr(self, SessionSubclass):
 
@@ -44,18 +46,14 @@ class TestField:
         assert repr(User.name) == f'<example.MyField "name" of {User!r}>'
         assert repr(MyField()) == f'<example.MyField [no name]>'
 
-    def test_hooks(self, SessionSubclass):
+    def test_given_load_callable(self):
 
-        class PrivateField(orm.Field):
+        class User(orm.Resource, abstract=True):
 
-            def get_value(self, instance):
-                return getattr(instance, f'_{self.name}')
+            def __getitem__(self, key):
+                return getattr(self, f'_{key}')
 
-            def to_internal_value(self, value):
-                return f'value: {value}'
-
-        class User(orm.Resource, session_cls=SessionSubclass):
-            name = PrivateField()
+            name = orm.Field(load='value: {}'.format)
 
         user = User()
         user._name = 'foo username'

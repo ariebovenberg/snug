@@ -1,13 +1,24 @@
+import pytest
+
 import omgorm as orm
 
 
-class TestField:
+class TestResource:
 
-    def test_get_value(self, SessionSubclass):
+    def test_get_field_value(self):
 
-        class Post(orm.Resource, session_cls=SessionSubclass):
-            title = orm.json.Field()
+        class Post(orm.json.Resource, abstract=True):
+            pass
 
-        post = Post.wrap_api_obj({'title': 'hello'})
+        post = Post.wrap_api_obj({
+            'title': 'my post',
+            'user': {
+                'name': 'bob'
+            }
+        })
+        assert post['title'] == 'my post'
+        assert post['user', 'name'] == 'bob'
 
-        assert post.title == 'hello'
+        with pytest.raises(KeyError):
+            post['body']
+            post[0]

@@ -1,8 +1,20 @@
 """classes and utilities for dealing with JSON API data"""
+from functools import reduce
+import collections.abc
+
 from . import core
 
 
-class Field(core.Field):
+def _getitem(obj, key):
+    return obj[key]
 
-    def get_value(self, instance):
-        return instance.api_obj[self.name]
+
+class Resource(core.Resource, abstract=True):
+
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            return self.api_obj[key]
+        elif isinstance(key, collections.abc.Iterable):
+            return reduce(_getitem, key, self.api_obj)
+        else:
+            raise KeyError(key)

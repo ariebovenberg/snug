@@ -4,9 +4,12 @@ import copy
 import itertools
 import types
 
-from typing import Mapping
+from typing import Mapping, Callable, Optional, TypeVar, Union
 
 import requests
+
+
+__all__ = ['Session', 'Resource', 'Field']
 
 
 class Session:
@@ -22,7 +25,7 @@ class Session:
         self.requests = requests.Session()
 
     def __init_subclass__(cls, **kwargs):
-        cls.resources: Mapping[str, type] = {}
+        cls.resources: Mapping[str, ResourceMeta] = {}
         super().__init_subclass__(**kwargs)
 
     @classmethod
@@ -51,6 +54,7 @@ class Resource(metaclass=ResourceMeta):
     fields: Mapping[str, 'Field'] = collections.OrderedDict()
 
     def __init_subclass__(cls, session_cls: type=None,
+                          abstract: bool=False,
                           session: Session=None, **kwargs):
         """initialize a Resource subclass
 
@@ -63,7 +67,7 @@ class Resource(metaclass=ResourceMeta):
         """
         if session_cls:
             session_cls.register_resource(cls)
-        elif cls.__bases__ == (Resource, ):
+        elif not abstract and cls.__bases__ == (Resource, ):
             raise TypeError(
                 'subclassing ``Resource`` requires a session class')
 
@@ -108,6 +112,9 @@ class Resource(metaclass=ResourceMeta):
         instance.api_obj = api_obj
         return instance
 
+    def __getitem__(self, key):
+        raise NotImplementedError()  # pragma: no cover
+
     def __str__(self):
         return '[no __str__]'
 
@@ -115,23 +122,34 @@ class Resource(metaclass=ResourceMeta):
         return f'<{self.__module__}.{self.__class__.__name__}: {self}>'
 
 
-class Field:
-    """an attribute accessor for a resource"""
+T = TypeVar('T')
 
-    def __set_name__(self, resource, name):
+
+def _identity(obj: T) -> T:
+    """identity function: returns the input unmodified"""
+    return obj
+
+
+class Field:
+    """an attribute accessor for a resource.
+
+    implements python's descriptor protocol
+    """
+    def __init__(self, *, load: Callable[[object], T]=None):
+        self.load = load or _identity
+
+    def __set_name__(self, resource: ResourceMeta, name: str) -> None:
         self.resource, self.name = resource, name
 
-    def __get__(self, instance, cls):
-        if instance is not None:
-            return self.to_internal_value(self.get_value(instance))
-        else:
-            return self
-
-    def get_value(self, instance: Resource) -> object:  # pragma: no cover
-        raise NotImplementedError()
-
-    def to_internal_value(self, value):  # pragma: no cover
-        return value
+    def __get__(self,
+                instance: Optional[Resource],
+                cls: ResourceMeta) -> Union['Field', T]:
+        """part of the descriptor protocol.
+        On a class, returns the field.
+        On an instance, returns the field value"""
+        return (self
+                if instance is None
+                else self.load(instance[self.name]))
 
     def __repr__(self):
         try:
