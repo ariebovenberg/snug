@@ -7,7 +7,7 @@ python:
 install: 
     - pip install -r requirements/test.txt
     - pip install coveralls
-    - pip install .
+    - pip install -e .
 script: pytest --cov=omgorm
 after_success:
     coveralls
