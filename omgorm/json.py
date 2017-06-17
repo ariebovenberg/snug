@@ -17,4 +17,4 @@ class Resource(core.Resource, abstract=True):
         elif isinstance(key, collections.abc.Iterable):
             return reduce(_getitem, key, self.api_obj)
         else:
-            raise KeyError(key)
+            raise TypeError(type(key))

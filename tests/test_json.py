@@ -21,4 +21,6 @@ class TestResource:
 
         with pytest.raises(KeyError):
             post['body']
+
+        with pytest.raises(TypeError):
             post[0]
