@@ -44,15 +44,16 @@ class TestField:
         class User(orm.Resource, session_cls=SessionSubclass):
             name = MyField()
 
-        assert repr(User.name) == f'<example.MyField "name" of {User!r}>'
-        assert repr(MyField()) == f'<example.MyField [no name]>'
+        assert repr(User.name) == '<example.MyField "name" of {!r}>'.format(
+            User)
+        assert repr(MyField()) == '<example.MyField [no name]>'
 
     def test_given_load_callable(self):
 
         class User(orm.Resource, abstract=True):
 
             def __getitem__(self, key):
-                return getattr(self, f'_{key}')
+                return getattr(self, '_' + key)
 
             name = orm.Field(load='value: {}'.format)
 
@@ -74,11 +75,11 @@ class TestResource:
         assert Post.title.name == 'title'
         assert Post.title.resource is Post
 
-        expect_fields = collections.OrderedDict([
-            ('title', Post.title),
-            ('body', Post.body),
-            ('user', Post.user),
-        ])
+        expect_fields = {
+            'title': Post.title,
+            'body': Post.body,
+            'user': Post.user,
+        }
         assert Post.fields == expect_fields
 
     def test_from_api_obj(self, resource):
@@ -101,12 +102,12 @@ class TestResource:
         class BlogPost(Post):
             url = orm.Field()
 
-        assert BlogPost.fields == collections.OrderedDict([
-            ('title', BlogPost.title),
-            ('body', BlogPost.body),
-            ('user', BlogPost.user),
-            ('url', BlogPost.url),
-        ])
+        assert BlogPost.fields == {
+            'title': BlogPost.title,
+            'body': BlogPost.body,
+            'user': BlogPost.user,
+            'url': BlogPost.url,
+        }
 
         assert BlogPost.title.resource is BlogPost
 

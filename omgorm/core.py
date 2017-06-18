@@ -3,16 +3,17 @@ import collections
 import copy
 import itertools
 import types
-
-from typing import Mapping, Callable, Optional, TypeVar, Union
+from typing import Callable, Optional, TypeVar, Union
 
 import requests
+
+from . import utils
 
 
 __all__ = ['Session', 'Resource', 'Field']
 
 
-class Session:
+class Session(metaclass=utils.EnsurePep487Meta):
     """the context in which resources are used"""
     resources = {}
 
@@ -26,8 +27,7 @@ class Session:
         self.requests = requests.Session()
 
     def __init_subclass__(cls, **kwargs):
-        cls.resources: Mapping[str, ResourceMeta] = {}
-        super().__init_subclass__(**kwargs)
+        cls.resources = {}
 
     @classmethod
     def register_resource(cls, resource_cls: type) -> None:
@@ -45,22 +45,22 @@ class Session:
         return '[no __str__]'
 
     def __repr__(self):
-        return f'<{self.__module__}.{self.__class__.__name__}: {self}>'
+        return '<{0.__module__}.{0.__class__.__name__}: {0}>'.format(self)
 
 
-class ResourceMeta(type):
+class ResourceMeta(utils.EnsurePep487Meta):
 
     def __repr__(self):
         if hasattr(self, 'session'):
-            return (f'<resource {self.__module__}.{self.__name__} '
-                    f'bound to {self.session!r}>')
-        return f'<resource {self.__module__}.{self.__name__}>'
+            return ('<resource {0.__module__}.{0.__name__} '
+                    'bound to {0.session!r}>'.format(self))
+        return '<resource {0.__module__}.{0.__name__}>'.format(self)
 
 
 class Resource(metaclass=ResourceMeta):
     """base class for API resources"""
 
-    fields: Mapping[str, 'Field'] = collections.OrderedDict()
+    fields = collections.OrderedDict()  # Mapping[str, Field]
 
     def __init_subclass__(cls, session_cls: type=None,
                           abstract: bool=False,
@@ -101,7 +101,6 @@ class Resource(metaclass=ResourceMeta):
             ((name, obj) for name, obj in cls.__dict__.items()
              if isinstance(obj, Field))
         ))
-        super().__init_subclass__(**kwargs)
 
     @classmethod
     def wrap_api_obj(cls, api_obj: object) -> 'Resource':
@@ -128,7 +127,7 @@ class Resource(metaclass=ResourceMeta):
         return '[no __str__]'
 
     def __repr__(self):
-        return f'<{self.__module__}.{self.__class__.__name__}: {self}>'
+        return '<{0.__module__}.{0.__class__.__name__}: {0}>'.format(self)
 
 
 T = TypeVar('T')
@@ -161,7 +160,8 @@ class Field:
 
     def __repr__(self):
         try:
-            return (f'<{self.__module__}.{self.__class__.__name__} '
-                    f'"{self.name}" of {self.resource!r}>')
+            return ('<{0.__module__}.{0.__class__.__name__} '
+                    '"{0.name}" of {0.resource!r}>'.format(self))
         except AttributeError:
-            return f'<{self.__module__}.{self.__class__.__name__} [no name]>'
+            return '<{0.__module__}.{0.__class__.__name__} [no name]>'.format(
+                self)

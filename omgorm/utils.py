@@ -1,4 +1,5 @@
-"""Miscellaneous tools and boilerplate functions"""
+"""Miscellaneous tools and boilerplate"""
+import sys
 import functools
 
 
@@ -7,7 +8,7 @@ class ppartial(functools.partial):
     by use of ellipsis (...).
     Useful for builtin python functions which do not take keyword args
 
-        >>> count_down_from = partial(range, ..., 0, -1)
+        >>> count_down_from = ppartial(range, ..., 0, -1)
         >>> list(count_down_from(3))
         [3, 2, 1]
     '''
@@ -18,3 +19,19 @@ class ppartial(functools.partial):
                        for a in self.args)
         merged_keywords = {**self.keywords, **keywords}
         return self.func(*merged_args, **merged_keywords)
+
+
+class EnsurePep487Meta(type):  # pragma: no cover
+    """metaclass to ensure rudimentary support for PEP487 in Py<=3.6"""
+    if sys.version_info < (3, 6):
+
+        def __new__(cls, name, bases, classdict, **kwargs):
+            return super().__new__(cls, name, bases, classdict)
+
+        def __init__(cls, name, bases, dct, **kwargs):
+            if bases and hasattr(cls, '__init_subclass__'):
+                cls.__init_subclass__(cls, **kwargs)
+
+            for name, item in dct.items():
+                if hasattr(item, '__set_name__'):
+                    item.__set_name__(cls, name)
