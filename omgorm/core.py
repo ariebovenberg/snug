@@ -1,5 +1,4 @@
 """The core components of the ORM: sessions, resources, and fields"""
-import sys
 import collections
 import copy
 import itertools
