@@ -12,7 +12,6 @@ class ppartial(functools.partial):
         >>> list(count_down_from(3))
         [3, 2, 1]
     '''
-
     def __call__(self, *args, **keywords):
         iter_args = iter(args)
         merged_args = (next(iter_args) if a is ... else a

@@ -1,14 +1,14 @@
 language: python
 python:
-    - "3.5"
-    - "3.6"
-    - "3.6-dev"
-    - "3.7-dev"
-    - "nightly"
+  - "3.5"
+  - "3.6"
+  - "3.7-dev"
 install: 
-    - pip install -r requirements/test.txt
-    - pip install coveralls
-    - pip install -e .
-script: pytest --cov=omgorm
-after_success:
-    coveralls
+  - pip install tox-travis
+  - pip install coveralls
+matrix:
+  include:
+    - python: 3.6
+      env: TOXENV=flake8
+script: tox
+after_success: coveralls
