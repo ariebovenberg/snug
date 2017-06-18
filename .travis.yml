@@ -8,7 +8,7 @@ python:
 install: 
   - pip install tox-travis
   - pip install coveralls
-before_script:
-  - flake8 .
+# before_script:
+#   - flake8 .
 script: pytest --cov=omgorm
 after_success: coveralls
