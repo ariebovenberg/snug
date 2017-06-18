@@ -17,7 +17,7 @@ class ppartial(functools.partial):
         merged_args = (next(iter_args) if a is ... else a
                        for a in self.args)
         merged_keywords = {**self.keywords, **keywords}
-        return self.func(*merged_args, **merged_keywords)
+        return self.func(*merged_args, *iter_args, **merged_keywords)
 
 
 class EnsurePep487Meta(type):  # pragma: no cover
