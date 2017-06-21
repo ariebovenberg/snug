@@ -1,6 +1,7 @@
 """Miscellaneous tools and boilerplate"""
-import sys
+import itertools
 import functools
+import sys
 
 
 class ppartial(functools.partial):
@@ -16,8 +17,10 @@ class ppartial(functools.partial):
         iter_args = iter(args)
         merged_args = (next(iter_args) if a is ... else a
                        for a in self.args)
-        merged_keywords = {**self.keywords, **keywords}
-        return self.func(*merged_args, *iter_args, **merged_keywords)
+        merged_keywords = self.keywords.copy()
+        merged_keywords.update(keywords)
+        return self.func(*itertools.chain(merged_args, iter_args),
+                         **merged_keywords)
 
 
 class EnsurePep487Meta(type):  # pragma: no cover
