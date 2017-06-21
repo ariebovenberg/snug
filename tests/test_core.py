@@ -1,5 +1,4 @@
 from unittest import mock
-import collections
 
 import pytest
 import requests
