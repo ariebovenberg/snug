@@ -17,8 +17,8 @@ class ppartial(functools.partial):
         iter_args = iter(args)
         merged_args = (next(iter_args) if a is ... else a
                        for a in self.args)
-        # keywords may be ``None`` in python some 3.4.x versions
-        merged_keywords = {} if keywords is None else self.keywords.copy()
+        # keywords may be ``None`` in some python 3.4.x versions
+        merged_keywords = {} if self.keywords is None else self.keywords.copy()
         merged_keywords.update(keywords)
         return self.func(*itertools.chain(merged_args, iter_args),
                          **merged_keywords)
