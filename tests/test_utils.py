@@ -1,6 +1,6 @@
 import functools
 
-from omgorm import utils
+from snug import utils
 
 
 def _example_func(*args, **kwargs):

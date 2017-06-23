@@ -1,14 +1,14 @@
-omgORM
-======
+Snug
+====
 
-.. image:: https://travis-ci.org/ariebovenberg/omgorm.svg?branch=master
-    :target: https://travis-ci.org/ariebovenberg/omgorm
+.. image:: https://travis-ci.org/ariebovenberg/snug.svg?branch=master
+    :target: https://travis-ci.org/ariebovenberg/snug
 
-.. image:: https://coveralls.io/repos/github/ariebovenberg/omgorm/badge.svg?branch=master
-    :target: https://coveralls.io/github/ariebovenberg/omgorm?branch=master
+.. image:: https://coveralls.io/repos/github/ariebovenberg/snug/badge.svg?branch=master
+    :target: https://coveralls.io/github/ariebovenberg/snug?branch=master
 
-.. image:: https://readthedocs.org/projects/omgorm/badge/?version=latest
-    :target: http://omgorm.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/snug/badge/?version=latest
+    :target: http://snug.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
 (Work in progress)

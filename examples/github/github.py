@@ -2,15 +2,14 @@ from datetime import datetime
 import urllib
 from typing import Tuple
 
-import omgorm as orm
-from omgorm.utils import ppartial
+import snug
+
+partial = snug.utils.ppartial
+get_full_url = partial(urllib.parse.urljoin, 'https://api.github.com/')
+parse_datetime = partial(datetime.strptime, ..., '%Y-%m-%dT%H:%M:%SZ')
 
 
-get_full_url = ppartial(urllib.parse.urljoin, 'https://api.github.com/')
-parse_datetime = ppartial(datetime.strptime, ..., '%Y-%m-%dT%H:%M:%SZ')
-
-
-class Session(orm.Session):
+class Session(snug.Session):
     """github session with simple credentials"""
 
     def __init__(self, auth: Tuple[str, str]=None):
@@ -23,21 +22,21 @@ class Session(orm.Session):
         })
 
 
-class Organization(orm.json.Resource, session_cls=Session):
-    name = orm.Field()
-    created_at = orm.Field(load=parse_datetime)
-    description = orm.Field()
-    email = orm.Field()
-    followers = orm.Field()
-    following = orm.Field()
-    has_organization_projects = orm.Field()
-    has_repository_projects = orm.Field()
-    id = orm.Field()
-    location = orm.Field()
-    login = orm.Field()
-    public_gists = orm.Field()
-    public_repos = orm.Field()
-    type = orm.Field()
+class Organization(snug.json.Resource, session_cls=Session):
+    name = snug.Field()
+    created_at = snug.Field(load=parse_datetime)
+    description = snug.Field()
+    email = snug.Field()
+    followers = snug.Field()
+    following = snug.Field()
+    has_organization_projects = snug.Field()
+    has_repository_projects = snug.Field()
+    id = snug.Field()
+    location = snug.Field()
+    login = snug.Field()
+    public_gists = snug.Field()
+    public_repos = snug.Field()
+    type = snug.Field()
 
     @classmethod
     def get(cls, name: str) -> 'Organization':

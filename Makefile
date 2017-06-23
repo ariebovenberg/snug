@@ -7,4 +7,4 @@ test:
 	pytest
 
 coverage:
-	pytest --cov=omgorm --cov-report html --cov-report term
+	pytest --cov=snug --cov-report html --cov-report term

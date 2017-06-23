@@ -1,11 +1,11 @@
 import pytest
 
-import omgorm as orm
+import snug
 
 
 @pytest.fixture
 def SessionSubclass():
-    class MySiteSession(orm.Session):
+    class MySiteSession(snug.Session):
         pass
 
     return MySiteSession

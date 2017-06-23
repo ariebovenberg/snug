@@ -3,16 +3,16 @@ from unittest import mock
 import pytest
 import requests
 
-import omgorm as orm
+import snug
 
 
 @pytest.fixture
 def resource(SessionSubclass):
 
-    class Post(orm.Resource, session_cls=SessionSubclass):
-        title = orm.Field()
-        body = orm.Field()
-        user = orm.Field()
+    class Post(snug.Resource, session_cls=SessionSubclass):
+        title = snug.Field()
+        body = snug.Field()
+        user = snug.Field()
 
     return Post
 
@@ -21,26 +21,26 @@ class TestField:
 
     def test_descriptor__get__(self):
 
-        class Email(orm.Resource, abstract=True):
-            subject = orm.Field()
+        class Email(snug.Resource, abstract=True):
+            subject = snug.Field()
 
             def __getitem__(self, key):
                 if key == 'subject':
                     return 'foo'
 
-        assert isinstance(Email.subject, orm.Field)
+        assert isinstance(Email.subject, snug.Field)
 
         email = Email()
         assert email.subject == 'foo'
 
     def test_repr(self, SessionSubclass):
 
-        class MyField(orm.Field):
+        class MyField(snug.Field):
             pass
 
         MyField.__module__ = 'example'
 
-        class User(orm.Resource, session_cls=SessionSubclass):
+        class User(snug.Resource, session_cls=SessionSubclass):
             name = MyField()
 
         assert repr(User.name) == '<example.MyField "name" of {!r}>'.format(
@@ -49,12 +49,12 @@ class TestField:
 
     def test_given_load_callable(self):
 
-        class User(orm.Resource, abstract=True):
+        class User(snug.Resource, abstract=True):
 
             def __getitem__(self, key):
                 return getattr(self, '_' + key)
 
-            name = orm.Field(load='value: {}'.format)
+            name = snug.Field(load='value: {}'.format)
 
         user = User()
         user._name = 'foo username'
@@ -66,10 +66,10 @@ class TestResource:
 
     def test_fields_linked_to_resource(self, SessionSubclass):
 
-        class Post(orm.Resource, session_cls=SessionSubclass):
-            title = orm.Field()
-            body = orm.Field()
-            user = orm.Field()
+        class Post(snug.Resource, session_cls=SessionSubclass):
+            title = snug.Field()
+            body = snug.Field()
+            user = snug.Field()
 
         assert Post.title.name == 'title'
         assert Post.title.resource is Post
@@ -92,14 +92,14 @@ class TestResource:
     def test_resource_requires_session_cls(self):
 
         with pytest.raises(TypeError):
-            class Poll(orm.Resource):
+            class Poll(snug.Resource):
                 pass
 
     def test_subclassing_keeps_fields(self, resource):
         Post = resource
 
         class BlogPost(Post):
-            url = orm.Field()
+            url = snug.Field()
 
         assert BlogPost.fields == {
             'title': BlogPost.title,
@@ -112,14 +112,14 @@ class TestResource:
 
     def test_repr(self):
 
-        class MySession(orm.Session):
+        class MySession(snug.Session):
 
             def __str__(self):
                 return 'bla'
 
         MySession.__module__ = 'mysite'
 
-        class User(orm.Resource, session_cls=MySession):
+        class User(snug.Resource, session_cls=MySession):
             pass
 
             def __str__(self):
@@ -148,27 +148,27 @@ class TestSession:
 
     def test_resource_linked_to_session(self):
 
-        class MySiteSession(orm.Session):
+        class MySiteSession(snug.Session):
             pass
 
-        class Post(orm.Resource, session_cls=MySiteSession):
-            title = orm.Field()
-            body = orm.Field()
-            user = orm.Field()
+        class Post(snug.Resource, session_cls=MySiteSession):
+            title = snug.Field()
+            body = snug.Field()
+            user = snug.Field()
 
-        class Comment(orm.Resource, session_cls=MySiteSession):
-            name = orm.Field()
-            email = orm.Field()
-            body = orm.Field()
+        class Comment(snug.Resource, session_cls=MySiteSession):
+            name = snug.Field()
+            email = snug.Field()
+            body = snug.Field()
 
         assert MySiteSession.resources == {'Post': Post, 'Comment': Comment}
 
     def test_init(self, SessionSubclass):
 
-        class Post(orm.Resource, session_cls=SessionSubclass):
-            title = orm.Field()
-            body = orm.Field()
-            user = orm.Field()
+        class Post(snug.Resource, session_cls=SessionSubclass):
+            title = snug.Field()
+            body = snug.Field()
+            user = snug.Field()
 
         my_session = SessionSubclass()
 
@@ -179,7 +179,7 @@ class TestSession:
 
     def test_repr(self):
 
-        class MySession(orm.Session):
+        class MySession(snug.Session):
 
             def __str__(self):
                 return 'foo'
@@ -194,7 +194,7 @@ class TestSession:
 
     def test_get(self):
 
-        session = orm.Session()
+        session = snug.Session()
 
         with mock.patch.object(session, 'requests') as req_session:
             response = session.get('/my/url/', foo='bar')

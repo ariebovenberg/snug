@@ -1,13 +1,13 @@
 import pytest
 
-import omgorm as orm
+import snug
 
 
 class TestResource:
 
     def test_get_field_value(self):
 
-        class Post(orm.json.Resource, abstract=True):
+        class Post(snug.json.Resource, abstract=True):
             pass
 
         post = Post.wrap_api_obj({

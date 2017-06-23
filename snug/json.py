@@ -1,6 +1,6 @@
 """Classes and utilities for dealing with JSON API data"""
-from functools import reduce
 import collections.abc
+from functools import reduce
 from typing import Union, Iterable
 
 from . import core
