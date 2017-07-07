@@ -13,5 +13,4 @@ Snug
 
 (Work in progress)
 
-An ORM toolkit for interacting with REST APIs,
-using the latest features in python 3.6.
+Wrap REST APIs to fit nicely into your python code.
