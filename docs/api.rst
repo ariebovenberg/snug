@@ -4,13 +4,13 @@ API reference
 Core
 ----
 
-.. automodule:: omgorm.core
+.. automodule:: snug.core
    :members:
 
 JSON
 ----
 
-.. automodule:: omgorm.json
+.. automodule:: snug.json
    :members:
    :special-members:
 
@@ -18,5 +18,5 @@ JSON
 Utils
 -----
 
-.. automodule:: omgorm.utils
+.. automodule:: snug.utils
    :members:
