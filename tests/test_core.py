@@ -17,6 +17,11 @@ def resource(SessionSubclass):
     return Post
 
 
+@pytest.fixture
+def context():
+    return snug.Context(auth=('user', 'pw'), headers={})
+
+
 class TestField:
 
     def test_descriptor__get__(self):
@@ -110,7 +115,7 @@ class TestResource:
 
         assert BlogPost.title.resource is BlogPost
 
-    def test_repr(self):
+    def test_repr(self, context):
 
         class MySession(snug.Session):
 
@@ -127,7 +132,7 @@ class TestResource:
 
         User.__module__ = 'mysite'
 
-        my_session = MySession()
+        my_session = MySession(context=context)
 
         # class repr
         assert repr(User) == '<resource mysite.User>'
@@ -163,21 +168,23 @@ class TestSession:
 
         assert MySiteSession.resources == {'Post': Post, 'Comment': Comment}
 
-    def test_init(self, SessionSubclass):
+    def test_init(self, SessionSubclass, context):
 
         class Post(snug.Resource, session_cls=SessionSubclass):
             title = snug.Field()
             body = snug.Field()
             user = snug.Field()
 
-        my_session = SessionSubclass()
+        my_session = SessionSubclass(context=context)
 
         assert my_session.Post is not Post
         assert issubclass(my_session.Post, Post)
         assert my_session.Post.session is my_session
         assert isinstance(my_session.requests, requests.Session)
 
-    def test_repr(self):
+        assert my_session.context is context
+
+    def test_repr(self, context):
 
         class MySession(snug.Session):
 
@@ -186,15 +193,15 @@ class TestSession:
 
         MySession.__module__ = 'mysite'
 
-        session = MySession()
+        session = MySession(context=context)
         assert repr(session) == '<mysite.MySession: foo>'
 
         del MySession.__str__
         assert repr(session) == '<mysite.MySession: [no __str__]>'
 
-    def test_get(self):
+    def test_get(self, context):
 
-        session = snug.Session()
+        session = snug.Session(context=context)
 
         with mock.patch.object(session, 'requests') as req_session:
             response = session.get('/my/url/', foo='bar')

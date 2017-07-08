@@ -3,21 +3,22 @@ import collections
 import copy
 import itertools
 import types
-from typing import Callable, Optional, TypeVar, Union
+from typing import (Callable, Optional, TypeVar, Union, NamedTuple, Tuple,
+                    Mapping)
 
 import requests
 
 from . import utils
 
 
-__all__ = ['Session', 'Resource', 'Field']
+__all__ = ['Session', 'Resource', 'Field', 'Context']
 
 
 class Session(metaclass=utils.EnsurePep487Meta):
     """the context in which resources are used"""
     resources = {}
 
-    def __init__(self):
+    def __init__(self, context: 'Context'):
         for name, resource_class in self.resources.items():
             klass = types.new_class(name, bases=(resource_class, ),
                                     kwds={'session': self})
@@ -25,6 +26,7 @@ class Session(metaclass=utils.EnsurePep487Meta):
             setattr(self, name, klass)
 
         self.requests = requests.Session()
+        self.context = context
 
     def __init_subclass__(cls, **kwargs):
         cls.resources = {}
@@ -165,3 +167,9 @@ class Field:
         except AttributeError:
             return '<{0.__module__}.{0.__class__.__name__} [no name]>'.format(
                 self)
+
+
+Context = NamedTuple('Context', [
+    ('auth', Tuple[str, str]),
+    ('headers', Mapping[str, str]),
+])
