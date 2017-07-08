@@ -1,5 +1,13 @@
+Release history
+---------------
+
 dev
 +++
+
+0.1.2
++++++
+
+- fixes to documentation
 
 0.1.1
 +++++
