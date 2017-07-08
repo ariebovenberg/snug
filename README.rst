@@ -1,6 +1,15 @@
 Snug
 ====
 
+.. image:: https://img.shields.io/pypi/v/snug.svg
+    :target: https://pypi.python.org/pypi/snug
+
+.. image:: https://img.shields.io/pypi/l/snug.svg
+    :target: https://pypi.python.org/pypi/snug
+
+.. image:: https://img.shields.io/pypi/pyversions/snug.svg
+    :target: https://pypi.python.org/pypi/snug
+
 .. image:: https://travis-ci.org/ariebovenberg/snug.svg?branch=master
     :target: https://travis-ci.org/ariebovenberg/snug
 
