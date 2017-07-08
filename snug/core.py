@@ -3,30 +3,28 @@ import collections
 import copy
 import itertools
 import types
-from typing import (Callable, Optional, TypeVar, Union, NamedTuple, Tuple,
-                    Mapping)
+from typing import Callable, Optional, TypeVar, Union
 
 import requests
 
 from . import utils
 
 
-__all__ = ['Session', 'Resource', 'Field', 'Context']
+__all__ = ['Session', 'Resource', 'Field']
 
 
 class Session(metaclass=utils.EnsurePep487Meta):
     """the context in which resources are used"""
     resources = {}
 
-    def __init__(self, context: 'Context'):
+    def __init__(self, req_session: requests.Session):
         for name, resource_class in self.resources.items():
             klass = types.new_class(name, bases=(resource_class, ),
                                     kwds={'session': self})
             klass.__module__ = resource_class.__module__
             setattr(self, name, klass)
 
-        self.requests = requests.Session()
-        self.context = context
+        self.req_session = req_session
 
     def __init_subclass__(cls, **kwargs):
         cls.resources = {}
@@ -39,7 +37,7 @@ class Session(metaclass=utils.EnsurePep487Meta):
         """perform a GET request. kwargs are passed to the
         underlying requests session
         """
-        response = self.requests.get(url, **kwargs)
+        response = self.req_session.get(url, **kwargs)
         response.raise_for_status()
         return response
 
@@ -167,9 +165,3 @@ class Field:
         except AttributeError:
             return '<{0.__module__}.{0.__class__.__name__} [no name]>'.format(
                 self)
-
-
-Context = NamedTuple('Context', [
-    ('auth', Tuple[str, str]),
-    ('headers', Mapping[str, str]),
-])
