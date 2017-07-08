@@ -1,20 +1,21 @@
-import os.path
+from pathlib import Path
 from setuptools import setup, find_packages
 
+local_path = Path(__file__).parent.joinpath
 
-thisdir = os.path.dirname(__file__)
+version_namespace = {}
+exec(local_path('snug/__info__.py').open().read(), version_namespace)
 
-
-with open(os.path.join(thisdir, 'README.rst')) as rfile:
-    readme = rfile.read()
+readme = local_path('README.rst').open().read()
+history = local_path('HISTORY.rst').open().read()
 
 
 setup(
     name='snug',
-    version='0.1.0',
+    version=version_namespace['__version__'],
     description='Wrap REST APIs to fit nicely into your python code',
     license='MIT',
-    long_description=readme,
+    long_description=readme + '\n\n' + history,
     url='https://github.com/ariebovenberg/snug',
 
     author='Arie Bovenberg',
