@@ -35,5 +35,6 @@ setup(
         'requests>=2.13.0,<3',
         'typing',
     ],
+    python_requires='>=3.4',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))
 )
