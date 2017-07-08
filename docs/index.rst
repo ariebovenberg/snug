@@ -12,6 +12,7 @@
 
    api.rst
 
+.. include:: ../HISTORY.rst
 
 
 Indices and tables
