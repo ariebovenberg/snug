@@ -52,14 +52,14 @@ class TestField:
             User)
         assert repr(MyField()) == '<example.MyField [no name]>'
 
-    def test_given_load_callable(self):
+    def test_given_load_value_callable(self):
 
         class User(snug.Resource, abstract=True):
 
             def __getitem__(self, key):
                 return getattr(self, '_' + key)
 
-            name = snug.Field(load='value: {}'.format)
+            name = snug.Field(load_value='value: {}'.format)
 
         user = User()
         user._name = 'foo username'
