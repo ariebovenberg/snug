@@ -7,71 +7,65 @@ import snug
 
 
 @pytest.fixture
-def resource(SessionSubclass):
+def resources():
 
-    class Post(snug.Resource, session_cls=SessionSubclass):
+    class Post(snug.Resource):
         title = snug.Field()
         body = snug.Field()
         user = snug.Field()
 
-    return Post
+    class Comment(snug.Resource):
+        name = snug.Field()
+        email = snug.Field()
+        body = snug.Field()
+
+    return {Post, Comment}
 
 
 @pytest.fixture
-def req_session():
-    return requests.Session()
+def api(resources):
+    return snug.Api(headers={'foo': 'bar'}, resources=resources)
+
+
+@pytest.fixture
+def context(api):
+    return snug.Context(auth=('user', 'pass'), api=api)
 
 
 class TestField:
 
     def test_descriptor__get__(self):
 
-        class Email(snug.Resource, abstract=True):
+        class Email(snug.Resource):
             subject = snug.Field()
-
-            def __getitem__(self, key):
-                if key == 'subject':
-                    return 'foo'
 
         assert isinstance(Email.subject, snug.Field)
 
-        email = Email()
+        email = snug.wrap_api_obj(Email, {'subject': 'foo'})
         assert email.subject == 'foo'
 
-    def test_repr(self, SessionSubclass):
+    def test_repr(self):
 
-        class MyField(snug.Field):
-            pass
+        class User(snug.Resource):
+            name = snug.Field()
 
-        MyField.__module__ = 'example'
-
-        class User(snug.Resource, session_cls=SessionSubclass):
-            name = MyField()
-
-        assert repr(User.name) == '<example.MyField "name" of {!r}>'.format(
-            User)
-        assert repr(MyField()) == '<example.MyField [no name]>'
+        assert repr(User.name) == '<Field "name" of {!r}>'.format(User)
+        assert repr(snug.Field()) == '<Field [no name]>'
 
     def test_given_load_value_callable(self):
 
-        class User(snug.Resource, abstract=True):
-
-            def __getitem__(self, key):
-                return getattr(self, '_' + key)
-
+        class User(snug.Resource):
             name = snug.Field(load_value='value: {}'.format)
 
-        user = User()
-        user._name = 'foo username'
-
+        user = snug.wrap_api_obj(User, {'name': 'foo username'})
         assert user.name == 'value: foo username'
 
 
 class TestResource:
 
-    def test_fields_linked_to_resource(self, SessionSubclass):
+    def test_fields_linked_to_resource(self):
 
-        class Post(snug.Resource, session_cls=SessionSubclass):
+        class Post(snug.Resource):
             title = snug.Field()
             body = snug.Field()
             user = snug.Field()
@@ -86,22 +80,12 @@ class TestResource:
         }
         assert Post.fields == expect_fields
 
-    def test_from_api_obj(self, resource):
-        Post = resource
-        api_obj = object()
+    def test_subclassing_keeps_fields(self):
 
-        instance = Post.wrap_api_obj(api_obj)
-        assert isinstance(instance, Post)
-        assert instance.api_obj is api_obj
-
-    def test_resource_requires_session_cls(self):
-
-        with pytest.raises(TypeError):
-            class Poll(snug.Resource):
-                pass
-
-    def test_subclassing_keeps_fields(self, resource):
-        Post = resource
+        class Post(snug.Resource):
+            title = snug.Field()
+            body = snug.Field()
+            user = snug.Field()
 
         class BlogPost(Post):
             url = snug.Field()
@@ -115,31 +99,28 @@ class TestResource:
 
         assert BlogPost.title.resource is BlogPost
 
-    def test_repr(self, req_session):
+    def test_repr(self):
 
-        class MySession(snug.Session):
-
-            def __str__(self):
-                return 'bla'
-
-        MySession.__module__ = 'mysite'
-
-        class User(snug.Resource, session_cls=MySession):
-            pass
+        class User(snug.Resource):
 
             def __str__(self):
                 return 'foo'
 
         User.__module__ = 'mysite'
 
-        my_session = MySession(req_session=req_session)
+        api = snug.Api(headers={}, resources={User})
+        context = snug.Context(api, auth=None)
+
+        req_session = mock.Mock(spec=requests.Session)
+        my_session = snug.Session(context, req_session=req_session)
 
         # class repr
         assert repr(User) == '<resource mysite.User>'
 
         # bound class repr
         assert repr(my_session.User) == (
-            '<resource mysite.User bound to <mysite.MySession: bla>>')
+            '<resource mysite.User bound to <Session(context={!r})>>'.format(
+                context))
 
         # instance repr
         user = User()
@@ -151,60 +132,47 @@ class TestResource:
 
 class TestSession:
 
-    def test_resource_linked_to_session(self):
+    def test_init(self, context):
+        req_session = mock.Mock(spec=requests.Session)
+        my_session = snug.Session(context, req_session=req_session)
 
-        class MySiteSession(snug.Session):
-            pass
+        assert context.api.resources
 
-        class Post(snug.Resource, session_cls=MySiteSession):
-            title = snug.Field()
-            body = snug.Field()
-            user = snug.Field()
+        for resource in context.api.resources:
+            bound_resource = getattr(my_session, resource.__name__)
+            assert bound_resource is not resource
+            assert issubclass(bound_resource, resource)
+            assert bound_resource.session is my_session
 
-        class Comment(snug.Resource, session_cls=MySiteSession):
-            name = snug.Field()
-            email = snug.Field()
-            body = snug.Field()
-
-        assert MySiteSession.resources == {'Post': Post, 'Comment': Comment}
-
-    def test_init(self, SessionSubclass, req_session):
-
-        class Post(snug.Resource, session_cls=SessionSubclass):
-            title = snug.Field()
-            body = snug.Field()
-            user = snug.Field()
-
-        my_session = SessionSubclass(req_session=req_session)
-
-        assert my_session.Post is not Post
-        assert issubclass(my_session.Post, Post)
-        assert my_session.Post.session is my_session
-
+        assert my_session.context is context
         assert my_session.req_session is req_session
 
-    def test_repr(self, req_session):
+    def test_repr(self, context):
+        session = snug.Session(context=context, req_session=mock.Mock())
+        assert repr(context) in repr(session)
 
-        class MySession(snug.Session):
+    def test_get(self, context):
+        req_session = mock.Mock(spec=requests.Session)
+        session = snug.Session(context=context, req_session=req_session)
 
-            def __str__(self):
-                return 'foo'
+        response = session.get('/my/url/')
 
-        MySession.__module__ = 'mysite'
-
-        session = MySession(req_session=req_session)
-        assert repr(session) == '<mysite.MySession: foo>'
-
-        del MySession.__str__
-        assert repr(session) == '<mysite.MySession: [no __str__]>'
-
-    def test_get(self, req_session):
-
-        session = snug.Session(req_session=req_session)
-
-        with mock.patch.object(session, 'req_session') as req_session:
-            response = session.get('/my/url/', foo='bar')
-
-        req_session.get.assert_called_once_with('/my/url/', foo='bar')
+        req_session.get.assert_called_once_with(
+            '/my/url/',
+            headers=context.api.headers,
+            auth=context.auth)
         assert response is req_session.get.return_value
         assert response.raise_for_status.called
+
+
+def test_getitem():
+    assert snug.core.getitem({'foo': 4}, 'foo') == 4
+
+
+def test_wrap_api_obj(resources):
+    resource = resources.pop()
+    api_obj = object()
+
+    instance = snug.wrap_api_obj(resource, api_obj)
+    assert isinstance(instance, resource)
+    assert instance.api_obj is api_obj

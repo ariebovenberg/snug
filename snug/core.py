@@ -3,49 +3,18 @@ import collections
 import copy
 import itertools
 import types
-from typing import Callable, Optional, TypeVar, Union
+from typing import (Callable, Optional, TypeVar, Union, NamedTuple, Mapping,
+                    Tuple, Set)
 
 import requests
 
 from . import utils
 
 
-__all__ = ['Session', 'Resource', 'Field']
+__all__ = ['Session', 'Resource', 'Field', 'Api', 'Context', 'wrap_api_obj']
 
 
-class Session(metaclass=utils.EnsurePep487Meta):
-    """the context in which resources are used"""
-    resources = {}
-
-    def __init__(self, req_session: requests.Session):
-        for name, resource_class in self.resources.items():
-            klass = types.new_class(name, bases=(resource_class, ),
-                                    kwds={'session': self})
-            klass.__module__ = resource_class.__module__
-            setattr(self, name, klass)
-
-        self.req_session = req_session
-
-    def __init_subclass__(cls, **kwargs):
-        cls.resources = {}
-
-    @classmethod
-    def register_resource(cls, resource_cls: type) -> None:
-        cls.resources[resource_cls.__name__] = resource_cls
-
-    def get(self, url: str, **kwargs) -> requests.Response:
-        """perform a GET request. kwargs are passed to the
-        underlying requests session
-        """
-        response = self.req_session.get(url, **kwargs)
-        response.raise_for_status()
-        return response
-
-    def __str__(self):
-        return '[no __str__]'
-
-    def __repr__(self):
-        return '<{0.__module__}.{0.__class__.__name__}: {0}>'.format(self)
+ApiObject = Union[Mapping[str, object]]
 
 
 class ResourceMeta(utils.EnsurePep487Meta):
@@ -54,7 +23,55 @@ class ResourceMeta(utils.EnsurePep487Meta):
         if hasattr(self, 'session'):
             return ('<resource {0.__module__}.{0.__name__} '
                     'bound to {0.session!r}>'.format(self))
-        return '<resource {0.__module__}.{0.__name__}>'.format(self)
+        else:
+            return '<resource {0.__module__}.{0.__name__}>'.format(self)
+
+
+class BoundResourceMixin(metaclass=utils.EnsurePep487Meta):
+
+    def __init_subclass__(cls, session, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.session = session
+
+
+Api = NamedTuple('Api', [
+    ('headers', Mapping[str, str]),
+    ('resources', Set[ResourceMeta]),
+])
+
+Context = NamedTuple('Context', [
+    ('api', Api),
+    ('auth', Optional[Tuple[str, str]]),
+])
+
+
+class Session(metaclass=utils.EnsurePep487Meta):
+    """the context in which resources are used"""
+
+    def __init__(self, context: Context, req_session: requests.Session):
+        for resource in context.api.resources:
+            name = resource.__name__
+            klass = types.new_class(name, bases=(BoundResourceMixin, resource),
+                                    kwds={'session': self})
+            klass.__module__ = resource.__module__
+            setattr(self, name, klass)
+
+        self.context = context
+        self.req_session = req_session
+
+    def get(self, url: str) -> requests.Response:
+        """perform a GET request. kwargs are passed to the
+        underlying requests session
+        """
+        response = self.req_session.get(
+            url,
+            headers=self.context.api.headers,
+            auth=self.context.auth)
+        response.raise_for_status()
+        return response
+
+    def __repr__(self):
+        return '<Session(context={!r})>'.format(self.context)
 
 
 class Resource(metaclass=ResourceMeta):
@@ -62,26 +79,7 @@ class Resource(metaclass=ResourceMeta):
 
     fields = collections.OrderedDict()  # Mapping[str, Field]
 
-    def __init_subclass__(cls, session_cls: type=None,
-                          abstract: bool=False,
-                          session: Session=None, **kwargs):
-        """initialize a Resource subclass
-
-        Parameters
-        ----------
-        session_cls
-            the :class:`Session` subclass to bind to this resource
-        session
-            the :class:`Session` instance to bind this resource
-        """
-        if session_cls:
-            session_cls.register_resource(cls)
-        elif not abstract and cls.__bases__ == (Resource, ):
-            raise TypeError(
-                'subclassing ``Resource`` requires a session class')
-
-        if session:
-            cls.session = session
+    def __init_subclass__(cls, **kwargs):
 
         # fields from superclasses must be explicitly copied.
         # Otherwise they reference the superclass
@@ -101,27 +99,6 @@ class Resource(metaclass=ResourceMeta):
             ((name, obj) for name, obj in cls.__dict__.items()
              if isinstance(obj, Field))
         ))
-
-    @classmethod
-    def wrap_api_obj(cls, api_obj: object) -> 'Resource':
-        """wrap the API object in a resource instance
-
-        Parameters
-        ----------
-        api_obj
-            the API object to wrap
-
-        Returns
-        -------
-        core.Resource
-            the resource instance
-        """
-        instance = cls.__new__(cls)
-        instance.api_obj = api_obj
-        return instance
-
-    def __getitem__(self, key):
-        raise NotImplementedError()  # pragma: no cover
 
     def __str__(self):
         return '[no __str__]'
@@ -156,12 +133,33 @@ class Field:
         On an instance, returns the field value"""
         return (self
                 if instance is None
-                else self.load_value(instance[self.name]))
+                else self.load_value(getitem(instance.api_obj, self.name)))
 
     def __repr__(self):
         try:
-            return ('<{0.__module__}.{0.__class__.__name__} '
-                    '"{0.name}" of {0.resource!r}>'.format(self))
+            return ('<Field "{0.name}" of {0.resource!r}>'.format(self))
         except AttributeError:
-            return '<{0.__module__}.{0.__class__.__name__} [no name]>'.format(
-                self)
+            return '<Field [no name]>'.format(self)
+
+
+def getitem(obj, key):
+    """get a value from an API object"""
+    return obj[key]
+
+
+def wrap_api_obj(resource: ResourceMeta, api_obj: ApiObject) -> Resource:
+    """wrap the API object in a resource instance
+
+    Parameters
+    ----------
+    api_obj
+        the API object to wrap
+
+    Returns
+    -------
+    core.Resource
+        the resource instance
+    """
+    instance = resource.__new__(resource)
+    instance.api_obj = api_obj
+    return instance

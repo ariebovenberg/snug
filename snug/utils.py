@@ -29,11 +29,16 @@ class EnsurePep487Meta(type):  # pragma: no cover
     if sys.version_info < (3, 6):
 
         def __new__(cls, name, bases, classdict, **kwargs):
+            classdict = {
+                key: (classmethod(value) if key == '__init_subclass__'
+                      else value)
+                for key, value in classdict.items()
+            }
             return super().__new__(cls, name, bases, classdict)
 
         def __init__(cls, name, bases, dct, **kwargs):
             if bases and hasattr(cls, '__init_subclass__'):
-                cls.__init_subclass__(cls, **kwargs)
+                cls.__init_subclass__(**kwargs)
 
             for name, item in dct.items():
                 if hasattr(item, '__set_name__'):
