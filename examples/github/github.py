@@ -1,7 +1,6 @@
 from datetime import datetime
 import urllib
 
-import requests
 import snug
 
 partial = snug.utils.ppartial
@@ -49,4 +48,4 @@ api = snug.Api(headers={'Accept': 'application/vnd.github.v3+json'},
                resources={Organization, Repo})
 context = snug.Context(api=api, auth=None)
 
-session = snug.Session(context, req_session=requests.Session())
+session = snug.Session(context)

@@ -48,7 +48,9 @@ Context = NamedTuple('Context', [
 class Session(metaclass=utils.EnsurePep487Meta):
     """the context in which resources are used"""
 
-    def __init__(self, context: Context, req_session: requests.Session):
+    def __init__(self,
+                 context: Context,
+                 req_session: Optional[requests.Session]=None):
         for resource in context.api.resources:
             name = resource.__name__
             klass = types.new_class(name, bases=(BoundResourceMixin, resource),
@@ -57,7 +59,7 @@ class Session(metaclass=utils.EnsurePep487Meta):
             setattr(self, name, klass)
 
         self.context = context
-        self.req_session = req_session
+        self.req_session = req_session or requests.Session()
 
     def get(self, url: str) -> requests.Response:
         """perform a GET request. kwargs are passed to the

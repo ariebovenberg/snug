@@ -147,6 +147,10 @@ class TestSession:
         assert my_session.context is context
         assert my_session.req_session is req_session
 
+    def test_init_no_req_session(self, context):
+        session = snug.Session(context)
+        assert isinstance(session.req_session, requests.Session)
+
     def test_repr(self, context):
         session = snug.Session(context=context, req_session=mock.Mock())
         assert repr(context) in repr(session)
