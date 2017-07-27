@@ -46,6 +46,4 @@ class Organization(snug.Resource):
 
 api = snug.Api(headers={'Accept': 'application/vnd.github.v3+json'},
                resources={Organization, Repo})
-context = snug.Context(api=api, auth=None)
-
-session = snug.Session(context)
+default_session = snug.Session(snug.Context(api=api, auth=None))

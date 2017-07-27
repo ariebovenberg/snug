@@ -52,10 +52,10 @@ class TestField:
         assert repr(User.name) == '<Field "name" of {!r}>'.format(User)
         assert repr(snug.Field()) == '<Field [no name]>'
 
-    def test_given_load_value_callable(self):
+    def test_load(self):
 
         class User(snug.Resource):
-            name = snug.Field(load_value='value: {}'.format)
+            name = snug.Field(load='value: {}'.format)
 
         user = snug.wrap_api_obj(User, {'name': 'foo username'})
         assert user.name == 'value: foo username'

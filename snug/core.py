@@ -27,7 +27,7 @@ class ResourceMeta(utils.EnsurePep487Meta):
             return '<resource {0.__module__}.{0.__name__}>'.format(self)
 
 
-class BoundResourceMixin(metaclass=utils.EnsurePep487Meta):
+class BoundResource(metaclass=utils.EnsurePep487Meta):
 
     def __init_subclass__(cls, session, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -53,7 +53,7 @@ class Session(metaclass=utils.EnsurePep487Meta):
                  req_session: Optional[requests.Session]=None):
         for resource in context.api.resources:
             name = resource.__name__
-            klass = types.new_class(name, bases=(BoundResourceMixin, resource),
+            klass = types.new_class(name, bases=(BoundResource, resource),
                                     kwds={'session': self})
             klass.__module__ = resource.__module__
             setattr(self, name, klass)
@@ -120,9 +120,16 @@ def _identity(obj: T) -> T:
 class Field:
     """an attribute accessor for a resource.
     Implements python's descriptor protocol
+
+    Parameters
+    ----------
+    load
+        callable to process a value from an API object to python
     """
-    def __init__(self, *, load_value: Callable[[object], T]=None):
-        self.load_value = load_value or _identity
+    __slots__ = ('name', 'resource', 'load')
+
+    def __init__(self, *, load: Callable[[object], T]=_identity):
+        self.load = load
 
     def __set_name__(self, resource: ResourceMeta, name: str) -> None:
         self.resource, self.name = resource, name
@@ -135,7 +142,7 @@ class Field:
         On an instance, returns the field value"""
         return (self
                 if instance is None
-                else self.load_value(getitem(instance.api_obj, self.name)))
+                else self.load(getitem(instance.api_obj, self.name)))
 
     def __repr__(self):
         try:
