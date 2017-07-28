@@ -85,7 +85,7 @@ class Session(metaclass=utils.EnsurePep487Meta):
 class Resource(metaclass=ResourceMeta):
     """base class for API resources"""
 
-    fields = collections.OrderedDict()  # Mapping[str, Field]
+    FIELDS = collections.OrderedDict()  # Mapping[str, Field]
 
     def __init_subclass__(cls, **kwargs):
 
@@ -97,12 +97,12 @@ class Resource(metaclass=ResourceMeta):
             return field_copy
 
         fields_from_superclass = [get_field_copy_linked_to_current_class(f)
-                                  for f in cls.fields.values()]
+                                  for f in cls.FIELDS.values()]
 
         for field in fields_from_superclass:
             setattr(cls, field.name, field)
 
-        cls.fields = collections.OrderedDict(itertools.chain(
+        cls.FIELDS = collections.OrderedDict(itertools.chain(
             ((field.name, field) for field in fields_from_superclass),
             ((name, obj) for name, obj in cls.__dict__.items()
              if isinstance(obj, Field))

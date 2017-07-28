@@ -78,7 +78,7 @@ class TestResource:
             'body': Post.body,
             'user': Post.user,
         }
-        assert Post.fields == expect_fields
+        assert Post.FIELDS == expect_fields
 
     def test_subclassing_keeps_fields(self):
 
@@ -90,7 +90,7 @@ class TestResource:
         class BlogPost(Post):
             url = snug.Field()
 
-        assert BlogPost.fields == {
+        assert BlogPost.FIELDS == {
             'title': BlogPost.title,
             'body': BlogPost.body,
             'user': BlogPost.user,
