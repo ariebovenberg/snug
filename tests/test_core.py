@@ -129,6 +129,13 @@ class TestResource:
         del User.__str__
         assert repr(user) == '<mysite.User: [no __str__]>'
 
+    def test_getitem_simple(self):
+
+        class Comment(snug.Resource):
+            pass
+
+        assert Comment[:] == snug.Query(Comment)
+
 
 class TestSession:
 

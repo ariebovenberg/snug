@@ -11,13 +11,19 @@ import requests
 from . import utils
 
 
-__all__ = ['Session', 'Resource', 'Field', 'Api', 'Context', 'wrap_api_obj']
+__all__ = ['Session', 'Resource', 'Field', 'Api', 'Context', 'wrap_api_obj',
+           'Query']
 
 
 ApiObject = Union[Mapping[str, object]]
 
 
 class ResourceMeta(utils.EnsurePep487Meta):
+
+    def __getitem__(self, key):
+        """return a query of the resource"""
+        assert key == slice(None)
+        return Query(self)
 
     def __repr__(self):
         if hasattr(self, 'session'):
@@ -107,6 +113,9 @@ class Resource(metaclass=ResourceMeta):
 
     def __repr__(self):
         return '<{0.__module__}.{0.__class__.__name__}: {0}>'.format(self)
+
+
+Query = collections.namedtuple('Query', 'resource')
 
 
 T = TypeVar('T')
