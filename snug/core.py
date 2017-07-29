@@ -1,34 +1,50 @@
 """The core components of the ORM: sessions, resources, and fields"""
+import abc
 import collections
 import copy
 import itertools
 import types
-from typing import (Callable, Optional, TypeVar, Union, NamedTuple, Mapping,
-                    Tuple, Set)
+import typing as t
 
 import requests
 
 from . import utils
 
 
-__all__ = ['Session', 'Resource', 'Field', 'Api', 'Context', 'wrap_api_obj',
-           'Query']
+__all__ = ['Session', 'Resource', 'Field', 'Api', 'wrap_api_obj', 'Query',
+           'Set', 'Node']
 
 
-ApiObject = Union[Mapping[str, object]]
+ApiObject = t.Union[t.Mapping[str, object]]
+
+
+class Query(abc.ABC):
+    pass
+
+
+Set = Query.register(t.NamedTuple('Set', [
+    ('resource', 'ResourceMeta'),
+]))
+
+
+Node = Query.register(t.NamedTuple('Node', [
+    ('resource', 'ResourceMeta'),
+    ('key', str)
+]))
 
 
 class ResourceMeta(utils.EnsurePep487Meta):
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Query:
         """return a query of the resource"""
-        assert key == slice(None)
-        return Query(self)
+        if key == slice(None):
+            return Set(self)
+        else:
+            return Node(self, key)
 
     def __repr__(self):
         if hasattr(self, 'session'):
-            return ('<resource {0.__module__}.{0.__name__} '
-                    'bound to {0.session!r}>'.format(self))
+            return '<bound resource {0.__module__}.{0.__name__}>'.format(self)
         else:
             return '<resource {0.__module__}.{0.__name__}>'.format(self)
 
@@ -40,14 +56,10 @@ class BoundResource(metaclass=utils.EnsurePep487Meta):
         cls.session = session
 
 
-Api = NamedTuple('Api', [
-    ('headers', Mapping[str, str]),
-    ('resources', Set[ResourceMeta]),
-])
-
-Context = NamedTuple('Context', [
-    ('api', Api),
-    ('auth', Optional[Tuple[str, str]]),
+Api = t.NamedTuple('Api', [
+    ('resources', t.Set[ResourceMeta]),
+    ('headers', t.Mapping[str, str]),
+    ('create_url', t.Callable[[Query], str])
 ])
 
 
@@ -55,31 +67,33 @@ class Session(metaclass=utils.EnsurePep487Meta):
     """the context in which resources are used"""
 
     def __init__(self,
-                 context: Context,
-                 req_session: Optional[requests.Session]=None):
-        for resource in context.api.resources:
+                 api: Api,
+                 auth=None,
+                 req_session: t.Optional[requests.Session]=None):
+        for resource in api.resources:
             name = resource.__name__
             klass = types.new_class(name, bases=(BoundResource, resource),
                                     kwds={'session': self})
             klass.__module__ = resource.__module__
             setattr(self, name, klass)
 
-        self.context = context
+        self.api = api
+        self.auth = auth
         self.req_session = req_session or requests.Session()
 
-    def get(self, url: str) -> requests.Response:
-        """perform a GET request. kwargs are passed to the
-        underlying requests session
-        """
+    def get(self, query: Query):
+        """retrieve the result of a query"""
         response = self.req_session.get(
-            url,
-            headers=self.context.api.headers,
-            auth=self.context.auth)
+            self.api.create_url(query),
+            headers=self.api.headers,
+            auth=self.auth,
+        )
         response.raise_for_status()
-        return response
-
-    def __repr__(self):
-        return '<Session(context={!r})>'.format(self.context)
+        if isinstance(query, Node):
+            return wrap_api_obj(query.resource, response.json())
+        else:
+            return [wrap_api_obj(query.resource, r)
+                    for r in response.json()]
 
 
 class Resource(metaclass=ResourceMeta):
@@ -109,16 +123,13 @@ class Resource(metaclass=ResourceMeta):
         ))
 
     def __str__(self):
-        return '[no __str__]'
+        return '{0.__class__.__name__} object'.format(self)
 
     def __repr__(self):
         return '<{0.__module__}.{0.__class__.__name__}: {0}>'.format(self)
 
 
-Query = collections.namedtuple('Query', 'resource')
-
-
-T = TypeVar('T')
+T = t.TypeVar('T')
 
 
 def _identity(obj: T) -> T:
@@ -137,15 +148,15 @@ class Field:
     """
     __slots__ = ('name', 'resource', 'load')
 
-    def __init__(self, *, load: Callable[[object], T]=_identity):
+    def __init__(self, *, load: t.Callable[[object], T]=_identity):
         self.load = load
 
     def __set_name__(self, resource: ResourceMeta, name: str) -> None:
         self.resource, self.name = resource, name
 
     def __get__(self,
-                instance: Optional[Resource],
-                cls: ResourceMeta) -> Union['Field', T]:
+                instance: t.Optional[Resource],
+                cls: ResourceMeta) -> t.Union['Field', T]:
         """part of the descriptor protocol.
         On a class, returns the field.
         On an instance, returns the field value"""

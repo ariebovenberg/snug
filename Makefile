@@ -1,5 +1,8 @@
 .PHONY: docs test
 
+init:
+	pip install -r requirements/dev.txt
+
 docs:
 	make -C docs/ html
 

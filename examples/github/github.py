@@ -1,6 +1,7 @@
 from datetime import datetime
 import urllib
 
+import requests
 import snug
 
 partial = snug.utils.ppartial
@@ -13,10 +14,13 @@ class Repo(snug.Resource):
 
 
 class Organization(snug.Resource):
+    LIST_URI = 'organizations'
+    DETAIL_URI = 'orgs/{}'.format
+
     avatar_url = snug.Field()
     blog = snug.Field()
     company = snug.Field()
-    created_at = snug.Field(load_value=parse_datetime)
+    created_at = snug.Field(load=parse_datetime)
     description = snug.Field()
     email = snug.Field()
     events_url = snug.Field()
@@ -38,12 +42,26 @@ class Organization(snug.Resource):
     repos_url = snug.Field()
     type = snug.Field()
 
-    @classmethod
-    def get(cls, name: str) -> 'Organization':
-        api_obj = cls.session.get(get_full_url('orgs/' + name)).json()
-        return snug.wrap_api_obj(cls, api_obj)
+    def __str__(self):
+        return self.login
 
 
-api = snug.Api(headers={'Accept': 'application/vnd.github.v3+json'},
-               resources={Organization, Repo})
-default_session = snug.Session(snug.Context(api=api, auth=None))
+def make_request(auth, query: snug.Query) -> (
+        requests.Request):
+    resource, key = query
+    if key is None:
+        return requests.Request(
+            'GET',
+            get_full_url(resource.LIST_URI),
+            headers={'Accept': 'application/vnd.github.v3+json'},
+            auth=auth
+        )
+    else:
+        return requests.Request(
+            'GET',
+            get_full_url(resource.DETAIL_URI(key))
+        )
+
+
+api = snug.Api(resources={Organization, Repo},
+               make_request=make_request)
