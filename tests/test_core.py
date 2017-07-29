@@ -71,6 +71,23 @@ class TestField:
         assert user.name == 'value: foo username'
 
 
+class TestBoundResource:
+
+    @mock.patch('requests.Session')
+    def test_repr(self, _, api):
+
+        class User(snug.Resource):
+            pass
+
+        User.__module__ = 'mysite'
+
+        api.resources.add(User)
+        my_session = snug.Session(api)
+
+        # bound class repr
+        assert repr(my_session.User) == '<bound resource mysite.User>'
+
+
 class TestResource:
 
     def test_fields_linked_to_resource(self):
@@ -109,7 +126,7 @@ class TestResource:
 
         assert BlogPost.title.resource is BlogPost
 
-    def test_repr(self, api):
+    def test_repr(self):
 
         class User(snug.Resource):
 
@@ -118,15 +135,8 @@ class TestResource:
 
         User.__module__ = 'mysite'
 
-        api.resources.add(User)
-        req_session = mock.Mock(spec=requests.Session)
-        my_session = snug.Session(api, req_session=req_session)
-
         # class repr
         assert repr(User) == '<resource mysite.User>'
-
-        # bound class repr
-        assert repr(my_session.User) == '<bound resource mysite.User>'
 
         # instance repr
         user = User()
