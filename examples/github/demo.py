@@ -5,22 +5,18 @@ my_github = snug.Session(github.api)
 
 
 all_orgs = github.Organization[:]
-octocat = github.Organization['octocat']
+gh_org = github.Organization['github']
 
-# orgs = my_github.list(all_orgs)
-# print(orgs)
-
+orgs = my_github.get(all_orgs)
+print(orgs)
 
 # magic approach
 # org = my_github.Organization['github'].get()
 # print('retrieving organization: {}'.format(org))
 
 # normal approach
-org = my_github.get(octocat)
-import pdb; pdb.set_trace()
+org = my_github.get(gh_org)
 print('retrieving organization: {}'.format(org))
 
-for field in org.fields.values():
+for field in org.FIELDS.values():
     print('org.{.name}={}'.format(field, getattr(org, field.name)))
-
-import pdb; pdb.set_trace()

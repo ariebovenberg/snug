@@ -1,7 +1,6 @@
 from datetime import datetime
 import urllib
 
-import requests
 import snug
 
 partial = snug.utils.ppartial
@@ -46,22 +45,12 @@ class Organization(snug.Resource):
         return self.login
 
 
-def make_request(auth, query: snug.Query) -> (
-        requests.Request):
-    resource, key = query
-    if key is None:
-        return requests.Request(
-            'GET',
-            get_full_url(resource.LIST_URI),
-            headers={'Accept': 'application/vnd.github.v3+json'},
-            auth=auth
-        )
-    else:
-        return requests.Request(
-            'GET',
-            get_full_url(resource.DETAIL_URI(key))
-        )
+def create_url(query: snug.Query) -> str:
+    return get_full_url(query.resource.LIST_URI
+                        if isinstance(query, snug.Set)
+                        else query.resource.DETAIL_URI(query.key))
 
 
 api = snug.Api(resources={Organization, Repo},
-               make_request=make_request)
+               headers={'Accept': 'application/vnd.github.v3+json'},
+               create_url=create_url)
