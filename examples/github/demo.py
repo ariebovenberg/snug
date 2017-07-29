@@ -10,11 +10,6 @@ gh_org = github.Organization['github']
 orgs = my_github.get(all_orgs)
 print(orgs)
 
-# magic approach
-# org = my_github.Organization['github'].get()
-# print('retrieving organization: {}'.format(org))
-
-# normal approach
 org = my_github.get(gh_org)
 print('retrieving organization: {}'.format(org))
 
