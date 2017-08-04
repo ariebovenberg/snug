@@ -9,6 +9,7 @@ import snug
 
 @pytest.fixture
 def resources():
+    """a set of two resources"""
 
     class Post(snug.Resource):
         title = snug.Field()
@@ -41,6 +42,7 @@ def session(api, auth):
 
 @pytest.fixture
 def auth():
+    """dummy authentication credential tuple"""
     return ('user', 'pass')
 
 
