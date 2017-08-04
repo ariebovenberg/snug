@@ -1,6 +1,6 @@
-import collections
 from unittest import mock
 
+import lxml
 import pytest
 import requests
 
@@ -25,16 +25,18 @@ def resources():
 
 @pytest.fixture
 def api(resources):
-
-    def create_url(query):
-        if isinstance(query, snug.Set):
-            return query.resource.__name__.lower()
-        else:
-            return query.resource.__name__.lower() + '/' + query.key
-
-    return snug.Api(create_url=create_url,
+    """an API with mock functionality"""
+    return snug.Api(create_url=mock.Mock(),
                     headers={},
+                    parse_response=mock.Mock(),
                     resources=resources)
+
+
+@pytest.fixture
+def session(api, auth):
+    """a session with mock functionality"""
+    return snug.Session(
+        api, auth=auth, req_session=mock.Mock(spec=requests.Session))
 
 
 @pytest.fixture
@@ -69,6 +71,15 @@ class TestField:
 
         user = snug.wrap_api_obj(User, {'name': 'foo username'})
         assert user.name == 'value: foo username'
+
+    def test_apiname(self):
+
+        class Comment(snug.Resource):
+            is_archived = snug.Field(apiname='archived')
+            user = snug.Field()
+
+        assert Comment.is_archived.apiname == 'archived'
+        assert Comment.user.apiname == 'user'
 
 
 class TestBoundResource:
@@ -125,6 +136,7 @@ class TestResource:
         }
 
         assert BlogPost.title.resource is BlogPost
+        assert BlogPost.title is not Post.title
 
     def test_repr(self):
 
@@ -141,7 +153,6 @@ class TestResource:
         # instance repr
         user = User()
         assert repr(user) == '<mysite.User: foo>'
-
         del User.__str__
         assert repr(user) == '<mysite.User: User object>'
 
@@ -186,47 +197,37 @@ class TestSession:
         assert session.auth is None
         assert isinstance(session.req_session, requests.Session)
 
-    def test_get_node(self, api):
-        Post = next(r for r in api.resources if r.__name__ == 'Post')
-        req_session = mock.Mock(spec=requests.Session)
-        session = snug.Session(api, req_session=req_session)
-        response = req_session.get.return_value
+    def test_get(self, session):
+        Post = next(r for r in session.api.resources if r.__name__ == 'Post')
+        response = session.req_session.get.return_value
 
         query = snug.Node(Post, '1')
-        post = session.get(query)
+        result = session.get(query)
+        assert result is session.api.parse_response.return_value
 
-        req_session.get.assert_called_once_with(
-            api.create_url(query),
-            headers=api.headers,
+        session.req_session.get.assert_called_once_with(
+            session.api.create_url(query),
+            headers=session.api.headers,
             auth=session.auth)
-        assert isinstance(post, Post)
-        assert post.api_obj is response.json.return_value
-        assert response.raise_for_status.called
-
-    def test_get_set(self, api):
-        Post = next(r for r in api.resources if r.__name__ == 'Post')
-        req_session = mock.Mock(**{
-            'get.return_value.json.return_value': [mock.Mock(), mock.Mock()]
-        })
-        session = snug.Session(api, req_session=req_session)
-        response = req_session.get.return_value
-
-        query = snug.Set(Post)
-        posts = session.get(query)
-
-        req_session.get.assert_called_once_with(
-            api.create_url(query),
-            headers=api.headers,
-            auth=session.auth)
-        assert isinstance(posts, collections.Sequence)
-        assert len(posts) == 2
-        assert isinstance(posts[0], Post)
-        assert posts[0].api_obj is response.json.return_value[0]
         assert response.raise_for_status.called
 
 
-def test_getitem():
-    assert snug.core.getitem({'foo': 4}, 'foo') == 4
+class TestGetitem:
+
+    def test_default(self):
+        assert snug.core.getitem({'foo': 4}, 'foo') == 4
+
+    def test_xml_item(self):
+        xml = lxml.objectify.fromstring('''
+        <MyRoot>
+          <MyParent>
+            <Child1>foo</Child1>
+            <Child2>bar</Child2>
+          </MyParent>
+        </MyRoot>
+        ''')
+        assert snug.core.getitem(xml, 'MyParent.Child2') == 'bar'
+        assert snug.core.getitem(xml, 'MyParent').Child1 == 'foo'
 
 
 def test_wrap_api_obj(resources):

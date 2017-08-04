@@ -3,10 +3,13 @@ import abc
 import collections
 import copy
 import itertools
+import operator
 import types
 import typing as t
+from functools import singledispatch
 
 import requests
+import lxml.objectify
 
 from . import utils
 
@@ -15,7 +18,8 @@ __all__ = ['Session', 'Resource', 'Field', 'Api', 'wrap_api_obj', 'Query',
            'Set', 'Node']
 
 
-ApiObject = t.Union[t.Mapping[str, object]]
+ApiObject = t.Union[t.Mapping[str, object],
+                    lxml.objectify.ObjectifiedElement]
 
 
 class Query(abc.ABC):
@@ -59,16 +63,15 @@ class BoundResource(metaclass=utils.EnsurePep487Meta):
 Api = t.NamedTuple('Api', [
     ('resources', t.Set[ResourceMeta]),
     ('headers', t.Mapping[str, str]),
-    ('create_url', t.Callable[[Query], str])
+    ('create_url', t.Callable[[Query], str]),
+    ('parse_response', t.Callable[[Query, requests.Response], object]),
 ])
 
 
 class Session(metaclass=utils.EnsurePep487Meta):
-    """the context in which resources are used"""
+    """the context in which an API is used"""
 
-    def __init__(self,
-                 api: Api,
-                 auth=None,
+    def __init__(self, api: Api, auth=None,
                  req_session: t.Optional[requests.Session]=None):
         for resource in api.resources:
             name = resource.__name__
@@ -82,18 +85,14 @@ class Session(metaclass=utils.EnsurePep487Meta):
         self.req_session = req_session or requests.Session()
 
     def get(self, query: Query):
-        """retrieve the result of a query"""
+        """evaluate the result of a query"""
         response = self.req_session.get(
             self.api.create_url(query),
             headers=self.api.headers,
             auth=self.auth,
         )
         response.raise_for_status()
-        if isinstance(query, Node):
-            return wrap_api_obj(query.resource, response.json())
-        else:
-            return [wrap_api_obj(query.resource, r)
-                    for r in response.json()]
+        return self.api.parse_response(query, response)
 
 
 class Resource(metaclass=ResourceMeta):
@@ -145,14 +144,21 @@ class Field:
     ----------
     load
         callable to process a value from an API object to python
+    apiname
+        the name of the field on the api object
     """
-    __slots__ = ('name', 'resource', 'load')
+    __slots__ = ('name', 'resource', 'load', 'apiname')
 
-    def __init__(self, *, load: t.Callable[[object], T]=_identity):
+    def __init__(self, *,
+                 load: t.Callable[[object], T]=_identity,
+                 apiname: t.Optional[str]=None):
         self.load = load
+        self.apiname = apiname
 
     def __set_name__(self, resource: ResourceMeta, name: str) -> None:
         self.resource, self.name = resource, name
+        if not self.apiname:
+            self.apiname = name
 
     def __get__(self,
                 instance: t.Optional[Resource],
@@ -162,7 +168,7 @@ class Field:
         On an instance, returns the field value"""
         return (self
                 if instance is None
-                else self.load(getitem(instance.api_obj, self.name)))
+                else self.load(getitem(instance.api_obj, self.apiname)))
 
     def __repr__(self):
         try:
@@ -171,9 +177,15 @@ class Field:
             return '<Field [no name]>'.format(self)
 
 
+@singledispatch
 def getitem(obj, key):
     """get a value from an API object"""
     return obj[key]
+
+
+@getitem.register(lxml.objectify.ObjectifiedElement)
+def _lxml_getitem(obj, key):
+    return operator.attrgetter(key)(obj)
 
 
 def wrap_api_obj(resource: ResourceMeta, api_obj: ApiObject) -> Resource:
