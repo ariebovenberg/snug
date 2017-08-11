@@ -1,5 +1,6 @@
-from datetime import datetime
 import urllib
+from datetime import datetime
+from functools import singledispatch
 
 import snug
 
@@ -51,6 +52,24 @@ def create_url(query: snug.Query) -> str:
                         else query.resource.DETAIL_URI(query.key))
 
 
-api = snug.Api(resources={Organization, Repo},
-               headers={'Accept': 'application/vnd.github.v3+json'},
-               create_url=create_url)
+@singledispatch
+def parse_response(query, response):
+    raise TypeError(query)
+
+
+@parse_response.register(snug.Set)
+def parse_set_response(query, response):
+    return [
+        snug.wrap_api_obj(query.resource, obj)
+        for obj in response.json()
+    ]
+
+@parse_response.register(snug.Node)
+def parse_node_response(query, response):
+    return snug.wrap_api_obj(query.resource, response.json())
+
+
+api = snug.Api(headers={'Accept': 'application/vnd.github.v3+json'},
+               create_url=create_url,
+               parse_response=parse_response,
+               resources={Organization, Repo})
