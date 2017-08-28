@@ -1,5 +1,4 @@
 """The core components of the ORM: sessions, resources, and fields"""
-import abc
 import collections
 import copy
 import itertools
@@ -22,19 +21,17 @@ ApiObject = t.Union[t.Mapping[str, object],
                     lxml.objectify.ObjectifiedElement]
 
 
-class Query(abc.ABC):
+class Query:
     pass
 
 
-Set = Query.register(t.NamedTuple('Set', [
-    ('resource', 'ResourceMeta'),
-]))
+class Set(t.NamedTuple('_Set', [('resource', 'ResourceMeta')]), Query):
+    __slots__ = ()
 
 
-Node = Query.register(t.NamedTuple('Node', [
-    ('resource', 'ResourceMeta'),
-    ('key', str)
-]))
+class Node(t.NamedTuple('_Node', [('resource', 'ResourceMeta'), ('key', str)]),
+           Query):
+    __slots__ = ()
 
 
 class ResourceMeta(utils.EnsurePep487Meta):
@@ -128,14 +125,6 @@ class Resource(metaclass=ResourceMeta):
         return '<{0.__module__}.{0.__class__.__name__}: {0}>'.format(self)
 
 
-T = t.TypeVar('T')
-
-
-def _identity(obj: T) -> T:
-    """identity function: returns the input unmodified"""
-    return obj
-
-
 class Field:
     """an attribute accessor for a resource.
     Implements python's descriptor protocol
@@ -149,8 +138,7 @@ class Field:
     """
     __slots__ = ('name', 'resource', 'load', 'apiname')
 
-    def __init__(self, *,
-                 load: t.Callable[[object], T]=_identity,
+    def __init__(self, *, load: t.Callable=utils.identity,
                  apiname: t.Optional[str]=None):
         self.load = load
         self.apiname = apiname
@@ -160,9 +148,7 @@ class Field:
         if not self.apiname:
             self.apiname = name
 
-    def __get__(self,
-                instance: t.Optional[Resource],
-                cls: ResourceMeta) -> t.Union['Field', T]:
+    def __get__(self, instance: t.Optional[Resource], cls: ResourceMeta):
         """part of the descriptor protocol.
         On a class, returns the field.
         On an instance, returns the field value"""
@@ -180,6 +166,11 @@ class Field:
 @singledispatch
 def getitem(obj, key):
     """get a value from an API object"""
+    raise TypeError(obj)
+
+
+@getitem.register(collections.Mapping)
+def _mapping_getitem(obj, key):
     return obj[key]
 
 

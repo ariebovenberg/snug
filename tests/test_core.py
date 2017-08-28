@@ -217,6 +217,10 @@ class TestSession:
 class TestGetitem:
 
     def test_default(self):
+        with pytest.raises(TypeError):
+            snug.core.getitem(object(), 'foo')
+
+    def test_mapping(self):
         assert snug.core.getitem({'foo': 4}, 'foo') == 4
 
     def test_xml_item(self):

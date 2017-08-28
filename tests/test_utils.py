@@ -1,3 +1,4 @@
+import operator
 import functools
 
 from snug import utils
@@ -27,3 +28,19 @@ class TestPPartial:
 
         assert args == ('foo', 5, 10)
         assert not kwargs
+
+
+class TestCompose:
+
+    def test_empty(self):
+        func = utils.compose()
+        assert func('abc') == 'abc'
+
+    def test_multiple(self):
+        func = utils.compose(
+            str,
+            utils.ppartial(operator.add, 5),
+            utils.ppartial(operator.truediv, 1)
+        )
+        assert func(4) == '5.25'
+

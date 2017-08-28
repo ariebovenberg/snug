@@ -1,10 +1,20 @@
 """Miscellaneous tools and boilerplate"""
 import itertools
-import functools
 import sys
+from functools import reduce, partial as _partial
 
 
-class ppartial(functools.partial):
+def identity(obj):
+    """identity function: returns the input unmodified"""
+    return obj
+
+
+def compose(*functions):
+    """compose a function from a list of functions"""
+    return reduce(lambda f, g: lambda x: f(g(x)), functions, identity)
+
+
+class ppartial(_partial):
     '''like functools.partial, but allows positional arguments
     by use of ellipsis (...).
     Useful for builtin python functions which do not take keyword args
