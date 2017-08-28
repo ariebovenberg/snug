@@ -22,6 +22,7 @@ def test_stations():
     assert len(amsterdam_stations) == 11
     for st in amsterdam_stations:
         print(st)
+        print('location: {}'.format(st.latlon))
 
     den_bosch = stations[0]
     assert len(den_bosch.synonyms) == 2
