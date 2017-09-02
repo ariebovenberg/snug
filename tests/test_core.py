@@ -27,10 +27,7 @@ def resources():
 @pytest.fixture
 def api(resources):
     """an API with mock functionality"""
-    return snug.Api(create_url=mock.Mock(),
-                    headers={},
-                    parse_response=mock.Mock(),
-                    resources=resources)
+    return snug.Api(headers={}, resources=resources)
 
 
 @pytest.fixture
@@ -55,23 +52,15 @@ class TestField:
 
         assert isinstance(Email.subject, snug.Field)
 
-        email = snug.wrap_api_obj(Email, {'subject': 'foo'})
+        email = Email.wrap({'subject': 'foo'})
         assert email.subject == 'foo'
-
-    def test_repr(self):
-
-        class User(snug.Resource):
-            name = snug.Field()
-
-        assert repr(User.name) == '<Field "name" of {!r}>'.format(User)
-        assert repr(snug.Field()) == '<Field [no name]>'
 
     def test_load(self):
 
         class User(snug.Resource):
             name = snug.Field(load='value: {}'.format)
 
-        user = snug.wrap_api_obj(User, {'name': 'foo username'})
+        user = User.wrap({'name': 'foo username'})
         assert user.name == 'value: foo username'
 
     def test_apiname(self):
@@ -82,23 +71,6 @@ class TestField:
 
         assert Comment.is_archived.apiname == 'archived'
         assert Comment.user.apiname == 'user'
-
-
-class TestBoundResource:
-
-    @mock.patch('requests.Session')
-    def test_repr(self, _, api):
-
-        class User(snug.Resource):
-            pass
-
-        User.__module__ = 'mysite'
-
-        api.resources.add(User)
-        my_session = snug.Session(api)
-
-        # bound class repr
-        assert repr(my_session.User) == '<bound resource mysite.User>'
 
 
 class TestResource:
@@ -165,53 +137,20 @@ class TestResource:
 
         assert Comment[:] == snug.Set(Comment)
 
-    def test_create_query_from_slices_one_key(self):
+    def test_select_key(self):
 
         class User(snug.Resource):
             pass
 
         assert User['bob'] == snug.Node(User, 'bob')
 
+    def test_wrap(self, resources):
+        resource = resources.pop()
+        api_obj = object()
 
-class TestSession:
-
-    def test_init(self, auth, api):
-        req_session = mock.Mock(spec=requests.Session)
-        my_session = snug.Session(api,
-                                  auth=auth,
-                                  req_session=req_session)
-
-        assert api.resources
-
-        for resource in api.resources:
-            bound_resource = getattr(my_session, resource.__name__)
-            assert bound_resource is not resource
-            assert issubclass(bound_resource, resource)
-            assert bound_resource.session is my_session
-
-        assert my_session.api is api
-        assert my_session.auth is auth
-        assert my_session.req_session is req_session
-
-    def test_init_defaults(self, api):
-        session = snug.Session(api)
-        assert session.api == api
-        assert session.auth is None
-        assert isinstance(session.req_session, requests.Session)
-
-    def test_get(self, session):
-        Post = next(r for r in session.api.resources if r.__name__ == 'Post')
-        response = session.req_session.get.return_value
-
-        query = snug.Node(Post, '1')
-        result = session.get(query)
-        assert result is session.api.parse_response.return_value
-
-        session.req_session.get.assert_called_once_with(
-            session.api.create_url(query),
-            headers=session.api.headers,
-            auth=session.auth)
-        assert response.raise_for_status.called
+        instance = resource.wrap(api_obj)
+        assert isinstance(instance, resource)
+        assert instance.api_obj is api_obj
 
 
 class TestGetitem:
@@ -234,12 +173,3 @@ class TestGetitem:
         ''')
         assert snug.core.getitem(xml, 'MyParent.Child2') == 'bar'
         assert snug.core.getitem(xml, 'MyParent').Child1 == 'foo'
-
-
-def test_wrap_api_obj(resources):
-    resource = resources.pop()
-    api_obj = object()
-
-    instance = snug.wrap_api_obj(resource, api_obj)
-    assert isinstance(instance, resource)
-    assert instance.api_obj is api_obj

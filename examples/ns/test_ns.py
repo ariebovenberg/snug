@@ -12,9 +12,14 @@ my_ns = snug.Session(api=ns.api, auth=auth)
 all_stations = ns.Station[:]
 
 
-def test_stations():
+def test_all_stations():
+    assert isinstance(all_stations, snug.Set)
+    assert all_stations == snug.Set(ns.Station)
+    assert all_stations.request() == snug.Request('ns-api-stations-v2')
 
     stations = my_ns.get(all_stations)
+
+    assert isinstance(stations, list)
 
     amsterdam_stations = [s for s in stations
                           if s.full_name.startswith('Amsterdam')]

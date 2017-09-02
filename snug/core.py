@@ -1,101 +1,110 @@
 """The core components of the ORM: sessions, resources, and fields"""
+import abc
 import collections
 import copy
 import itertools
 import operator
-import types
 import typing as t
 from functools import singledispatch
 
 import requests
 import lxml.objectify
+import attr
 
 from . import utils
 
 
-__all__ = ['Session', 'Resource', 'Field', 'Api', 'wrap_api_obj', 'Query',
-           'Set', 'Node']
+# __all__ = [
+#     'Resource',
+#     'Field',
+#     'Api',
+#     'Selection',
+#     'Set',
+#     'Node',
+#     'Selectable']
 
 
 ApiObject = t.Union[t.Mapping[str, object],
                     lxml.objectify.ObjectifiedElement]
+Key = t.Union[str, int]
 
 
-class Query:
-    pass
+class Request(t.NamedTuple):
+    """a simple HTTP request"""
+    url: str
+    headers: t.Mapping[str, str] = {}
 
 
-class Set(t.NamedTuple('_Set', [('resource', 'ResourceMeta')]), Query):
-    __slots__ = ()
+class Selection(abc.ABC):
+    """mixin for all selections"""
+
+    def request(self) -> Request:
+        return self.source.request(self)
 
 
-class Node(t.NamedTuple('_Node', [('resource', 'ResourceMeta'), ('key', str)]),
-           Query):
-    __slots__ = ()
+class Selectable(abc.ABC):
+    """mixin for all things queryable"""
+
+    def __getitem__(self, key) -> Selection:
+        return Set(self) if key == slice(None) else Node(self, key)
 
 
-class ResourceMeta(utils.EnsurePep487Meta):
+@Selection.register
+class Set(t.NamedTuple):
+    """A set selection"""
+    source: Selectable
 
-    def __getitem__(self, key) -> Query:
-        """return a query of the resource"""
-        if key == slice(None):
-            return Set(self)
-        else:
-            return Node(self, key)
+    request = Selection.request
+
+    def wrap(self, api_objs):
+        return list(map(self.source.wrap, api_objs))
+
+
+@Selection.register
+class Node(t.NamedTuple):
+    """A node selection"""
+    source: Selectable
+    key: Key
+
+    request = Selection.request
+
+    def wrap(self, api_obj):
+        return self.source.wrap(api_obj)
+
+
+@Selectable.register
+class ResourceClass(type):
+    """Metaclass for resource classes"""
+    __getitem__ = Selectable.__getitem__
 
     def __repr__(self):
-        if hasattr(self, 'session'):
-            return '<bound resource {0.__module__}.{0.__name__}>'.format(self)
-        else:
-            return '<resource {0.__module__}.{0.__name__}>'.format(self)
+        return f'<resource {self.__module__}.{self.__name__}>'
+
+    def wrap(self, api_obj: ApiObject) -> 'Resource':
+        instance = self.__new__(self)
+        instance.api_obj = api_obj
+        return instance
 
 
-class BoundResource(metaclass=utils.EnsurePep487Meta):
+class Api(t.NamedTuple):
+    """an API endpoint"""
+    resources: t.Set[ResourceClass]
+    parse_list: t.Callable[[requests.Response], t.Any]
+    parse_item: t.Callable[[requests.Response], t.Any]
+    headers: t.Mapping[str, str] = {}
+    prefix: str = 'https://'
 
-    def __init_subclass__(cls, session, **kwargs):
-        super().__init_subclass__(**kwargs)
-        cls.session = session
-
-
-Api = t.NamedTuple('Api', [
-    ('resources', t.Set[ResourceMeta]),
-    ('headers', t.Mapping[str, str]),
-    ('create_url', t.Callable[[Query], str]),
-    ('parse_response', t.Callable[[Query, requests.Response], object]),
-])
-
-
-class Session(metaclass=utils.EnsurePep487Meta):
-    """the context in which an API is used"""
-
-    def __init__(self, api: Api, auth=None,
-                 req_session: t.Optional[requests.Session]=None):
-        for resource in api.resources:
-            name = resource.__name__
-            klass = types.new_class(name, bases=(BoundResource, resource),
-                                    kwds={'session': self})
-            klass.__module__ = resource.__module__
-            setattr(self, name, klass)
-
-        self.api = api
-        self.auth = auth
-        self.req_session = req_session or requests.Session()
-
-    def get(self, query: Query):
-        """evaluate the result of a query"""
-        response = self.req_session.get(
-            self.api.create_url(query),
-            headers=self.api.headers,
-            auth=self.auth,
+    def request(self, request) -> Request:
+        return request._replace(
+            url=self.prefix + request.url,
+            headers={**request.headers, **self.headers},
         )
-        response.raise_for_status()
-        return self.api.parse_response(query, response)
 
 
-class Resource(metaclass=ResourceMeta):
+class Resource(metaclass=ResourceClass):
     """base class for API resources"""
 
-    FIELDS = collections.OrderedDict()  # Mapping[str, Field]
+    FIELDS: t.Mapping[str, 'Field'] = collections.OrderedDict()
 
     def __init_subclass__(cls, **kwargs):
 
@@ -125,6 +134,7 @@ class Resource(metaclass=ResourceMeta):
         return '<{0.__module__}.{0.__class__.__name__}: {0}>'.format(self)
 
 
+@attr.s
 class Field:
     """an attribute accessor for a resource.
     Implements python's descriptor protocol
@@ -136,19 +146,17 @@ class Field:
     apiname
         the name of the field on the api object
     """
-    __slots__ = ('name', 'resource', 'load', 'apiname')
+    load = attr.ib(default=utils.identity)
+    apiname = attr.ib(default=None)
+    name = attr.ib(init=False)
+    resource = attr.ib(init=False)
 
-    def __init__(self, *, load: t.Callable=utils.identity,
-                 apiname: t.Optional[str]=None):
-        self.load = load
-        self.apiname = apiname
-
-    def __set_name__(self, resource: ResourceMeta, name: str) -> None:
+    def __set_name__(self, resource, name):
         self.resource, self.name = resource, name
         if not self.apiname:
             self.apiname = name
 
-    def __get__(self, instance: t.Optional[Resource], cls: ResourceMeta):
+    def __get__(self, instance, cls):
         """part of the descriptor protocol.
         On a class, returns the field.
         On an instance, returns the field value"""
@@ -156,11 +164,24 @@ class Field:
                 if instance is None
                 else self.load(getitem(instance.api_obj, self.apiname)))
 
-    def __repr__(self):
-        try:
-            return ('<Field "{0.name}" of {0.resource!r}>'.format(self))
-        except AttributeError:
-            return '<Field [no name]>'.format(self)
+
+class Session(t.NamedTuple):
+    """an API session"""
+    api: Api
+    auth: t.Optional[t.Tuple[str, str]] = None
+    client: requests.Session = requests.Session()
+
+    def get(self, selection: Selection) -> t.Union[Resource, t.List[Resource]]:
+        request = self.api.request(selection.request())
+        response = self.client.get(request.url,
+                                   headers=request.headers,
+                                   auth=self.auth)
+        response.raise_for_status()
+        parse_response = (self.api.parse_list
+                          if isinstance(selection, Set)
+                          else self.api.parse_item)
+        parsed = parse_response(response)
+        return selection.wrap(parsed)
 
 
 @singledispatch
@@ -177,21 +198,3 @@ def _mapping_getitem(obj, key):
 @getitem.register(lxml.objectify.ObjectifiedElement)
 def _lxml_getitem(obj, key):
     return operator.attrgetter(key)(obj)
-
-
-def wrap_api_obj(resource: ResourceMeta, api_obj: ApiObject) -> Resource:
-    """wrap the API object in a resource instance
-
-    Parameters
-    ----------
-    api_obj
-        the API object to wrap
-
-    Returns
-    -------
-    core.Resource
-        the resource instance
-    """
-    instance = resource.__new__(resource)
-    instance.api_obj = api_obj
-    return instance

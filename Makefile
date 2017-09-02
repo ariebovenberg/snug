@@ -9,6 +9,9 @@ docs:
 test:
 	pytest
 
+testall:
+	pytest tests/ examples/
+
 coverage:
 	pytest --cov=snug --cov-report html --cov-report term --cov-branch
 
