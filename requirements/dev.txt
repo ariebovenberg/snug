@@ -1,4 +1,0 @@
--r test.txt
-sphinx
-wheel
-twine

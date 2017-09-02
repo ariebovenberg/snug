@@ -1,0 +1,6 @@
+-e .
+pytest
+pytest-coverage
+sphinx
+wheel
+twine
