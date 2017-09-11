@@ -38,6 +38,11 @@ def Post():
 
 
 @pytest.fixture
+def lookup(Post):
+    return Post[43]
+
+
+@pytest.fixture
 def filterable(Post):
     return snug.FilterableSet(
         list_load=compose(list, partial(map, Post.obj_load)),
@@ -152,7 +157,7 @@ class TestResourceClass:
     def test_indexable(self, Post):
         assert isinstance(Post, snug.Indexable)
         some_post = Post[153]
-        assert isinstance(some_post, snug.Node)
+        assert isinstance(some_post, snug.Lookup)
 
     def test_filterable(self, Post):
         assert isinstance(Post, snug.Filterable)
@@ -203,5 +208,13 @@ def test_indexable(Post):
         obj_load=Post.obj_load,
         node_request=compose(snug.Request, 'posts/{}/'.format))
     node = polls[5]
-    assert node == snug.Node(polls, 5)
+    assert node == snug.Lookup(polls, 5)
     assert snug.req(node) == snug.Request('posts/5/')
+
+
+def test_node(Post):
+    latest_post = snug.Node(
+        obj_load=Post.obj_load,
+        request=snug.Request('posts/latest/')
+    )
+    assert snug.req(latest_post) == snug.Request('posts/latest/')

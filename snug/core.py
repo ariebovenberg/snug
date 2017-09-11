@@ -47,8 +47,8 @@ class Indexable(abc.ABC):
     def node_request(self, key) -> Request:
         raise NotImplementedError()
 
-    def __getitem__(self, key) -> 'Node':
-        return Node(self, key)
+    def __getitem__(self, key) -> 'Lookup':
+        return Lookup(self, key)
 
 
 class Filterable(abc.ABC):
@@ -112,16 +112,28 @@ class FilterableSet(Filterable, utils.Slots):
         return self.filtered_request({})
 
 
-class Node(Query, utils.Slots):
+class Lookup(Query, utils.Slots):
     """A node selected from an index"""
     index: Indexable
-    key: Key
+    key:   Key
 
     def __request__(self):
         return self.index.node_request(self.key)
 
     def __load_response__(self, obj):
         return self.index.obj_load(obj)
+
+
+class Node(Query, utils.Slots):
+    """a simple, single requestable item"""
+    obj_load: t.Callable
+    request:  Request
+
+    def __request__(self):
+        return self.request
+
+    def __load_response__(self, obj):
+        return self.obj_load(obj)
 
 
 class FilteredSet(Query, utils.Slots):

@@ -16,6 +16,8 @@ all_repos = gh.Repo[:]
 
 assigned_issues = gh.Issue.ASSIGNED
 one_issue = gh.Issue['github', 'gitignore', 123]
+
+# current_user = gh.CURRENT_USER
 # repo_issues = one_repo.issues
 # one_repo_issue = one_repo.issues[123]
 
@@ -33,8 +35,8 @@ def test_all_orgs():
 
 
 def test_one_org():
-    assert isinstance(one_org, snug.Node)
-    assert one_org == snug.Node(gh.Organization, key='github')
+    assert isinstance(one_org, snug.Lookup)
+    assert one_org == snug.Lookup(gh.Organization, key='github')
     assert snug.req(one_org) == snug.Request('orgs/github')
 
     org = my_github.get(one_org)
@@ -60,8 +62,8 @@ def test_all_repos():
 
 
 def test_one_repo():
-    assert isinstance(one_repo, snug.Node)
-    assert one_repo == snug.Node(gh.Repo, key=('github', 'gitignore'))
+    assert isinstance(one_repo, snug.Lookup)
+    assert one_repo == snug.Lookup(gh.Repo, key=('github', 'gitignore'))
     assert snug.req(one_repo) == snug.Request('repos/github/gitignore')
 
     repo = my_github.get(one_repo)
@@ -83,14 +85,18 @@ def test_assigned_issues():
 
 
 def test_one_issue():
-    assert isinstance(one_issue, snug.Node)
-    assert one_issue == snug.Node(gh.Issue, key=('github', 'gitignore', 123))
+    assert isinstance(one_issue, snug.Lookup)
+    assert one_issue == snug.Lookup(gh.Issue, key=('github', 'gitignore', 123))
     assert snug.req(one_issue) == snug.Request(
         'repos/github/gitignore/issues/123')
 
     issue = my_github.get(one_issue)
 
     assert isinstance(issue, gh.Issue)
+
+
+def test_current_user():
+    pass
 
 
 # def test_all_repo_issues():
@@ -107,7 +113,7 @@ def test_one_issue():
 
 
 # def test_one_repo_issue():
-#     assert isinstance(repo_issues, snug.Node)
+#     assert isinstance(repo_issues, snug.Lookup)
 #     assert snug.Request(one_repo_issue) == snug.Request(
 #         'repos/github/gitignore/issues/123'
 #     )
