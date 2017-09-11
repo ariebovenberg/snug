@@ -3,10 +3,9 @@ import operator
 from datetime import datetime
 
 import snug
+from snug.utils import partial, compose
 
-partial = snug.utils.partial
 parse_datetime = partial(datetime.strptime, ..., '%Y-%m-%dT%H:%M:%SZ')
-
 
 _repr = reprlib.Repr()
 _repr.maxstring = 45
@@ -20,6 +19,21 @@ class Issue(snug.Resource):
 
     def __str__(self):
         return self.title
+
+    @staticmethod
+    def filtered_request(filters):
+        return snug.Request('issues', params=filters)
+
+    @staticmethod
+    def node_request(key):
+        owner, repo, number = key
+        return snug.Request(f'repos/{owner}/{repo}/issues/{number}')
+
+
+Issue.ASSIGNED = snug.Set(
+    list_load=compose(list, partial(map, Issue.obj_load)),
+    request=snug.Request('issues')
+)
 
 
 class Repo(snug.Resource):
@@ -101,12 +115,13 @@ class Repo(snug.Resource):
             self.name, _repr.repr(self.description))
 
     @staticmethod
-    def request(selection) -> snug.Request:
-        if isinstance(selection, snug.Node):
-            owner, name = selection.key
-            return snug.Request(f'repos/{owner}/{name}')
-        elif isinstance(selection, snug.Set):
-            return snug.Request('repositories')
+    def filtered_request(filters):
+        return snug.Request('repositories', params=filters)
+
+    @staticmethod
+    def node_request(key):
+        owner, name = key
+        return snug.Request(f'repos/{owner}/{name}')
 
 
 class Organization(snug.Resource):
@@ -142,17 +157,15 @@ class Organization(snug.Resource):
             return self.login
 
     @staticmethod
-    def request(selection) -> snug.Request:
-        if isinstance(selection, snug.Node):
-            return snug.Request(f'orgs/{selection.key}')
-        elif isinstance(selection, snug.Set):
-            return snug.Request('organizations')
-        else:
-            raise TypeError(selection)
+    def filtered_request(filters):
+        return snug.Request('organizations', params=filters)
+
+    @staticmethod
+    def node_request(key):
+        return snug.Request(f'orgs/{key}')
 
 
 api = snug.Api(prefix='https://api.github.com/',
                headers={'Accept': 'application/vnd.github.v3+json'},
-               parse_list=operator.methodcaller('json'),
-               parse_item=operator.methodcaller('json'),
+               parse_response=operator.methodcaller('json'),
                resources={Organization, Repo})

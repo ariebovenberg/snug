@@ -1,10 +1,12 @@
 from unittest import mock
+from operator import methodcaller, add
 
 import lxml
 import pytest
 import requests
 
 import snug
+from snug.utils import partial, compose
 
 
 @pytest.fixture
@@ -22,6 +24,25 @@ def resources():
         body = snug.Field()
 
     return {Post, Comment}
+
+
+@pytest.fixture
+def Post():
+
+    class Post(snug.Resource):
+        title = snug.Field()
+        body = snug.Field()
+        user = snug.Field()
+
+    return Post
+
+
+@pytest.fixture
+def filterable(Post):
+    return snug.FilterableSet(
+        list_load=compose(list, partial(map, Post.obj_load)),
+        filtered_request=lambda filts: snug.Request('posts/', params=filts),
+    )
 
 
 @pytest.fixture
@@ -52,7 +73,7 @@ class TestField:
 
         assert isinstance(Email.subject, snug.Field)
 
-        email = Email.wrap({'subject': 'foo'})
+        email = Email.obj_load({'subject': 'foo'})
         assert email.subject == 'foo'
 
     def test_load(self):
@@ -60,7 +81,7 @@ class TestField:
         class User(snug.Resource):
             name = snug.Field(load='value: {}'.format)
 
-        user = User.wrap({'name': 'foo username'})
+        user = User.obj_load({'name': 'foo username'})
         assert user.name == 'value: foo username'
 
     def test_apiname(self):
@@ -92,25 +113,23 @@ class TestResource:
         }
         assert Post.FIELDS == expect_fields
 
-    def test_subclassing_keeps_fields(self):
+    def test_repr(self):
 
-        class Post(snug.Resource):
-            title = snug.Field()
-            body = snug.Field()
-            user = snug.Field()
+        class User(snug.Resource):
 
-        class BlogPost(Post):
-            url = snug.Field()
+            def __str__(self):
+                return 'foo'
 
-        assert BlogPost.FIELDS == {
-            'title': BlogPost.title,
-            'body': BlogPost.body,
-            'user': BlogPost.user,
-            'url': BlogPost.url,
-        }
+        User.__module__ = 'mysite'
 
-        assert BlogPost.title.resource is BlogPost
-        assert BlogPost.title is not Post.title
+        # instance repr
+        user = User()
+        assert repr(user) == '<mysite.User: foo>'
+        del User.__str__
+        assert repr(user) == '<mysite.User: User object>'
+
+
+class TestResourceClass:
 
     def test_repr(self):
 
@@ -121,36 +140,24 @@ class TestResource:
 
         User.__module__ = 'mysite'
 
-        # class repr
         assert repr(User) == '<resource mysite.User>'
 
-        # instance repr
-        user = User()
-        assert repr(user) == '<mysite.User: foo>'
-        del User.__str__
-        assert repr(user) == '<mysite.User: User object>'
-
-    def test_create_query_from_slices_empty(self):
-
-        class Comment(snug.Resource):
-            pass
-
-        assert Comment[:] == snug.Set(Comment)
-
-    def test_select_key(self):
-
-        class User(snug.Resource):
-            pass
-
-        assert User['bob'] == snug.Node(User, 'bob')
-
-    def test_wrap(self, resources):
-        resource = resources.pop()
+    def test_obj_load(self, Post):
         api_obj = object()
 
-        instance = resource.wrap(api_obj)
-        assert isinstance(instance, resource)
+        instance = Post.obj_load(api_obj)
+        assert isinstance(instance, Post)
         assert instance.api_obj is api_obj
+
+    def test_indexable(self, Post):
+        assert isinstance(Post, snug.Indexable)
+        some_post = Post[153]
+        assert isinstance(some_post, snug.Node)
+
+    def test_filterable(self, Post):
+        assert isinstance(Post, snug.Filterable)
+        my_posts = Post[dict(author='me')]
+        assert isinstance(my_posts, snug.FilteredSet)
 
 
 class TestGetitem:
@@ -173,3 +180,28 @@ class TestGetitem:
         ''')
         assert snug.core.getitem(xml, 'MyParent.Child2') == 'bar'
         assert snug.core.getitem(xml, 'MyParent').Child1 == 'foo'
+
+
+def test_set(Post):
+    posts = snug.Set(
+        list_load=compose(list, partial(map, Post.obj_load)),
+        request=snug.Request('posts/'),
+    )
+    assert snug.req(posts) == snug.Request('posts/')
+
+
+def test_filterable(filterable):
+    filtered = filterable[dict(archived=False, date='today')]
+    assert filtered == snug.FilteredSet(
+        source=filterable, filters={'archived': False, 'date': 'today'})
+    assert snug.req(filtered) == snug.Request(
+        'posts/', params=dict(archived=False, date='today'))
+
+
+def test_indexable(Post):
+    polls = snug.Index(
+        obj_load=Post.obj_load,
+        node_request=compose(snug.Request, 'posts/{}/'.format))
+    node = polls[5]
+    assert node == snug.Node(polls, 5)
+    assert snug.req(node) == snug.Request('posts/5/')

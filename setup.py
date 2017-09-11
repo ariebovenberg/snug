@@ -27,16 +27,13 @@ setup(
         'License :: OSI Approved :: MIT License',
 
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],
     keywords=['api', 'wrapper', 'rest', 'orm'],
     install_requires=[
         'requests>=2.13.0,<3',
-        'attrs>=17.2.0,<18',
         'lxml>=3.8.0,<4',
     ],
-    python_requires='>=3.4',
+    python_requires='>=3.6',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))
 )

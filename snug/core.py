@@ -1,98 +1,155 @@
 """The core components of the ORM: sessions, resources, and fields"""
 import abc
 import collections
-import copy
-import itertools
-import operator
 import typing as t
 from functools import singledispatch
+from operator import attrgetter
 
 import requests
 import lxml.objectify
-import attr
 
 from . import utils
-
-
-# __all__ = [
-#     'Resource',
-#     'Field',
-#     'Api',
-#     'Selection',
-#     'Set',
-#     'Node',
-#     'Selectable']
 
 
 ApiObject = t.Union[t.Mapping[str, object],
                     lxml.objectify.ObjectifiedElement]
 Key = t.Union[str, int]
+_Filters = t.Mapping[str, t.Any]
 
 
-class Request(t.NamedTuple):
+class Request(utils.Slots):
     """a simple HTTP request"""
-    url: str
+    url:     str
     headers: t.Mapping[str, str] = {}
+    params:  t.Mapping[str, str] = {}
 
 
-class Selection(abc.ABC):
-    """mixin for all selections"""
+class Query(abc.ABC):
+    """an API query"""
 
-    def request(self) -> Request:
-        return self.source.request(self)
+    @abc.abstractmethod
+    def __request__(self) -> Request:
+        raise NotImplementedError()
 
-
-class Selectable(abc.ABC):
-    """mixin for all things queryable"""
-
-    def __getitem__(self, key) -> Selection:
-        return Set(self) if key == slice(None) else Node(self, key)
+    @abc.abstractmethod
+    def __load_response__(self, response):
+        raise NotImplementedError()
 
 
-@Selection.register
-class Set(t.NamedTuple):
-    """A set selection"""
-    source: Selectable
+class Indexable(abc.ABC):
+    """an object from which to query a single node"""
 
-    request = Selection.request
+    @abc.abstractmethod
+    def obj_load(self, response):
+        raise NotImplementedError()
 
-    def wrap(self, api_objs):
-        return list(map(self.source.wrap, api_objs))
+    @abc.abstractmethod
+    def node_request(self, key) -> Request:
+        raise NotImplementedError()
 
-
-@Selection.register
-class Node(t.NamedTuple):
-    """A node selection"""
-    source: Selectable
-    key: Key
-
-    request = Selection.request
-
-    def wrap(self, api_obj):
-        return self.source.wrap(api_obj)
+    def __getitem__(self, key) -> 'Node':
+        return Node(self, key)
 
 
-@Selectable.register
-class ResourceClass(type):
+class Filterable(abc.ABC):
+    """an object from which to query a set"""
+
+    @abc.abstractmethod
+    def list_load(self, response) -> t.List:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def filtered_request(self, filters) -> Request:
+        raise NotImplementedError()
+
+    def __getitem__(self, filters) -> 'FilteredSet':
+        return FilteredSet(self, {} if filters == slice(None) else filters)
+
+
+class ResourceClass(Filterable, Indexable, type):
     """Metaclass for resource classes"""
-    __getitem__ = Selectable.__getitem__
 
     def __repr__(self):
         return f'<resource {self.__module__}.{self.__name__}>'
 
-    def wrap(self, api_obj: ApiObject) -> 'Resource':
+    def obj_load(self, api_obj) -> 'Resource':
         instance = self.__new__(self)
         instance.api_obj = api_obj
         return instance
 
+    def list_load(self, response):
+        return list(map(self.obj_load, response))
 
-class Api(t.NamedTuple):
+    def __getitem__(self, key_or_filters):
+        super_ = (Filterable if isinstance(key_or_filters, (dict, slice))
+                  else Index)
+        return super_.__getitem__(self, key_or_filters)
+
+
+class Set(Query, utils.Slots):
+    list_load: t.Callable
+    request:   Request
+
+    def __request__(self):
+        return self.request
+
+    def __load_response__(self, obj):
+        return self.list_load(obj)
+
+
+class Index(Indexable, utils.Slots):
+    """a basic ``Indexable``"""
+    obj_load:     t.Callable
+    node_request: t.Callable[[Key], Request]
+
+
+class FilterableSet(Filterable, utils.Slots):
+    """a basic ``Filterable``"""
+    list_load:        t.Callable
+    filtered_request: t.Callable[[_Filters], Request]
+
+    def __request__(self):
+        return self.filtered_request({})
+
+
+class Node(Query, utils.Slots):
+    """A node selected from an index"""
+    index: Indexable
+    key: Key
+
+    def __request__(self):
+        return self.index.node_request(self.key)
+
+    def __load_response__(self, obj):
+        return self.index.obj_load(obj)
+
+
+class FilteredSet(Query, utils.Slots):
+    """A filtered subset"""
+    source:  Filterable
+    filters: _Filters = {}
+
+    def __request__(self):
+        return self.source.filtered_request(self.filters)
+
+    def __load_response__(self, objs):
+        return self.source.list_load(objs)
+
+
+def req(query) -> Request:
+    return query.__request__()
+
+
+def load(query, response):
+    return query.__load_response__(response)
+
+
+class Api(utils.Slots):
     """an API endpoint"""
-    resources: t.Set[ResourceClass]
-    parse_list: t.Callable[[requests.Response], t.Any]
-    parse_item: t.Callable[[requests.Response], t.Any]
-    headers: t.Mapping[str, str] = {}
-    prefix: str = 'https://'
+    resources:      t.Set[ResourceClass]
+    parse_response: t.Callable[[requests.Response], t.Any]
+    headers:        t.Mapping[str, str] = {}
+    prefix:         str = 'https: //'
 
     def request(self, request) -> Request:
         return request._replace(
@@ -107,25 +164,10 @@ class Resource(metaclass=ResourceClass):
     FIELDS: t.Mapping[str, 'Field'] = collections.OrderedDict()
 
     def __init_subclass__(cls, **kwargs):
-
-        # fields from superclasses must be explicitly copied.
-        # Otherwise they reference the superclass
-        def get_field_copy_linked_to_current_class(field):
-            field_copy = copy.copy(field)
-            field_copy.__set_name__(cls, field.name)
-            return field_copy
-
-        fields_from_superclass = [get_field_copy_linked_to_current_class(f)
-                                  for f in cls.FIELDS.values()]
-
-        for field in fields_from_superclass:
-            setattr(cls, field.name, field)
-
-        cls.FIELDS = collections.OrderedDict(itertools.chain(
-            ((field.name, field) for field in fields_from_superclass),
-            ((name, obj) for name, obj in cls.__dict__.items()
-             if isinstance(obj, Field))
-        ))
+        cls.FIELDS = collections.OrderedDict(
+            (name, obj) for name, obj in cls.__dict__.items()
+            if isinstance(obj, Field)
+        )
 
     def __str__(self):
         return '{0.__class__.__name__} object'.format(self)
@@ -134,8 +176,7 @@ class Resource(metaclass=ResourceClass):
         return '<{0.__module__}.{0.__class__.__name__}: {0}>'.format(self)
 
 
-@attr.s
-class Field:
+class Field(utils.Slots):
     """an attribute accessor for a resource.
     Implements python's descriptor protocol
 
@@ -146,10 +187,10 @@ class Field:
     apiname
         the name of the field on the api object
     """
-    load = attr.ib(default=utils.identity)
-    apiname = attr.ib(default=None)
-    name = attr.ib(init=False)
-    resource = attr.ib(init=False)
+    load:     t.Callable = utils.identity
+    apiname:  t.Optional[str] = None
+    name:     str = None
+    resource: ResourceClass = None
 
     def __set_name__(self, resource, name):
         self.resource, self.name = resource, name
@@ -165,23 +206,20 @@ class Field:
                 else self.load(getitem(instance.api_obj, self.apiname)))
 
 
-class Session(t.NamedTuple):
+class Session(utils.Slots):
     """an API session"""
-    api: Api
-    auth: t.Optional[t.Tuple[str, str]] = None
+    api:    Api
+    auth:   t.Optional[t.Tuple[str, str]] = None
     client: requests.Session = requests.Session()
 
-    def get(self, selection: Selection) -> t.Union[Resource, t.List[Resource]]:
-        request = self.api.request(selection.request())
+    def get(self, query: Query):
+        request = self.api.request(req(query))
         response = self.client.get(request.url,
                                    headers=request.headers,
                                    auth=self.auth)
         response.raise_for_status()
-        parse_response = (self.api.parse_list
-                          if isinstance(selection, Set)
-                          else self.api.parse_item)
-        parsed = parse_response(response)
-        return selection.wrap(parsed)
+        response = self.api.parse_response(response)
+        return query.__load_response__(response)
 
 
 @singledispatch
@@ -197,4 +235,4 @@ def _mapping_getitem(obj, key):
 
 @getitem.register(lxml.objectify.ObjectifiedElement)
 def _lxml_getitem(obj, key):
-    return operator.attrgetter(key)(obj)
+    return attrgetter(key)(obj)

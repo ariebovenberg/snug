@@ -1,7 +1,7 @@
 """Miscellaneous tools and boilerplate"""
 import abc
 
-from functools import reduce, partial as _partial, partialmethod
+from functools import partial as _partial
 
 
 def identity(obj):
@@ -9,9 +9,22 @@ def identity(obj):
     return obj
 
 
-def compose(*functions):
-    """compose a function from a list of functions"""
-    return reduce(lambda f, g: lambda x: f(g(x)), functions, identity)
+class compose:
+    """a function composed of various functions"""
+
+    def __init__(self, *funcs):
+        self.funcs = funcs
+
+    def __call__(self, *args, **kwargs):
+        iterfuncs = reversed(self.funcs)
+        first = next(iterfuncs, identity)
+        value = first(*args, **kwargs)
+        for func in iterfuncs:
+            value = func(value)
+        return value
+
+    def __eq__(self, other):
+        return isinstance(other, compose) and self.funcs == other.funcs
 
 
 class partial(_partial):
@@ -91,5 +104,16 @@ class Slots(metaclass=SlotsMeta):
         ])
         return f'{kls.__module__}.{kls.__name__}({fields_repr})'
 
-    def astuple(self):
+    def _astuple(self):
+        """return a tuple with the fields"""
         return tuple(map(self.__getattribute__, self.__slots__))
+
+    def _asdict(self):
+        """return a dict with the field values"""
+        fields = self.__slots__
+        values = map(self.__getattribute__, fields)
+        return dict(zip(fields, values))
+
+    def _replace(self, **kwargs):
+        newfields = {**self._asdict(), **kwargs}
+        return self.__class__(**newfields)

@@ -174,7 +174,7 @@ class TestSlots:
         assert post.title == 'HELLO'
         assert post.author_id == 5
 
-    def test_tuple(self):
+    def test_astuple(self):
 
         class Post(utils.Slots):
             title:     str
@@ -184,4 +184,35 @@ class TestSlots:
 
         post = Post('hi', author_id=9)
 
-        assert post.astuple() == ('hi', 9, '<no message>', False)
+        assert post._astuple() == ('hi', 9, '<no message>', False)
+
+    def test_asdict(self):
+
+        class Post(utils.Slots):
+            title:     str
+            author_id: int
+            body:      str = '<no message>'
+            archived:  bool = False
+
+        post = Post('hi', author_id=9)
+
+        assert post._asdict() == {
+            'title': 'hi',
+            'author_id': 9,
+            'body': '<no message>',
+            'archived': False
+        }
+
+    def test_replace(self):
+
+        class Post(utils.Slots):
+            title:     str
+            author_id: int
+            body:      str = '<no message>'
+            archived:  bool = False
+
+        post = Post('hi', author_id=9)
+        newpost = post._replace(author_id=12, body='real message')
+        assert newpost != post
+        assert newpost == Post('hi', 12, 'real message', False)
+
