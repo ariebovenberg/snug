@@ -11,6 +11,44 @@ _repr = reprlib.Repr()
 _repr.maxstring = 45
 
 
+class User(snug.Resource):
+    avatar_url = snug.Field()
+    bio = snug.Field()
+    blog = snug.Field()
+    company = snug.Field()
+    created_at = snug.Field()
+    email = snug.Field()
+    events_url = snug.Field()
+    followers = snug.Field()
+    followers_url = snug.Field()
+    following = snug.Field()
+    following_url = snug.Field()
+    gists_url = snug.Field()
+    gravatar_id = snug.Field()
+    hireable = snug.Field()
+    html_url = snug.Field()
+    id = snug.Field()
+    location = snug.Field()
+    login = snug.Field()
+    name = snug.Field()
+    organizations_url = snug.Field()
+    public_gists = snug.Field()
+    public_repos = snug.Field()
+    received_events_url = snug.Field()
+    repos_url = snug.Field()
+    site_admin = snug.Field()
+    starred_url = snug.Field()
+    subscriptions_url = snug.Field()
+    updated_at = snug.Field()
+    url = snug.Field()
+
+
+User.CURRENT = snug.Node(
+    obj_load=User.obj_load,
+    request=snug.Request('user')
+)
+
+
 class Issue(snug.Resource):
     number = snug.Field()
     title = snug.Field()
