@@ -40,11 +40,15 @@ class Indexable(abc.ABC):
     """an object from which to query a single node"""
 
     @abc.abstractmethod
-    def obj_load(self, response):
+    def item_load(self, response):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def node_request(self, key) -> Request:
+    def item_request(self, key) -> Request:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def item_attributes(self):
         raise NotImplementedError()
 
     def __getitem__(self, key) -> 'Lookup':
@@ -59,57 +63,56 @@ class Filterable(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def filtered_request(self, filters) -> Request:
+    def subset_request(self, filters) -> Request:
         raise NotImplementedError()
 
     def __getitem__(self, filters) -> 'FilteredSet':
         return FilteredSet(self, {} if filters == slice(None) else filters)
 
 
-class ResourceClass(Filterable, Indexable, type):
-    """Metaclass for resource classes"""
-
-    def __repr__(self):
-        return f'<resource {self.__module__}.{self.__name__}>'
-
-    def obj_load(self, api_obj) -> 'Resource':
-        instance = self.__new__(self)
-        instance.api_obj = api_obj
-        return instance
-
-    def list_load(self, response):
-        return list(map(self.obj_load, response))
-
-    def __getitem__(self, key_or_filters):
-        super_ = (Filterable if isinstance(key_or_filters, (dict, slice))
-                  else Index)
-        return super_.__getitem__(self, key_or_filters)
-
-
 class Set(Query, utils.Slots):
-    list_load: t.Callable
-    request:   Request
+    load:    t.Callable
+    request: Request
 
     def __request__(self):
         return self.request
 
     def __load_response__(self, obj):
-        return self.list_load(obj)
+        return self.load(obj)
 
 
 class Index(Indexable, utils.Slots):
     """a basic ``Indexable``"""
-    obj_load:     t.Callable
-    node_request: t.Callable[[Key], Request]
+    item_load:       t.Callable
+    item_request:    t.Callable[[Key], Request]
+    item_attributes: t.Mapping[str, 'Attribute'] = {}
 
 
 class FilterableSet(Filterable, utils.Slots):
     """a basic ``Filterable``"""
     list_load:        t.Callable
-    filtered_request: t.Callable[[_Filters], Request]
+    subset_request: t.Callable[[_Filters], Request]
 
     def __request__(self):
-        return self.filtered_request({})
+        return self.subset_request({})
+
+
+class Attribute(utils.Slots):
+    """a named attribute"""
+    request: t.Callable[['Node'], Request]
+    load:    t.Callable
+
+
+class Relation(Query, utils.Slots):
+    """an object related to an item"""
+    item:      'Node'
+    attribute: Attribute
+
+    def __request__(self):
+        return self.attribute.request(self.item)
+
+    def __load_response__(self, response):
+        return self.attribute.load(response)
 
 
 class Lookup(Query, utils.Slots):
@@ -118,22 +121,29 @@ class Lookup(Query, utils.Slots):
     key:   Key
 
     def __request__(self):
-        return self.index.node_request(self.key)
+        return self.index.item_request(self.key)
 
     def __load_response__(self, obj):
-        return self.index.obj_load(obj)
+        return self.index.item_load(obj)
+
+    def __getattr__(self, name):
+        return Relation(self, self.index.item_attributes[name])
 
 
 class Node(Query, utils.Slots):
     """a simple, single requestable item"""
-    obj_load: t.Callable
-    request:  Request
+    load:       t.Callable
+    request:    Request
+    attributes: t.List[Attribute] = {}
 
     def __request__(self):
         return self.request
 
     def __load_response__(self, obj):
-        return self.obj_load(obj)
+        return self.load(obj)
+
+    def __getattr__(self, name):
+        return Relation(self, self.attributes[name])
 
 
 class FilteredSet(Query, utils.Slots):
@@ -142,7 +152,7 @@ class FilteredSet(Query, utils.Slots):
     filters: _Filters = {}
 
     def __request__(self):
-        return self.source.filtered_request(self.filters)
+        return self.source.subset_request(self.filters)
 
     def __load_response__(self, objs):
         return self.source.list_load(objs)
@@ -154,6 +164,26 @@ def req(query) -> Request:
 
 def load(query, response):
     return query.__load_response__(response)
+
+
+class ResourceClass(Filterable, Indexable, type):
+    """Metaclass for resource classes"""
+
+    def __repr__(self):
+        return f'<resource {self.__module__}.{self.__name__}>'
+
+    def item_load(self, api_obj) -> 'Resource':
+        instance = self.__new__(self)
+        instance.api_obj = api_obj
+        return instance
+
+    def list_load(self, response):
+        return list(map(self.item_load, response))
+
+    def __getitem__(self, key_or_filters):
+        super_ = (Filterable if isinstance(key_or_filters, (dict, slice))
+                  else Index)
+        return super_.__getitem__(self, key_or_filters)
 
 
 class Api(utils.Slots):

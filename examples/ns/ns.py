@@ -35,9 +35,9 @@ class Station(snug.Resource):
 
 
 Station.ALL = snug.Set(
-    list_load=compose(
+    load=compose(
         list,
-        partial(map, Station.obj_load),
+        partial(map, Station.item_load),
         methodcaller('iterchildren'),
     ),
     request=snug.Request('ns-api-stations-v2')

@@ -11,6 +11,31 @@ _repr = reprlib.Repr()
 _repr.maxstring = 45
 
 
+class Issue(snug.Resource):
+    number = snug.Field()
+    title = snug.Field()
+    body = snug.Field()
+    state = snug.Field()
+
+    def __str__(self):
+        return f'#{self.number}: {self.title}'
+
+    @staticmethod
+    def subset_request(filters):
+        return snug.Request('issues', params=filters)
+
+    @staticmethod
+    def item_request(key):
+        owner, repo, number = key
+        return snug.Request(f'repos/{owner}/{repo}/issues/{number}')
+
+
+Issue.ASSIGNED = snug.Set(
+    load=compose(list, partial(map, Issue.item_load)),
+    request=snug.Request('issues')
+)
+
+
 class User(snug.Resource):
     avatar_url = snug.Field()
     bio = snug.Field()
@@ -44,33 +69,14 @@ class User(snug.Resource):
 
 
 User.CURRENT = snug.Node(
-    obj_load=User.obj_load,
-    request=snug.Request('user')
-)
-
-
-class Issue(snug.Resource):
-    number = snug.Field()
-    title = snug.Field()
-    body = snug.Field()
-    state = snug.Field()
-
-    def __str__(self):
-        return self.title
-
-    @staticmethod
-    def filtered_request(filters):
-        return snug.Request('issues', params=filters)
-
-    @staticmethod
-    def node_request(key):
-        owner, repo, number = key
-        return snug.Request(f'repos/{owner}/{repo}/issues/{number}')
-
-
-Issue.ASSIGNED = snug.Set(
-    list_load=compose(list, partial(map, Issue.obj_load)),
-    request=snug.Request('issues')
+    load=User.item_load,
+    request=snug.Request('user'),
+    attributes={
+        'issues': snug.Attribute(
+            request=lambda _: snug.Request('user/issues'),
+            load=compose(list, partial(map, Issue.item_load)),
+        )
+    }
 )
 
 
@@ -153,13 +159,21 @@ class Repo(snug.Resource):
             self.name, _repr.repr(self.description))
 
     @staticmethod
-    def filtered_request(filters):
+    def subset_request(filters):
         return snug.Request('repositories', params=filters)
 
     @staticmethod
-    def node_request(key):
+    def item_request(key):
         owner, name = key
         return snug.Request(f'repos/{owner}/{name}')
+
+    item_attributes = {
+        'issues': snug.Attribute(
+            request=lambda i:
+                snug.Request(f'repos/{i.key[0]}/{i.key[1]}/issues'),
+            load=compose(list, partial(map, Issue.item_load))
+        )
+    }
 
 
 class Organization(snug.Resource):
@@ -195,11 +209,11 @@ class Organization(snug.Resource):
             return self.login
 
     @staticmethod
-    def filtered_request(filters):
+    def subset_request(filters):
         return snug.Request('organizations', params=filters)
 
     @staticmethod
-    def node_request(key):
+    def item_request(key):
         return snug.Request(f'orgs/{key}')
 
 

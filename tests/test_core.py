@@ -1,5 +1,4 @@
 from unittest import mock
-from operator import methodcaller, add
 
 import lxml
 import pytest
@@ -45,8 +44,8 @@ def lookup(Post):
 @pytest.fixture
 def filterable(Post):
     return snug.FilterableSet(
-        list_load=compose(list, partial(map, Post.obj_load)),
-        filtered_request=lambda filts: snug.Request('posts/', params=filts),
+        list_load=compose(list, partial(map, Post.item_load)),
+        subset_request=lambda filts: snug.Request('posts/', params=filts),
     )
 
 
@@ -78,7 +77,7 @@ class TestField:
 
         assert isinstance(Email.subject, snug.Field)
 
-        email = Email.obj_load({'subject': 'foo'})
+        email = Email.item_load({'subject': 'foo'})
         assert email.subject == 'foo'
 
     def test_load(self):
@@ -86,7 +85,7 @@ class TestField:
         class User(snug.Resource):
             name = snug.Field(load='value: {}'.format)
 
-        user = User.obj_load({'name': 'foo username'})
+        user = User.item_load({'name': 'foo username'})
         assert user.name == 'value: foo username'
 
     def test_apiname(self):
@@ -147,10 +146,10 @@ class TestResourceClass:
 
         assert repr(User) == '<resource mysite.User>'
 
-    def test_obj_load(self, Post):
+    def test_item_load(self, Post):
         api_obj = object()
 
-        instance = Post.obj_load(api_obj)
+        instance = Post.item_load(api_obj)
         assert isinstance(instance, Post)
         assert instance.api_obj is api_obj
 
@@ -189,7 +188,7 @@ class TestGetitem:
 
 def test_set(Post):
     posts = snug.Set(
-        list_load=compose(list, partial(map, Post.obj_load)),
+        load=compose(list, partial(map, Post.item_load)),
         request=snug.Request('posts/'),
     )
     assert snug.req(posts) == snug.Request('posts/')
@@ -205,8 +204,8 @@ def test_filterable(filterable):
 
 def test_indexable(Post):
     polls = snug.Index(
-        obj_load=Post.obj_load,
-        node_request=compose(snug.Request, 'posts/{}/'.format))
+        item_load=Post.item_load,
+        item_request=compose(snug.Request, 'posts/{}/'.format))
     node = polls[5]
     assert node == snug.Lookup(polls, 5)
     assert snug.req(node) == snug.Request('posts/5/')
@@ -214,7 +213,7 @@ def test_indexable(Post):
 
 def test_node(Post):
     latest_post = snug.Node(
-        obj_load=Post.obj_load,
+        load=Post.item_load,
         request=snug.Request('posts/latest/')
     )
     assert snug.req(latest_post) == snug.Request('posts/latest/')

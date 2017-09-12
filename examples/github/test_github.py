@@ -18,7 +18,9 @@ assigned_issues = gh.Issue.ASSIGNED
 one_issue = gh.Issue['github', 'gitignore', 123]
 
 current_user = gh.User.CURRENT
-# repo_issues = one_repo.issues
+my_issues = current_user.issues
+
+repo_issues = one_repo.issues
 # one_repo_issue = one_repo.issues[123]
 
 
@@ -92,24 +94,32 @@ def test_one_issue():
 
 def test_current_user():
     assert isinstance(current_user, snug.Node)
-    assert snug.req(current_user)
+    assert snug.req(current_user) == snug.Request('user')
 
     me = my_github.get(current_user)
 
     assert isinstance(me, gh.User)
 
 
-# def test_all_repo_issues():
-#     assert isinstance(repo_issues, snug.Relation)
-#     assert snug.req(repo_issues) == snug.Request(
-#         'repos/github/gitignore/issues')
+def test_current_user_issues():
+    assert isinstance(my_issues, snug.Relation)
+    assert snug.req(my_issues) == snug.Request('user/issues')
 
-#     issues = my_github.get(repo_issues)
+    issues = my_github.get(my_issues)
 
-#     assert isinstance(issues, list)
-#     assert len(issues) > 1
-#     assert isinstance(issues[0], gh.Issue)
-#     print(issues)
+    assert isinstance(issues, list)
+
+
+def test_all_repo_issues():
+    assert isinstance(repo_issues, snug.Relation)
+    assert snug.req(repo_issues) == snug.Request(
+        'repos/github/gitignore/issues')
+
+    issues = my_github.get(repo_issues)
+
+    assert isinstance(issues, list)
+    assert len(issues) > 1
+    assert isinstance(issues[0], gh.Issue)
 
 
 # def test_one_repo_issue():
