@@ -97,12 +97,11 @@ class Slots(metaclass=SlotsMeta):
         )
 
     def __repr__(self):
-        kls = self.__class__
         fields_repr = ', '.join([
             f'{name}={getattr(self, name)!r}'
             for name in self.__slots__
         ])
-        return f'{kls.__module__}.{kls.__name__}({fields_repr})'
+        return f'{self.__class__.__name__}({fields_repr})'
 
     def _astuple(self):
         """return a tuple with the fields"""

@@ -121,8 +121,8 @@ class TestSlots:
 
         post = Post('hello world', author_id=4, archived=False)
 
-        assert repr(post) == (f'{Post.__module__}.Post(title=\'hello world\', '
-                              'author_id=4, archived=False)')
+        assert repr(post) == (
+            f'Post(title=\'hello world\', author_id=4, archived=False)')
 
     def test_empty(self):
 
