@@ -21,7 +21,7 @@ current_user = gh.User.CURRENT
 my_issues = current_user.issues
 
 repo_issues = one_repo.issues
-# one_repo_issue = one_repo.issues[123]
+one_repo_issue = one_repo.issues[123]
 
 
 def test_all_orgs():
@@ -102,7 +102,7 @@ def test_current_user():
 
 
 def test_current_user_issues():
-    assert isinstance(my_issues, snug.Relation)
+    assert isinstance(my_issues, snug.Set)
     assert snug.req(my_issues) == snug.Request('user/issues')
 
     issues = my_github.get(my_issues)
@@ -111,7 +111,7 @@ def test_current_user_issues():
 
 
 def test_all_repo_issues():
-    assert isinstance(repo_issues, snug.Relation)
+    assert isinstance(repo_issues, snug.IndexableSet)
     assert snug.req(repo_issues) == snug.Request(
         'repos/github/gitignore/issues')
 
@@ -122,8 +122,8 @@ def test_all_repo_issues():
     assert isinstance(issues[0], gh.Issue)
 
 
-# def test_one_repo_issue():
-#     assert isinstance(repo_issues, snug.Lookup)
-#     assert snug.Request(one_repo_issue) == snug.Request(
-#         'repos/github/gitignore/issues/123'
-#     )
+def test_one_repo_issue():
+    assert isinstance(one_repo_issue, snug.Lookup)
+    assert snug.req(one_repo_issue) == snug.Request(
+        'repos/github/gitignore/issues/123'
+    )

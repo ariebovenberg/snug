@@ -24,20 +24,20 @@ class Request(utils.Slots):
     params:  t.Mapping[str, str] = {}
 
 
-class Query(abc.ABC):
-    """an API query"""
+class Requestable(abc.ABC):
+    """mixin for objects which may be requested from an API"""
 
     @abc.abstractmethod
     def __request__(self) -> Request:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def __load_response__(self, response):
+    def __load_response__(self, response: requests.Response):
         raise NotImplementedError()
 
 
 class Indexable(abc.ABC):
-    """an object from which to query a single node"""
+    """mixin for objects which support item lookup by key"""
 
     @abc.abstractmethod
     def item_load(self, response):
@@ -56,7 +56,7 @@ class Indexable(abc.ABC):
 
 
 class Filterable(abc.ABC):
-    """an object from which to query a set"""
+    """mixin for objects to support creating filtered subsets"""
 
     @abc.abstractmethod
     def list_load(self, response) -> t.List:
@@ -70,52 +70,30 @@ class Filterable(abc.ABC):
         return FilteredSet(self, {} if filters == slice(None) else filters)
 
 
-class Set(Query, utils.Slots):
-    load:    t.Callable
-    request: Request
-
-    def __request__(self):
-        return self.request
-
-    def __load_response__(self, obj):
-        return self.load(obj)
-
-
-class Index(Indexable, utils.Slots):
-    """a basic ``Indexable``"""
-    item_load:       t.Callable
-    item_request:    t.Callable[[Key], Request]
-    item_attributes: t.Mapping[str, 'Attribute'] = {}
-
-
 class FilterableSet(Filterable, utils.Slots):
     """a basic ``Filterable``"""
-    list_load:        t.Callable
+    list_load:      t.Callable
     subset_request: t.Callable[[_Filters], Request]
 
     def __request__(self):
         return self.subset_request({})
 
 
-class Attribute(utils.Slots):
-    """a named attribute"""
-    request: t.Callable[['Node'], Request]
-    load:    t.Callable
-
-
-class Relation(Query, utils.Slots):
-    """an object related to an item"""
-    item:      'Node'
-    attribute: Attribute
+class IndexableSet(Indexable, Requestable, utils.Slots):
+    request:         Request
+    item_load:       t.Callable
+    item_request:    t.Callable
+    item_attributes: t.Mapping[str, t.Callable] = {}
 
     def __request__(self):
-        return self.attribute.request(self.item)
+        return self.request
 
     def __load_response__(self, response):
-        return self.attribute.load(response)
+        # TODO: generalize
+        return list(map(self.item_load, response))
 
 
-class Lookup(Query, utils.Slots):
+class Lookup(Requestable, utils.Slots):
     """A node selected from an index"""
     index: Indexable
     key:   Key
@@ -127,14 +105,18 @@ class Lookup(Query, utils.Slots):
         return self.index.item_load(obj)
 
     def __getattr__(self, name):
-        return Relation(self, self.index.item_attributes[name])
+        try:
+            attribute = self.index.item_attributes[name]
+        except KeyError:
+            raise AttributeError()
+        return attribute(self)
 
 
-class Node(Query, utils.Slots):
+class Node(Requestable, utils.Slots):
     """a simple, single requestable item"""
     load:       t.Callable
     request:    Request
-    attributes: t.List[Attribute] = {}
+    attributes: t.Mapping[str, t.Callable] = {}
 
     def __request__(self):
         return self.request
@@ -143,10 +125,29 @@ class Node(Query, utils.Slots):
         return self.load(obj)
 
     def __getattr__(self, name):
-        return Relation(self, self.attributes[name])
+        attr = self.attributes[name]
+        return attr(self)
 
 
-class FilteredSet(Query, utils.Slots):
+class Index(Indexable, utils.Slots):
+    """a basic ``Indexable``"""
+    item_load:       t.Callable
+    item_request:    t.Callable[[Key], Request]
+    item_attributes: t.Mapping[str, t.Callable] = {}
+
+
+class Set(Requestable, utils.Slots):
+    load:    t.Callable
+    request: Request
+
+    def __request__(self):
+        return self.request
+
+    def __load_response__(self, obj):
+        return self.load(obj)
+
+
+class FilteredSet(Requestable, utils.Slots):
     """A filtered subset"""
     source:  Filterable
     filters: _Filters = {}
@@ -254,7 +255,7 @@ class Session(utils.Slots):
     auth:   t.Optional[t.Tuple[str, str]] = None
     client: requests.Session = requests.Session()
 
-    def get(self, query: Query):
+    def get(self, query: Requestable):
         request = self.api.request(req(query))
         response = self.client.get(request.url,
                                    headers=request.headers,

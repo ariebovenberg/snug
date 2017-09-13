@@ -3,7 +3,7 @@ import operator
 from datetime import datetime
 
 import snug
-from snug.utils import partial, compose
+from snug.utils import partial
 
 parse_datetime = partial(datetime.strptime, ..., '%Y-%m-%dT%H:%M:%SZ')
 
@@ -18,7 +18,7 @@ class Issue(snug.Resource):
     state = snug.Field()
 
     def __str__(self):
-        return f'#{self.number}: {self.title}'
+        return f'#{self.number} {self.title}'
 
     @staticmethod
     def subset_request(filters):
@@ -31,7 +31,7 @@ class Issue(snug.Resource):
 
 
 Issue.ASSIGNED = snug.Set(
-    load=compose(list, partial(map, Issue.item_load)),
+    load=Issue.list_load,
     request=snug.Request('issues')
 )
 
@@ -72,9 +72,10 @@ User.CURRENT = snug.Node(
     load=User.item_load,
     request=snug.Request('user'),
     attributes={
-        'issues': snug.Attribute(
-            request=lambda _: snug.Request('user/issues'),
-            load=compose(list, partial(map, Issue.item_load)),
+        'issues': lambda _:
+        snug.Set(
+            request=snug.Request('user/issues'),
+            load=Issue.list_load
         )
     }
 )
@@ -168,10 +169,13 @@ class Repo(snug.Resource):
         return snug.Request(f'repos/{owner}/{name}')
 
     item_attributes = {
-        'issues': snug.Attribute(
-            request=lambda i:
-                snug.Request(f'repos/{i.key[0]}/{i.key[1]}/issues'),
-            load=compose(list, partial(map, Issue.item_load))
+        'issues': lambda n:
+        snug.IndexableSet(
+            request=snug.Request(f'repos/{n.key[0]}/{n.key[1]}/issues'),
+            item_load=Issue.item_load,
+            item_request=lambda issuenr: snug.Request(
+                f'repos/{n.key[0]}/{n.key[1]}/issues/{issuenr}'
+            )
         )
     }
 
