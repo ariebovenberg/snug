@@ -72,7 +72,7 @@ def test_one_repo():
 
 
 def test_assigned_issues():
-    assert isinstance(assigned_issues, snug.Set)
+    assert isinstance(assigned_issues, snug.Collection)
     assert snug.req(assigned_issues) == snug.Request('issues')
 
     issues = my_github.get(assigned_issues)
@@ -102,7 +102,7 @@ def test_current_user():
 
 
 def test_current_user_issues():
-    assert isinstance(my_issues, snug.Set)
+    assert isinstance(my_issues, snug.Collection)
     assert snug.req(my_issues) == snug.Request('user/issues')
 
     issues = my_github.get(my_issues)

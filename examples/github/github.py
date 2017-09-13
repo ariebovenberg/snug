@@ -30,7 +30,7 @@ class Issue(snug.Resource):
         return snug.Request(f'repos/{owner}/{repo}/issues/{number}')
 
 
-Issue.ASSIGNED = snug.Set(
+Issue.ASSIGNED = snug.Collection(
     load=Issue.list_load,
     request=snug.Request('issues')
 )
@@ -73,7 +73,7 @@ User.CURRENT = snug.Node(
     request=snug.Request('user'),
     attributes={
         'issues': lambda _:
-        snug.Set(
+        snug.Collection(
             request=snug.Request('user/issues'),
             load=Issue.list_load
         )

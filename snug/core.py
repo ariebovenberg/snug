@@ -136,7 +136,8 @@ class Index(Indexable, utils.Slots):
     item_attributes: t.Mapping[str, t.Callable] = {}
 
 
-class Set(Requestable, utils.Slots):
+class Collection(Requestable, utils.Slots):
+    """a simple atomic set"""
     load:    t.Callable
     request: Request
 

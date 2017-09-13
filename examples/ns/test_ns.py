@@ -13,7 +13,7 @@ all_stations = ns.Station.ALL
 
 
 def test_all_stations():
-    assert isinstance(all_stations, snug.Set)
+    assert isinstance(all_stations, snug.Collection)
     assert snug.req(all_stations) == snug.Request('ns-api-stations-v2')
 
     stations = my_ns.get(all_stations)

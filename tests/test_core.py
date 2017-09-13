@@ -187,7 +187,7 @@ class TestGetitem:
 
 
 def test_set(Post):
-    posts = snug.Set(
+    posts = snug.Collection(
         load=compose(list, partial(map, Post.item_load)),
         request=snug.Request('posts/'),
     )

@@ -34,7 +34,7 @@ class Station(snug.Resource):
         return self.full_name
 
 
-Station.ALL = snug.Set(
+Station.ALL = snug.Collection(
     load=compose(
         list,
         partial(map, Station.item_load),
