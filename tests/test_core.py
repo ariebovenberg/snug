@@ -161,7 +161,7 @@ class TestResourceClass:
     def test_filterable(self, Post):
         assert isinstance(Post, snug.Filterable)
         my_posts = Post[dict(author='me')]
-        assert isinstance(my_posts, snug.FilteredSet)
+        assert isinstance(my_posts, snug.SubSet)
 
 
 class TestGetitem:
@@ -196,7 +196,7 @@ def test_set(Post):
 
 def test_filterable(filterable):
     filtered = filterable[dict(archived=False, date='today')]
-    assert filtered == snug.FilteredSet(
+    assert filtered == snug.SubSet(
         source=filterable, filters={'archived': False, 'date': 'today'})
     assert snug.req(filtered) == snug.Request(
         'posts/', params=dict(archived=False, date='today'))

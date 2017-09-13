@@ -11,21 +11,22 @@ my_github = snug.Session(gh.api, auth=auth)
 
 all_orgs = gh.Organization[:]
 one_org = gh.Organization['github']
-one_repo = gh.Repo['github', 'gitignore']
+one_repo = gh.Repo['github', 'hub']
 all_repos = gh.Repo[:]
 
 assigned_issues = gh.Issue.ASSIGNED
-one_issue = gh.Issue['github', 'gitignore', 123]
+one_issue = gh.Issue['github', 'hub', 123]
 
 current_user = gh.User.CURRENT
 my_issues = current_user.issues
 
 repo_issues = one_repo.issues
-one_repo_issue = one_repo.issues[123]
+one_repo_issue = repo_issues[123]
+one_repos_fixed_bugs = repo_issues[dict(label='bug', state='closed')]
 
 
 def test_all_orgs():
-    assert isinstance(all_orgs, snug.FilteredSet)
+    assert isinstance(all_orgs, snug.SubSet)
     assert snug.req(all_orgs) == snug.Request('organizations')
 
     orgs = my_github.get(all_orgs)
@@ -49,7 +50,7 @@ def test_one_org():
 
 
 def test_all_repos():
-    assert isinstance(all_repos, snug.FilteredSet)
+    assert isinstance(all_repos, snug.SubSet)
     assert snug.req(all_repos) == snug.Request('repositories')
 
     repos = my_github.get(all_repos)
@@ -62,12 +63,12 @@ def test_all_repos():
 
 def test_one_repo():
     assert isinstance(one_repo, snug.Lookup)
-    assert snug.req(one_repo) == snug.Request('repos/github/gitignore')
+    assert snug.req(one_repo) == snug.Request('repos/github/hub')
 
     repo = my_github.get(one_repo)
 
     assert isinstance(repo, gh.Repo)
-    assert repo.name == 'gitignore'
+    assert repo.name == 'hub'
     print(repo)
 
 
@@ -85,7 +86,7 @@ def test_assigned_issues():
 def test_one_issue():
     assert isinstance(one_issue, snug.Lookup)
     assert snug.req(one_issue) == snug.Request(
-        'repos/github/gitignore/issues/123')
+        'repos/github/hub/issues/123')
 
     issue = my_github.get(one_issue)
 
@@ -111,9 +112,9 @@ def test_current_user_issues():
 
 
 def test_all_repo_issues():
-    assert isinstance(repo_issues, snug.IndexableSet)
+    assert isinstance(repo_issues, snug.QueryableSet)
     assert snug.req(repo_issues) == snug.Request(
-        'repos/github/gitignore/issues')
+        'repos/github/hub/issues')
 
     issues = my_github.get(repo_issues)
 
@@ -125,5 +126,17 @@ def test_all_repo_issues():
 def test_one_repo_issue():
     assert isinstance(one_repo_issue, snug.Lookup)
     assert snug.req(one_repo_issue) == snug.Request(
-        'repos/github/gitignore/issues/123'
+        'repos/github/hub/issues/123'
     )
+
+
+def test_filtered_repo_issues():
+    assert isinstance(one_repos_fixed_bugs, snug.SubSet)
+    assert snug.req(one_repos_fixed_bugs) == snug.Request(
+        'repos/github/hub/issues', params=dict(label='bug', state='closed'))
+
+    issues = my_github.get(one_repos_fixed_bugs)
+
+    assert isinstance(issues, list)
+    assert len(issues) > 1
+    assert isinstance(issues[0], gh.Issue)

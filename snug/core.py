@@ -26,6 +26,7 @@ class Request(utils.Slots):
 
 class Requestable(abc.ABC):
     """mixin for objects which may be requested from an API"""
+    __slots__ = ()
 
     @abc.abstractmethod
     def __request__(self) -> Request:
@@ -38,6 +39,7 @@ class Requestable(abc.ABC):
 
 class Indexable(abc.ABC):
     """mixin for objects which support item lookup by key"""
+    __slots__ = ()
 
     @abc.abstractmethod
     def item_load(self, response):
@@ -57,6 +59,7 @@ class Indexable(abc.ABC):
 
 class Filterable(abc.ABC):
     """mixin for objects to support creating filtered subsets"""
+    __slots__ = ()
 
     @abc.abstractmethod
     def list_load(self, response) -> t.List:
@@ -66,8 +69,16 @@ class Filterable(abc.ABC):
     def subset_request(self, filters) -> Request:
         raise NotImplementedError()
 
-    def __getitem__(self, filters) -> 'FilteredSet':
-        return FilteredSet(self, {} if filters == slice(None) else filters)
+    def __getitem__(self, filters) -> 'SubSet':
+        return SubSet(self, {} if filters == slice(None) else filters)
+
+
+class Queryable(Indexable, Filterable):
+
+    def __getitem__(self, key_or_filters):
+        super_ = (Filterable if isinstance(key_or_filters, (dict, slice))
+                  else Index)
+        return super_.__getitem__(self, key_or_filters)
 
 
 class FilterableSet(Filterable, utils.Slots):
@@ -91,6 +102,26 @@ class IndexableSet(Indexable, Requestable, utils.Slots):
     def __load_response__(self, response):
         # TODO: generalize
         return list(map(self.item_load, response))
+
+
+class QueryableSet(Queryable, Requestable, utils.Slots):
+    """a filterable and indexable set"""
+    request: Request
+    item_load: t.Callable
+    item_request: t.Callable
+    subset_request: t.Callable[[_Filters], Request]
+    item_attributes: t.Mapping[str, t.Callable] = {}
+
+    def list_load(self, response):
+        # TODO: generalize
+        return list(map(self.item_load, response))
+
+    def __request__(self):
+        return self.request
+
+    def __load_response__(self, response):
+        # TODO: generalize
+        return self.list_load(response)
 
 
 class Lookup(Requestable, utils.Slots):
@@ -148,7 +179,7 @@ class Collection(Requestable, utils.Slots):
         return self.load(obj)
 
 
-class FilteredSet(Requestable, utils.Slots):
+class SubSet(Requestable, utils.Slots):
     """A filtered subset"""
     source:  Filterable
     filters: _Filters = {}
@@ -160,15 +191,15 @@ class FilteredSet(Requestable, utils.Slots):
         return self.source.list_load(objs)
 
 
-def req(query) -> Request:
-    return query.__request__()
+def req(obj: Requestable) -> Request:
+    return obj.__request__()
 
 
-def load(query, response):
-    return query.__load_response__(response)
+def load(obj: Requestable, response: requests.Response) -> t.Any:
+    return obj.__load_response__(response)
 
 
-class ResourceClass(Filterable, Indexable, type):
+class ResourceClass(Queryable, type):
     """Metaclass for resource classes"""
 
     def __repr__(self):
@@ -181,11 +212,6 @@ class ResourceClass(Filterable, Indexable, type):
 
     def list_load(self, response):
         return list(map(self.item_load, response))
-
-    def __getitem__(self, key_or_filters):
-        super_ = (Filterable if isinstance(key_or_filters, (dict, slice))
-                  else Index)
-        return super_.__getitem__(self, key_or_filters)
 
 
 class Api(utils.Slots):

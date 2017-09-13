@@ -169,12 +169,16 @@ class Repo(snug.Resource):
         return snug.Request(f'repos/{owner}/{name}')
 
     item_attributes = {
-        'issues': lambda n:
-        snug.IndexableSet(
-            request=snug.Request(f'repos/{n.key[0]}/{n.key[1]}/issues'),
+        'issues': lambda repo:
+        snug.QueryableSet(
+            request=snug.Request(f'repos/{repo.key[0]}/{repo.key[1]}/issues'),
             item_load=Issue.item_load,
-            item_request=lambda issuenr: snug.Request(
-                f'repos/{n.key[0]}/{n.key[1]}/issues/{issuenr}'
+            item_request=lambda key: snug.Request(
+                f'repos/{repo.key[0]}/{repo.key[1]}/issues/{key}'
+            ),
+            subset_request=lambda filters: snug.Request(
+                f'repos/{repo.key[0]}/{repo.key[1]}/issues',
+                params=filters
             )
         )
     }
