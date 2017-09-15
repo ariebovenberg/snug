@@ -168,20 +168,18 @@ class Repo(snug.Resource):
         owner, name = key
         return snug.Request(f'repos/{owner}/{name}')
 
-    item_attributes = {
-        'issues': lambda repo:
-        snug.QueryableSet(
-            request=snug.Request(f'repos/{repo.key[0]}/{repo.key[1]}/issues'),
+    @snug.Connection
+    def issues(item):
+        owner, name = item.key
+        base_url = f'repos/{owner}/{name}/issues'
+        return snug.QueryableSet(
+            request=base_url,
             item_load=Issue.item_load,
-            item_request=lambda key: snug.Request(
-                f'repos/{repo.key[0]}/{repo.key[1]}/issues/{key}'
-            ),
-            subset_request=lambda filters: snug.Request(
-                f'repos/{repo.key[0]}/{repo.key[1]}/issues',
-                params=filters
-            )
+            item_request=lambda issuenr:
+                snug.Request(f'{base_url}/{issuenr}'),
+            subset_request=lambda filters:
+                snug.Request(base_url, params=filters)
         )
-    }
 
 
 class Organization(snug.Resource):

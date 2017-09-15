@@ -20,8 +20,8 @@ _Filters = t.Mapping[str, t.Any]
 class Request(utils.Slots):
     """a simple HTTP request"""
     url:     str
-    headers: t.Mapping[str, str] = {}
     params:  t.Mapping[str, str] = {}
+    headers: t.Mapping[str, str] = {}
 
 
 class Requestable(abc.ABC):
@@ -50,7 +50,7 @@ class Indexable(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def item_attributes(self):
+    def item_connections(self):
         raise NotImplementedError()
 
     def __getitem__(self, key) -> 'Lookup':
@@ -94,7 +94,7 @@ class IndexableSet(Indexable, Requestable, utils.Slots):
     request:         Request
     item_load:       t.Callable
     item_request:    t.Callable
-    item_attributes: t.Mapping[str, t.Callable] = {}
+    item_connections: t.Mapping[str, t.Callable] = {}
 
     def __request__(self):
         return self.request
@@ -110,7 +110,7 @@ class QueryableSet(Queryable, Requestable, utils.Slots):
     item_load: t.Callable
     item_request: t.Callable
     subset_request: t.Callable[[_Filters], Request]
-    item_attributes: t.Mapping[str, t.Callable] = {}
+    item_connections: t.Mapping[str, t.Callable] = {}
 
     def list_load(self, response):
         # TODO: generalize
@@ -137,17 +137,17 @@ class Lookup(Requestable, utils.Slots):
 
     def __getattr__(self, name):
         try:
-            attribute = self.index.item_attributes[name]
+            connection = self.index.item_connections[name]
         except KeyError:
             raise AttributeError()
-        return attribute(self)
+        return connection.get(self)
 
 
 class Node(Requestable, utils.Slots):
     """a simple, single requestable item"""
     load:       t.Callable
     request:    Request
-    attributes: t.Mapping[str, t.Callable] = {}
+    connections: t.Mapping[str, t.Callable] = {}
 
     def __request__(self):
         return self.request
@@ -156,15 +156,18 @@ class Node(Requestable, utils.Slots):
         return self.load(obj)
 
     def __getattr__(self, name):
-        attr = self.attributes[name]
-        return attr(self)
+        try:
+            conn = self.connections[name]
+        except KeyError:
+            raise AttributeError()
+        return conn.get(self)
 
 
 class Index(Indexable, utils.Slots):
     """a basic ``Indexable``"""
     item_load:       t.Callable
     item_request:    t.Callable[[Key], Request]
-    item_attributes: t.Mapping[str, t.Callable] = {}
+    item_connections: t.Mapping[str, t.Callable] = {}
 
 
 class Collection(Requestable, utils.Slots):
@@ -191,6 +194,13 @@ class SubSet(Requestable, utils.Slots):
         return self.source.list_load(objs)
 
 
+class Connection(utils.Slots):
+    get: t.Callable
+
+    def __call__(self, item):
+        return self.get(item)
+
+
 def req(obj: Requestable) -> Request:
     return obj.__request__()
 
@@ -201,6 +211,17 @@ def load(obj: Requestable, response: requests.Response) -> t.Any:
 
 class ResourceClass(Queryable, type):
     """Metaclass for resource classes"""
+
+    def __new__(cls, name, bases, dct):
+        dct.update({
+            'FIELDS': collections.OrderedDict(
+                (name, obj) for name, obj in dct.items()
+                if isinstance(obj, Field)),
+            'item_connections': {
+                name: obj for name, obj in dct.items()
+                if isinstance(obj, Connection)
+            }})
+        return super().__new__(cls, name, bases, dct)
 
     def __repr__(self):
         return f'<resource {self.__module__}.{self.__name__}>'
@@ -226,24 +247,6 @@ class Api(utils.Slots):
             url=self.prefix + request.url,
             headers={**request.headers, **self.headers},
         )
-
-
-class Resource(metaclass=ResourceClass):
-    """base class for API resources"""
-
-    FIELDS: t.Mapping[str, 'Field'] = collections.OrderedDict()
-
-    def __init_subclass__(cls, **kwargs):
-        cls.FIELDS = collections.OrderedDict(
-            (name, obj) for name, obj in cls.__dict__.items()
-            if isinstance(obj, Field)
-        )
-
-    def __str__(self):
-        return '{0.__class__.__name__} object'.format(self)
-
-    def __repr__(self):
-        return '<{0.__module__}.{0.__class__.__name__}: {0}>'.format(self)
 
 
 class Field(utils.Slots):
@@ -274,6 +277,16 @@ class Field(utils.Slots):
         return (self
                 if instance is None
                 else self.load(getitem(instance.api_obj, self.apiname)))
+
+
+class Resource(metaclass=ResourceClass):
+    """base class for API resources"""
+
+    def __str__(self):
+        return '{0.__class__.__name__} object'.format(self)
+
+    def __repr__(self):
+        return '<{0.__module__}.{0.__class__.__name__}: {0}>'.format(self)
 
 
 class Session(utils.Slots):
