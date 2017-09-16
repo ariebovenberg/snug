@@ -67,6 +67,7 @@ class Filterable(abc.ABC):
 
     @abc.abstractmethod
     def subset_request(self, filters) -> Request:
+        # TODO: method to validate filters
         raise NotImplementedError()
 
     def __getitem__(self, filters) -> 'SubSet':
@@ -140,13 +141,13 @@ class Lookup(Requestable, utils.Slots):
             connection = self.index.item_connections[name]
         except KeyError:
             raise AttributeError()
-        return connection.get(self)
+        return connection(self)
 
 
 class Node(Requestable, utils.Slots):
     """a simple, single requestable item"""
-    load:       t.Callable
-    request:    Request
+    load:        t.Callable
+    request:     Request
     connections: t.Mapping[str, t.Callable] = {}
 
     def __request__(self):
@@ -160,7 +161,7 @@ class Node(Requestable, utils.Slots):
             conn = self.connections[name]
         except KeyError:
             raise AttributeError()
-        return conn.get(self)
+        return conn(self)
 
 
 class Index(Indexable, utils.Slots):
@@ -195,10 +196,10 @@ class SubSet(Requestable, utils.Slots):
 
 
 class Connection(utils.Slots):
-    get: t.Callable
+    func: t.Callable
 
     def __call__(self, item):
-        return self.get(item)
+        return self.func(item)
 
 
 def req(obj: Requestable) -> Request:
@@ -299,6 +300,7 @@ class Session(utils.Slots):
         request = self.api.request(req(query))
         response = self.client.get(request.url,
                                    headers=request.headers,
+                                   params=request.params,
                                    auth=self.auth)
         response.raise_for_status()
         response = self.api.parse_response(response)

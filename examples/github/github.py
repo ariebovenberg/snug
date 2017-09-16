@@ -71,7 +71,7 @@ class User(snug.Resource):
 User.CURRENT = snug.Node(
     load=User.item_load,
     request=snug.Request('user'),
-    attributes={
+    connections={
         'issues': lambda _:
         snug.Collection(
             request=snug.Request('user/issues'),
@@ -173,7 +173,7 @@ class Repo(snug.Resource):
         owner, name = item.key
         base_url = f'repos/{owner}/{name}/issues'
         return snug.QueryableSet(
-            request=base_url,
+            request=snug.Request(base_url),
             item_load=Issue.item_load,
             item_request=lambda issuenr:
                 snug.Request(f'{base_url}/{issuenr}'),
