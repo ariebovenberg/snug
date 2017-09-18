@@ -42,7 +42,7 @@ class Indexable(abc.ABC):
     __slots__ = ()
 
     @abc.abstractmethod
-    def item_load(self, response):
+    def load(self, response):
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -62,7 +62,7 @@ class Filterable(abc.ABC):
     __slots__ = ()
 
     @abc.abstractmethod
-    def list_load(self, response) -> t.List:
+    def load(self, response):
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -75,54 +75,13 @@ class Filterable(abc.ABC):
 
 
 class Queryable(Indexable, Filterable):
+    """an object both indexable and filterable"""
+    __slots__ = ()
 
     def __getitem__(self, key_or_filters):
         super_ = (Filterable if isinstance(key_or_filters, (dict, slice))
                   else Index)
         return super_.__getitem__(self, key_or_filters)
-
-
-class FilterableSet(Filterable, utils.Slots):
-    """a basic ``Filterable``"""
-    list_load:      t.Callable
-    subset_request: t.Callable[[_Filters], Request]
-
-    def __request__(self):
-        return self.subset_request({})
-
-
-class IndexableSet(Indexable, Requestable, utils.Slots):
-    request:         Request
-    item_load:       t.Callable
-    item_request:    t.Callable
-    item_connections: t.Mapping[str, t.Callable] = {}
-
-    def __request__(self):
-        return self.request
-
-    def __load_response__(self, response):
-        # TODO: generalize
-        return list(map(self.item_load, response))
-
-
-class QueryableSet(Queryable, Requestable, utils.Slots):
-    """a filterable and indexable set"""
-    request: Request
-    item_load: t.Callable
-    item_request: t.Callable
-    subset_request: t.Callable[[_Filters], Request]
-    item_connections: t.Mapping[str, t.Callable] = {}
-
-    def list_load(self, response):
-        # TODO: generalize
-        return list(map(self.item_load, response))
-
-    def __request__(self):
-        return self.request
-
-    def __load_response__(self, response):
-        # TODO: generalize
-        return self.list_load(response)
 
 
 class Lookup(Requestable, utils.Slots):
@@ -134,7 +93,7 @@ class Lookup(Requestable, utils.Slots):
         return self.index.item_request(self.key)
 
     def __load_response__(self, obj):
-        return self.index.item_load(obj)
+        return self.index.load(obj)
 
     def __getattr__(self, name):
         try:
@@ -164,10 +123,49 @@ class Node(Requestable, utils.Slots):
         return conn(self)
 
 
+class FilterableSet(Filterable, utils.Slots):
+    """a basic ``Filterable``"""
+    load:           t.Callable
+    subset_request: t.Callable[[_Filters], Request]
+
+    def __request__(self):
+        return self.subset_request({})
+
+
+class IndexableSet(Indexable, Requestable, utils.Slots):
+    request:         Request
+    load:            t.Callable
+    item_request:    t.Callable
+    item_connections: t.Mapping[str, t.Callable] = {}
+
+    def __request__(self):
+        return self.request
+
+    def __load_response__(self, response):
+        # TODO: generalize
+        return list(map(self.load, response))
+
+
+class QueryableSet(Queryable, Requestable, utils.Slots):
+    """a filterable and indexable set"""
+    request:          Request
+    load:             t.Callable
+    item_request:     t.Callable
+    subset_request:   t.Callable[[_Filters], Request]
+    item_connections: t.Mapping[str, t.Callable] = {}
+
+    def __request__(self):
+        return self.request
+
+    def __load_response__(self, response):
+        # TODO: generalize
+        return list(map(self.load, response))
+
+
 class Index(Indexable, utils.Slots):
     """a basic ``Indexable``"""
-    item_load:       t.Callable
-    item_request:    t.Callable[[Key], Request]
+    load:             t.Callable
+    item_request:     t.Callable[[Key], Request]
     item_connections: t.Mapping[str, t.Callable] = {}
 
 
@@ -179,8 +177,8 @@ class Collection(Requestable, utils.Slots):
     def __request__(self):
         return self.request
 
-    def __load_response__(self, obj):
-        return self.load(obj)
+    def __load_response__(self, objs):
+        return list(map(self.load, objs))
 
 
 class SubSet(Requestable, utils.Slots):
@@ -192,7 +190,7 @@ class SubSet(Requestable, utils.Slots):
         return self.source.subset_request(self.filters)
 
     def __load_response__(self, objs):
-        return self.source.list_load(objs)
+        return list(map(self.source.load, objs))
 
 
 class Connection(utils.Slots):
@@ -227,13 +225,10 @@ class ResourceClass(Queryable, type):
     def __repr__(self):
         return f'<resource {self.__module__}.{self.__name__}>'
 
-    def item_load(self, api_obj) -> 'Resource':
+    def load(self, api_obj) -> 'Resource':
         instance = self.__new__(self)
         instance.api_obj = api_obj
         return instance
-
-    def list_load(self, response):
-        return list(map(self.item_load, response))
 
 
 class Api(utils.Slots):

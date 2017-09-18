@@ -5,7 +5,7 @@ import pytest
 import requests
 
 import snug
-from snug.utils import partial, compose
+from snug.utils import compose, identity
 
 
 @pytest.fixture
@@ -33,6 +33,17 @@ def Post():
         body = snug.Field()
         user = snug.Field()
 
+        @snug.Connection
+        def tags(lookup):
+            return snug.Collection(
+                load=identity,
+                request=snug.Request(f'posts/{lookup.key}/tags/'),
+            )
+
+        @staticmethod
+        def item_request(key):
+            return snug.Request(f'posts/{key}/')
+
     return Post
 
 
@@ -44,8 +55,25 @@ def lookup(Post):
 @pytest.fixture
 def filterable(Post):
     return snug.FilterableSet(
-        list_load=compose(list, partial(map, Post.item_load)),
+        load=Post.load,
         subset_request=lambda filts: snug.Request('posts/', params=filts),
+    )
+
+
+@pytest.fixture
+def indexable(Post):
+    return snug.Index(
+        load=Post.load,
+        item_request=compose(snug.Request, 'posts/{}/'.format))
+
+
+@pytest.fixture
+def queryable(Post):
+    return snug.QueryableSet(
+        request=snug.Request('posts'),
+        load=Post.load,
+        item_request=compose(snug.Request, 'posts/{}/'.format),
+        subset_request=lambda f: snug.Request('posts/', params=f),
     )
 
 
@@ -77,7 +105,7 @@ class TestField:
 
         assert isinstance(Email.subject, snug.Field)
 
-        email = Email.item_load({'subject': 'foo'})
+        email = Email.load({'subject': 'foo'})
         assert email.subject == 'foo'
 
     def test_load(self):
@@ -85,7 +113,7 @@ class TestField:
         class User(snug.Resource):
             name = snug.Field(load='value: {}'.format)
 
-        user = User.item_load({'name': 'foo username'})
+        user = User.load({'name': 'foo username'})
         assert user.name == 'value: foo username'
 
     def test_apiname(self):
@@ -146,10 +174,10 @@ class TestResourceClass:
 
         assert repr(User) == '<resource mysite.User>'
 
-    def test_item_load(self, Post):
+    def test_load(self, Post):
         api_obj = object()
 
-        instance = Post.item_load(api_obj)
+        instance = Post.load(api_obj)
         assert isinstance(instance, Post)
         assert instance.api_obj is api_obj
 
@@ -188,7 +216,7 @@ class TestGetitem:
 
 def test_set(Post):
     posts = snug.Collection(
-        load=compose(list, partial(map, Post.item_load)),
+        load=Post.load,
         request=snug.Request('posts/'),
     )
     assert snug.req(posts) == snug.Request('posts/')
@@ -198,22 +226,29 @@ def test_filterable(filterable):
     filtered = filterable[dict(archived=False, date='today')]
     assert filtered == snug.SubSet(
         source=filterable, filters={'archived': False, 'date': 'today'})
-    assert snug.req(filtered) == snug.Request(
-        'posts/', params=dict(archived=False, date='today'))
 
 
-def test_indexable(Post):
-    polls = snug.Index(
-        item_load=Post.item_load,
-        item_request=compose(snug.Request, 'posts/{}/'.format))
-    node = polls[5]
-    assert node == snug.Lookup(polls, 5)
-    assert snug.req(node) == snug.Request('posts/5/')
+def test_indexable(indexable):
+    node = indexable[5]
+    assert node == snug.Lookup(indexable, 5)
+
+
+def test_queryable(queryable):
+    assert isinstance(queryable[5], snug.Lookup)
+    assert isinstance(queryable[dict(search='foo')], snug.SubSet)
 
 
 def test_node(Post):
     latest_post = snug.Node(
-        load=Post.item_load,
+        load=Post.load,
         request=snug.Request('posts/latest/')
     )
     assert snug.req(latest_post) == snug.Request('posts/latest/')
+
+
+def test_lookup(lookup):
+    assert snug.req(lookup) == lookup.index.item_request(lookup.key)
+    assert lookup.tags == lookup.index.item_connections['tags'](lookup)
+
+    with pytest.raises(AttributeError):
+        lookup.non_existant_connection

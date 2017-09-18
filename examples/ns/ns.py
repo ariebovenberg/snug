@@ -63,7 +63,7 @@ class Departure(snug.Resource):
 
 
 Station.ALL = snug.Collection(
-    load=Station.list_load,
+    load=Station.load,
     request=snug.Request('ns-api-stations-v2')
 )
 

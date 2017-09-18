@@ -31,7 +31,7 @@ class Issue(snug.Resource):
 
 
 Issue.ASSIGNED = snug.Collection(
-    load=Issue.list_load,
+    load=Issue.load,
     request=snug.Request('issues')
 )
 
@@ -69,13 +69,13 @@ class User(snug.Resource):
 
 
 User.CURRENT = snug.Node(
-    load=User.item_load,
+    load=User.load,
     request=snug.Request('user'),
     connections={
         'issues': lambda _:
         snug.Collection(
             request=snug.Request('user/issues'),
-            load=Issue.list_load
+            load=Issue.load
         )
     }
 )
@@ -174,7 +174,7 @@ class Repo(snug.Resource):
         base_url = f'repos/{owner}/{name}/issues'
         return snug.QueryableSet(
             request=snug.Request(base_url),
-            item_load=Issue.item_load,
+            load=Issue.load,
             item_request=lambda issuenr:
                 snug.Request(f'{base_url}/{issuenr}'),
             subset_request=lambda filters:
