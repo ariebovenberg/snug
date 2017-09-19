@@ -41,25 +41,22 @@ class Departure(snug.Resource):
     """a train departure"""
     ride_number = xmlfield(apiname='RitNummer')
     time = xmlfield(apiname='VertrekTijd', load=parse_datetime)
-    delay = xmlfield(apiname='VertrekVertragingTekst')
+    delay = xmlfield(apiname='VertrekVertragingTekst', optional=True)
     destination = xmlfield(apiname='EindBestemming')
     train_type = xmlfield(apiname='TreinSoort')
-    route_text = xmlfield(apiname='RouteTekst')
+    route_text = xmlfield(apiname='RouteTekst', optional=True)
     carrier = xmlfield(apiname='Vervoerder')
     platform = xmlfield(apiname='VertrekSpoor')
-    travel_tip = xmlfield(apiname='ReisTip')
-    comments = xmlfield(apiname='Opmerkingen')
+    travel_tip = xmlfield(apiname='ReisTip', optional=True)
+    comments = xmlfield(apiname='Opmerkingen', optional=True)
 
     @staticmethod
     def subset_request(filters):
         return snug.Request('ns-api-avt', params=filters)
 
     def __str__(self):
-        try:
-            delay = f'[{self.delay}]'
-        except Exception:
-            delay = ''
-        return f'{self.time:%H:%M}{delay} - {self.destination}'
+        delaytext = f'[{self.delay}]' if self.delay else ''
+        return f'{self.time:%H:%M}{delaytext} - {self.destination}'
 
 
 Station.ALL = snug.Collection(
