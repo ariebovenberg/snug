@@ -53,8 +53,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'snug'
-copyright = '2017, Arie Bovenberg'
-author = 'Arie Bovenberg'
+copyright = snug.__copyright__
+author = snug.__author__
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

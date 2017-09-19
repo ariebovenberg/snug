@@ -3,22 +3,22 @@ from setuptools import setup, find_packages
 
 local_path = Path(__file__).parent.joinpath
 
-version_namespace = {}
-exec(local_path('snug/__info__.py').open().read(), version_namespace)
+metadata = {}
+exec(local_path('snug/__about__.py').read_text(), metadata)
 
-readme = local_path('README.rst').open().read()
-history = local_path('HISTORY.rst').open().read()
+readme = local_path('README.rst').read_text()
+history = local_path('HISTORY.rst').read_text()
 
 
 setup(
     name='snug',
-    version=version_namespace['__version__'],
+    version=metadata['__version__'],
     description='Wrap REST APIs to fit nicely into your python code',
     license='MIT',
     long_description=readme + '\n\n' + history,
     url='https://github.com/ariebovenberg/snug',
 
-    author='Arie Bovenberg',
+    author=metadata['__author__'],
     author_email='a.c.bovenberg@gmail.com',
 
     classifiers=[
