@@ -325,4 +325,7 @@ def _mapping_getitem(obj, key):
 
 @getitem.register(lxml.objectify.ObjectifiedElement)
 def _lxml_getitem(obj, key):
-    return attrgetter(key)(obj)
+    try:
+        return attrgetter(key)(obj)
+    except AttributeError as e:
+        raise LookupError(*e.args)
