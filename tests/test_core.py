@@ -108,6 +108,11 @@ class TestField:
         email = Email.load({'subject': 'foo'})
         assert email.subject == 'foo'
 
+        broken_email = Email.load({'sender': 'me'})
+
+        with pytest.raises(KeyError):
+            broken_email.subject
+
     def test_load(self):
 
         class User(snug.Resource):
@@ -124,6 +129,14 @@ class TestField:
 
         assert Comment.is_archived.apiname == 'archived'
         assert Comment.user.apiname == 'user'
+
+    def test_load_optional(self):
+
+        class User(snug.Resource):
+            nickname = snug.Field(optional=True)
+
+        user = User.load(dict(name='bob'))
+        assert user.nickname is None
 
 
 class TestResource:

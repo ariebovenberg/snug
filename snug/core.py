@@ -103,6 +103,18 @@ class Lookup(Requestable, utils.Slots):
         return connection(self)
 
 
+class SubSet(Requestable, utils.Slots):
+    """A filtered subset"""
+    source:  Filterable
+    filters: _Filters = {}
+
+    def __request__(self):
+        return self.source.subset_request(self.filters)
+
+    def __load_response__(self, objs):
+        return list(map(self.source.load, objs))
+
+
 class Node(Requestable, utils.Slots):
     """a simple, single requestable item"""
     load:        t.Callable
@@ -181,18 +193,6 @@ class Collection(Requestable, utils.Slots):
         return list(map(self.load, objs))
 
 
-class SubSet(Requestable, utils.Slots):
-    """A filtered subset"""
-    source:  Filterable
-    filters: _Filters = {}
-
-    def __request__(self):
-        return self.source.subset_request(self.filters)
-
-    def __load_response__(self, objs):
-        return list(map(self.source.load, objs))
-
-
 class Connection(utils.Slots):
     func: t.Callable
 
@@ -260,6 +260,7 @@ class Field(utils.Slots):
     apiname:  t.Optional[str] = None
     name:     str = None
     resource: ResourceClass = None
+    optional: bool = False
 
     def __set_name__(self, resource, name):
         self.resource, self.name = resource, name
@@ -270,9 +271,18 @@ class Field(utils.Slots):
         """part of the descriptor protocol.
         On a class, returns the field.
         On an instance, returns the field value"""
-        return (self
-                if instance is None
-                else self.load(getitem(instance.api_obj, self.apiname)))
+        if instance is None:  # i.e. lookup on class
+            return self
+
+        try:
+            raw_value = getitem(instance.api_obj, self.apiname)
+        except LookupError:
+            if self.optional:
+                return None
+            else:
+                raise
+
+        return self.load(raw_value)
 
 
 class Resource(metaclass=ResourceClass):
