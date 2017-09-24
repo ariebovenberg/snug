@@ -3,9 +3,9 @@ import operator
 from datetime import datetime
 
 import snug
-from snug.utils import partial
+from toolz import flip, partial
 
-parse_datetime = partial(datetime.strptime, ..., '%Y-%m-%dT%H:%M:%SZ')
+parse_datetime = partial(flip(datetime.strptime), '%Y-%m-%dT%H:%M:%SZ')
 
 _repr = reprlib.Repr()
 _repr.maxstring = 45

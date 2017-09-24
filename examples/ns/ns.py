@@ -4,9 +4,10 @@ from datetime import datetime
 
 import snug
 import lxml
-from snug.utils import partial, compose
+from dataclasses import dataclass, astuple
+from toolz import compose, partial, flip
 
-parse_datetime = partial(datetime.strptime, ..., '%Y-%m-%dT%H:%M:%S%z')
+parse_datetime = partial(flip(datetime.strptime), '%Y-%m-%dT%H:%M:%S%z')
 parse_bool = dict(true=True, false=False).__getitem__
 
 
@@ -166,12 +167,13 @@ class Journey(snug.Resource):
                 + (' (!)' if self.notifications else ''))
 
 
-class JourneyOptionsQuery(snug.Requestable, snug.utils.Slots):
+@dataclass(frozen=True)
+class JourneyOptionsQuery(snug.Requestable):
     start: str
     end: str
 
     def __request__(self):
-        params = dict(zip(('fromStation', 'toStation'), self._astuple()))
+        params = dict(zip(('fromStation', 'toStation'), astuple(self)))
         return snug.Request('treinplanner', params=params)
 
     def __load_response__(self, response):
