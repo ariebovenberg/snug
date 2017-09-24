@@ -232,10 +232,9 @@ class ResourceClass(Queryable, type):
 
 class Api(utils.Slots):
     """an API endpoint"""
-    resources:      t.Set[ResourceClass]
+    prefix:         str
     parse_response: t.Callable[[requests.Response], t.Any]
     headers:        t.Mapping[str, str] = {}
-    prefix:         str = 'https: //'
 
     def request(self, request) -> Request:
         return request._replace(
