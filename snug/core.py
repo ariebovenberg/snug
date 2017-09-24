@@ -292,7 +292,7 @@ class Resource(metaclass=ResourceClass):
         return '{0.__class__.__name__} object'.format(self)
 
     def __repr__(self):
-        return '<{0.__module__}.{0.__class__.__name__}: {0}>'.format(self)
+        return '<{0.__class__.__name__}: {0}>'.format(self)
 
 
 class Session(utils.Slots):

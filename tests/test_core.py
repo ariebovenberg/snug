@@ -165,13 +165,11 @@ class TestResource:
             def __str__(self):
                 return 'foo'
 
-        User.__module__ = 'mysite'
-
         # instance repr
         user = User()
-        assert repr(user) == '<mysite.User: foo>'
+        assert repr(user) == '<User: foo>'
         del User.__str__
-        assert repr(user) == '<mysite.User: User object>'
+        assert repr(user) == '<User: User object>'
 
 
 class TestResourceClass:
