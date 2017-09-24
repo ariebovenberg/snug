@@ -229,7 +229,7 @@ class TestGetitem:
             snug.core.getitem({'foo': 4}, 'blabla', True)
 
     def test_xml_item(self):
-        xml = lxml.objectify.fromstring('''
+        xml = lxml.etree.fromstring('''
         <MyRoot>
           <MyParent>
             <Child1>foo</Child1>

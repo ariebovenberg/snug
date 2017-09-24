@@ -327,7 +327,7 @@ def _mapping_getitem(obj, key, aslist):
     return obj[key]
 
 
-@getitem.register(lxml.objectify.ObjectifiedElement)
+@getitem.register(lxml.etree._Element)
 def _lxml_getitem(obj, key: str, aslist: bool):
     values = obj.xpath(key)
     if not values:
