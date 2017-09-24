@@ -11,6 +11,11 @@ _repr = reprlib.Repr()
 _repr.maxstring = 45
 
 
+api = snug.Api('https://api.github.com/',
+               headers={'Accept': 'application/vnd.github.v3+json'},
+               parse_response=operator.methodcaller('json'))
+
+
 class Issue(snug.Resource):
     number = snug.Field()
     title = snug.Field()
@@ -221,9 +226,3 @@ class Organization(snug.Resource):
     @staticmethod
     def item_request(key):
         return snug.Request(f'orgs/{key}')
-
-
-api = snug.Api(prefix='https://api.github.com/',
-               headers={'Accept': 'application/vnd.github.v3+json'},
-               parse_response=operator.methodcaller('json'),
-               resources={Organization, Repo})
