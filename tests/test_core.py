@@ -138,6 +138,19 @@ class TestField:
         user = User.load(dict(name='bob'))
         assert user.nickname is None
 
+    @mock.patch('snug.core.getitem', autospec=True,
+                return_value=['foo', 'bar'])
+    def test_list(self, getitem):
+
+        class User(snug.Resource):
+            hobbies = snug.Field(list=True)
+
+        User = User.load(object())
+
+        assert User.hobbies == getitem.return_value
+
+        getitem.assert_called_once_with(mock.ANY, 'hobbies', aslist=True)
+
 
 class TestResource:
 

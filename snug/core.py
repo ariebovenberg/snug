@@ -255,11 +255,12 @@ class Field(utils.Slots):
     apiname
         the name of the field on the api object
     """
-    load:     t.Callable = utils.identity
     apiname:  t.Optional[str] = None
+    load:     t.Callable = utils.identity
     name:     str = None
     resource: ResourceClass = None
     optional: bool = False
+    list:     bool = False
 
     def __set_name__(self, resource, name):
         self.resource, self.name = resource, name
@@ -274,14 +275,18 @@ class Field(utils.Slots):
             return self
 
         try:
-            raw_value = getitem(instance.api_obj, self.apiname)
+            raw_value = getitem(instance.api_obj, self.apiname,
+                                aslist=self.list)
         except LookupError:
             if self.optional:
                 return None
             else:
                 raise
 
-        return self.load(raw_value)
+        if self.list:
+            return list(map(self.load, raw_value))
+        else:
+            return self.load(raw_value)
 
 
 class Resource(metaclass=ResourceClass):
