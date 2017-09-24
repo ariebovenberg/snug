@@ -9,6 +9,11 @@ def identity(obj):
     return obj
 
 
+def one(iterable):
+    value, = iterable
+    return value
+
+
 class compose:
     """a function composed of various functions"""
 

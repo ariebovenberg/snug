@@ -210,25 +210,27 @@ class TestGetitem:
             snug.core.getitem(object(), 'foo')
 
     def test_mapping(self):
-        assert snug.core.getitem({'foo': 4}, 'foo') == 4
+        assert snug.core.getitem({'foo': 4}, 'foo', False) == 4
 
         with pytest.raises(LookupError, match='blabla'):
-            snug.core.getitem({'foo': 4}, 'blabla')
+            snug.core.getitem({'foo': 4}, 'blabla', True)
 
     def test_xml_item(self):
         xml = lxml.objectify.fromstring('''
         <MyRoot>
           <MyParent>
             <Child1>foo</Child1>
-            <Child2>bar</Child2>
+            <Child1>bar</Child1>
           </MyParent>
         </MyRoot>
         ''')
-        assert snug.core.getitem(xml, 'MyParent.Child2') == 'bar'
-        assert snug.core.getitem(xml, 'MyParent').Child1 == 'foo'
+        assert snug.core.getitem(xml, 'MyParent/Child1[1]/text()',
+                                 aslist=False) == 'foo'
+        assert snug.core.getitem(xml, 'MyParent/Child1/text()',
+                                 aslist=True) == ['foo', 'bar']
 
         with pytest.raises(LookupError, match='blabla'):
-            snug.core.getitem(xml, 'MyParent.blabla')
+            snug.core.getitem(xml, 'MyParent.blabla', aslist=True)
 
 
 def test_set(Post):

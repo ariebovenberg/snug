@@ -3,7 +3,6 @@ import abc
 import collections
 import typing as t
 from functools import singledispatch
-from operator import attrgetter
 
 import requests
 import lxml.objectify
@@ -313,19 +312,19 @@ class Session(utils.Slots):
 
 
 @singledispatch
-def getitem(obj, key):
+def getitem(obj, key: str, aslist: bool):
     """get a value from an API object"""
     raise TypeError(obj)
 
 
 @getitem.register(collections.Mapping)
-def _mapping_getitem(obj, key):
+def _mapping_getitem(obj, key, aslist):
     return obj[key]
 
 
 @getitem.register(lxml.objectify.ObjectifiedElement)
-def _lxml_getitem(obj, key):
-    try:
-        return attrgetter(key)(obj)
-    except AttributeError as e:
-        raise LookupError(*e.args)
+def _lxml_getitem(obj, key: str, aslist: bool):
+    values = obj.xpath(key)
+    if not values:
+        raise LookupError(key)
+    return values if aslist else utils.one(values)
