@@ -1,37 +1,37 @@
-"""The core components of the ORM: sessions, resources, and fields"""
+"""The core components"""
 import abc
 import collections
 import typing as t
-from functools import singledispatch
+from functools import singledispatch, partial
 
 import requests
-import lxml.objectify
+import lxml.etree
+from dataclasses import dataclass, field
+from toolz import identity
 
-from . import utils
+from .utils import onlyone, replace
 
 
-ApiObject = t.Union[t.Mapping[str, object],
-                    lxml.objectify.ObjectifiedElement]
 Key = t.Union[str, int]
 _Filters = t.Mapping[str, t.Any]
+_dictfield = partial(field, default_factory=dict)
 
 
-class Request(utils.Slots):
+@dataclass(frozen=True)
+class Request:
     """a simple HTTP request"""
     url:     str
-    params:  t.Mapping[str, str] = {}
-    headers: t.Mapping[str, str] = {}
+    params:  t.Mapping[str, str] = _dictfield()
+    headers: t.Mapping[str, str] = _dictfield()
 
 
 class Requestable(abc.ABC):
     """mixin for objects which may be requested from an API"""
     __slots__ = ()
 
-    @abc.abstractmethod
     def __request__(self) -> Request:
         raise NotImplementedError()
 
-    @abc.abstractmethod
     def __load_response__(self, response: requests.Response):
         raise NotImplementedError()
 
@@ -40,15 +40,12 @@ class Indexable(abc.ABC):
     """mixin for objects which support item lookup by key"""
     __slots__ = ()
 
-    @abc.abstractmethod
     def load(self, response):
         raise NotImplementedError()
 
-    @abc.abstractmethod
     def item_request(self, key) -> Request:
         raise NotImplementedError()
 
-    @abc.abstractmethod
     def item_connections(self):
         raise NotImplementedError()
 
@@ -60,11 +57,9 @@ class Filterable(abc.ABC):
     """mixin for objects to support creating filtered subsets"""
     __slots__ = ()
 
-    @abc.abstractmethod
     def load(self, response):
         raise NotImplementedError()
 
-    @abc.abstractmethod
     def subset_request(self, filters) -> Request:
         # TODO: method to validate filters
         raise NotImplementedError()
@@ -83,7 +78,8 @@ class Queryable(Indexable, Filterable):
         return super_.__getitem__(self, key_or_filters)
 
 
-class Lookup(Requestable, utils.Slots):
+@dataclass(frozen=True)
+class Lookup(Requestable):
     """A node selected from an index"""
     index: Indexable
     key:   Key
@@ -102,10 +98,11 @@ class Lookup(Requestable, utils.Slots):
         return connection(self)
 
 
-class SubSet(Requestable, utils.Slots):
+@dataclass(frozen=True)
+class SubSet(Requestable):
     """A filtered subset"""
     source:  Filterable
-    filters: _Filters = {}
+    filters: _Filters = _dictfield()
 
     def __request__(self):
         return self.source.subset_request(self.filters)
@@ -114,11 +111,12 @@ class SubSet(Requestable, utils.Slots):
         return list(map(self.source.load, objs))
 
 
-class Node(Requestable, utils.Slots):
+@dataclass(frozen=True)
+class Node(Requestable):
     """a simple, single requestable item"""
     load:        t.Callable
     request:     Request
-    connections: t.Mapping[str, t.Callable] = {}
+    connections: t.Mapping[str, t.Callable] = _dictfield()
 
     def __request__(self):
         return self.request
@@ -134,7 +132,8 @@ class Node(Requestable, utils.Slots):
         return conn(self)
 
 
-class FilterableSet(Filterable, utils.Slots):
+@dataclass(frozen=True)
+class FilterableSet(Filterable):
     """a basic ``Filterable``"""
     load:           t.Callable
     subset_request: t.Callable[[_Filters], Request]
@@ -143,11 +142,12 @@ class FilterableSet(Filterable, utils.Slots):
         return self.subset_request({})
 
 
-class IndexableSet(Indexable, Requestable, utils.Slots):
+@dataclass(frozen=True)
+class IndexableSet(Indexable, Requestable):
     request:         Request
     load:            t.Callable
     item_request:    t.Callable
-    item_connections: t.Mapping[str, t.Callable] = {}
+    item_connections: t.Mapping[str, t.Callable] = _dictfield()
 
     def __request__(self):
         return self.request
@@ -157,13 +157,14 @@ class IndexableSet(Indexable, Requestable, utils.Slots):
         return list(map(self.load, response))
 
 
-class QueryableSet(Queryable, Requestable, utils.Slots):
+@dataclass(frozen=True)
+class QueryableSet(Queryable, Requestable):
     """a filterable and indexable set"""
     request:          Request
     load:             t.Callable
     item_request:     t.Callable
     subset_request:   t.Callable[[_Filters], Request]
-    item_connections: t.Mapping[str, t.Callable] = {}
+    item_connections: t.Mapping[str, t.Callable] = _dictfield()
 
     def __request__(self):
         return self.request
@@ -173,14 +174,17 @@ class QueryableSet(Queryable, Requestable, utils.Slots):
         return list(map(self.load, response))
 
 
-class Index(Indexable, utils.Slots):
+@Indexable.register
+@dataclass(frozen=True)
+class Index(Indexable):
     """a basic ``Indexable``"""
     load:             t.Callable
     item_request:     t.Callable[[Key], Request]
-    item_connections: t.Mapping[str, t.Callable] = {}
+    item_connections: t.Mapping[str, t.Callable] = _dictfield()
 
 
-class Collection(Requestable, utils.Slots):
+@dataclass(frozen=True)
+class Collection(Requestable):
     """a simple atomic set"""
     load:    t.Callable
     request: Request
@@ -192,7 +196,8 @@ class Collection(Requestable, utils.Slots):
         return list(map(self.load, objs))
 
 
-class Connection(utils.Slots):
+@dataclass(frozen=True)
+class Connection:
     func: t.Callable
 
     def __call__(self, item):
@@ -230,20 +235,21 @@ class ResourceClass(Queryable, type):
         return instance
 
 
-class Api(utils.Slots):
+@dataclass(frozen=True)
+class Api:
     """an API endpoint"""
     prefix:         str
     parse_response: t.Callable[[requests.Response], t.Any]
-    headers:        t.Mapping[str, str] = {}
+    headers:        t.Mapping[str, str] = _dictfield()
 
     def request(self, request) -> Request:
-        return request._replace(
-            url=self.prefix + request.url,
-            headers={**request.headers, **self.headers},
-        )
+        return replace(request,
+                       url=self.prefix + request.url,
+                       headers={**request.headers, **self.headers})
 
 
-class Field(utils.Slots):
+@dataclass
+class Field:
     """an attribute accessor for a resource.
     Implements python's descriptor protocol
 
@@ -254,9 +260,9 @@ class Field(utils.Slots):
     apiname
         the name of the field on the api object
     """
-    apiname:  t.Optional[str] = None
-    load:     t.Callable = utils.identity
-    name:     str = None
+    apiname:  str = None  # if not given, will be set when bound to a class
+    load:     t.Callable = identity
+    name:     str = None  # set when bound to a class
     resource: ResourceClass = None
     optional: bool = False
     list:     bool = False
@@ -298,11 +304,12 @@ class Resource(metaclass=ResourceClass):
         return '<{0.__class__.__name__}: {0}>'.format(self)
 
 
-class Session(utils.Slots):
+@dataclass(frozen=True)
+class Session:
     """an API session"""
     api:    Api
     auth:   t.Optional[t.Tuple[str, str]] = None
-    client: requests.Session = requests.Session()
+    client: requests.Session = field(default_factory=requests.Session)
 
     def get(self, query: Requestable):
         request = self.api.request(req(query))
@@ -331,4 +338,4 @@ def _lxml_getitem(obj, key: str, aslist: bool):
     values = obj.xpath(key)
     if not values:
         raise LookupError(key)
-    return values if aslist else utils.one(values)
+    return values if aslist else onlyone(values)

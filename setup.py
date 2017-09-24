@@ -33,6 +33,8 @@ setup(
     install_requires=[
         'requests>=2.13.0,<3',
         'lxml>=3.8.0,<4',
+        'dataclasses>=0.1,<0.2',
+        'toolz>=0.8.2,<0.9',
     ],
     python_requires='>=3.6',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))

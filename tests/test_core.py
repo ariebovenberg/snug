@@ -5,7 +5,7 @@ import pytest
 import requests
 
 import snug
-from snug.utils import compose, identity
+from toolz import compose, identity
 
 
 @pytest.fixture
