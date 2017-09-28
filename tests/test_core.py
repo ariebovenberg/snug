@@ -228,6 +228,7 @@ class TestGetitem:
 
 def test_set(set_, Post):
     assert isinstance(set_, snug.Requestable)
+    assert set_.TYPE is Post
 
     posts = snug.load(set_, [
         {'title': 'hello',
@@ -247,5 +248,8 @@ def test_indexable(indexable):
 
 
 def test_item(item, Post):
-    pass
+    assert item.TYPE is Post
+    assert isinstance(item, snug.Requestable)
 
+    post = snug.load(item, {'title': 'hello', 'body': 'message', 'author': 1})
+    assert isinstance(post, Post)
