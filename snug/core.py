@@ -1,4 +1,9 @@
-"""The core components"""
+"""The core components
+
+Todos
+-----
+* senibly binding connection classes
+"""
 import abc
 import collections
 import typing as t
@@ -11,9 +16,6 @@ from toolz import identity
 
 from .utils import onlyone, replace
 
-
-Key = t.Union[str, int]
-_Filters = t.Mapping[str, t.Any]
 _dictfield = partial(field, default_factory=dict)
 
 
@@ -27,7 +29,6 @@ class Request:
 
 class Requestable(abc.ABC):
     """mixin for objects which may be requested from an API"""
-    __slots__ = ()
 
     def __request__(self) -> Request:
         raise NotImplementedError()
@@ -38,170 +39,43 @@ class Requestable(abc.ABC):
 
 class Indexable(abc.ABC):
     """mixin for objects which support item lookup by key"""
-    __slots__ = ()
 
-    def load(self, response):
+    def lookup(self, *args, **kwargs) -> Requestable:
         raise NotImplementedError()
 
-    def item_request(self, key) -> Request:
-        raise NotImplementedError()
-
-    def item_connections(self):
-        raise NotImplementedError()
-
-    def __getitem__(self, key) -> 'Lookup':
-        return Lookup(self, key)
+    def __getitem__(self, key) -> Requestable:
+        return (self.lookup(*key) if isinstance(key, tuple)
+                else self.lookup(key))
 
 
-class Filterable(abc.ABC):
-    """mixin for objects to support creating filtered subsets"""
-    __slots__ = ()
+class BoundMeta(abc.ABCMeta):
 
-    def load(self, response):
-        raise NotImplementedError()
+    def __set_name__(self, kls, name):
+        self.TYPE = getattr(self, 'TYPE', None) or kls
+        self.__name__ = f'{kls.__name__}.{self.__name__}'
 
-    def subset_request(self, filters) -> Request:
-        # TODO: method to validate filters
-        raise NotImplementedError()
-
-    def __getitem__(self, filters) -> 'SubSet':
-        return SubSet(self, {} if filters == slice(None) else filters)
+    def __get__(self, instance, cls):
+        if instance is None:
+            return self
+        else:
+            return partial(self, instance)
 
 
-class Queryable(Indexable, Filterable):
-    """an object both indexable and filterable"""
-    __slots__ = ()
-
-    def __getitem__(self, key_or_filters):
-        super_ = (Filterable if isinstance(key_or_filters, (dict, slice))
-                  else Index)
-        return super_.__getitem__(self, key_or_filters)
-
-
-@dataclass(frozen=True)
-class Lookup(Requestable):
-    """A node selected from an index"""
-    index: Indexable
-    key:   Key
-
-    def __request__(self):
-        return self.index.item_request(self.key)
-
-    def __load_response__(self, obj):
-        return self.index.load(obj)
-
-    def __getattr__(self, name):
-        try:
-            connection = self.index.item_connections[name]
-        except KeyError:
-            raise AttributeError()
-        return connection(self)
-
-
-@dataclass(frozen=True)
-class SubSet(Requestable):
-    """A filtered subset"""
-    source:  Filterable
-    filters: _Filters = _dictfield()
-
-    def __request__(self):
-        return self.source.subset_request(self.filters)
-
-    def __load_response__(self, objs):
-        return list(map(self.source.load, objs))
-
-
-@dataclass(frozen=True)
-class Node(Requestable):
-    """a simple, single requestable item"""
-    load:        t.Callable
-    request:     Request
-    connections: t.Mapping[str, t.Callable] = _dictfield()
-
-    def __request__(self):
-        return self.request
-
-    def __load_response__(self, obj):
-        return self.load(obj)
-
-    def __getattr__(self, name):
-        try:
-            conn = self.connections[name]
-        except KeyError:
-            raise AttributeError()
-        return conn(self)
-
-
-@dataclass(frozen=True)
-class FilterableSet(Filterable):
-    """a basic ``Filterable``"""
-    load:           t.Callable
-    subset_request: t.Callable[[_Filters], Request]
-
-    def __request__(self):
-        return self.subset_request({})
-
-
-@dataclass(frozen=True)
-class IndexableSet(Indexable, Requestable):
-    request:         Request
-    load:            t.Callable
-    item_request:    t.Callable
-    item_connections: t.Mapping[str, t.Callable] = _dictfield()
-
-    def __request__(self):
-        return self.request
+class Item(Requestable, metaclass=BoundMeta):
+    """a parametrized item"""
 
     def __load_response__(self, response):
-        # TODO: generalize
-        return list(map(self.load, response))
+        return self.TYPE.load(response)
 
 
-@dataclass(frozen=True)
-class QueryableSet(Queryable, Requestable):
-    """a filterable and indexable set"""
-    request:          Request
-    load:             t.Callable
-    item_request:     t.Callable
-    subset_request:   t.Callable[[_Filters], Request]
-    item_connections: t.Mapping[str, t.Callable] = _dictfield()
+class Set(Requestable, metaclass=BoundMeta):
+    """abc for a collection of objects with a type"""
 
-    def __request__(self):
-        return self.request
+    def select(self, **kwargs) -> 'Set':
+        return replace(self, **kwargs)
 
-    def __load_response__(self, response):
-        # TODO: generalize
-        return list(map(self.load, response))
-
-
-@Indexable.register
-@dataclass(frozen=True)
-class Index(Indexable):
-    """a basic ``Indexable``"""
-    load:             t.Callable
-    item_request:     t.Callable[[Key], Request]
-    item_connections: t.Mapping[str, t.Callable] = _dictfield()
-
-
-@dataclass(frozen=True)
-class Collection(Requestable):
-    """a simple atomic set"""
-    load:    t.Callable
-    request: Request
-
-    def __request__(self):
-        return self.request
-
-    def __load_response__(self, objs):
-        return list(map(self.load, objs))
-
-
-@dataclass(frozen=True)
-class Connection:
-    func: t.Callable
-
-    def __call__(self, item):
-        return self.func(item)
+    def __load_response__(self, response) -> t.Any:
+        return list(map(self.TYPE.load, response))
 
 
 def req(obj: Requestable) -> Request:
@@ -212,18 +86,14 @@ def load(obj: Requestable, response: requests.Response) -> t.Any:
     return obj.__load_response__(response)
 
 
-class ResourceClass(Queryable, type):
+class ResourceClass(Indexable, type):
     """Metaclass for resource classes"""
 
     def __new__(cls, name, bases, dct):
         dct.update({
             'FIELDS': collections.OrderedDict(
                 (name, obj) for name, obj in dct.items()
-                if isinstance(obj, Field)),
-            'item_connections': {
-                name: obj for name, obj in dct.items()
-                if isinstance(obj, Connection)
-            }})
+                if isinstance(obj, Field))})
         return super().__new__(cls, name, bases, dct)
 
     def __repr__(self):
@@ -263,14 +133,13 @@ class Field:
     apiname:  str = None  # if not given, will be set when bound to a class
     load:     t.Callable = identity
     name:     str = None  # set when bound to a class
-    resource: ResourceClass = None
+    resource: ResourceClass = None  # set when bound to a class
     optional: bool = False
     list:     bool = False
 
     def __set_name__(self, resource, name):
         self.resource, self.name = resource, name
-        if not self.apiname:
-            self.apiname = name
+        self.apiname = self.apiname or name
 
     def __get__(self, instance, cls):
         """part of the descriptor protocol.

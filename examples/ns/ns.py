@@ -1,4 +1,5 @@
 import enum
+import typing as t
 from operator import attrgetter
 from datetime import datetime
 
@@ -6,6 +7,7 @@ import snug
 import lxml
 from dataclasses import dataclass, astuple
 from toolz import compose, partial, flip
+from snug.utils import filteritems
 
 parse_datetime = partial(flip(datetime.strptime), '%Y-%m-%dT%H:%M:%S%z')
 parse_bool = dict(true=True, false=False).__getitem__
@@ -37,11 +39,13 @@ class Station(snug.Resource):
         country_suffix = f' ({self.country})' if self.country != 'NL' else ''
         return self.full_name + country_suffix
 
+    @dataclass(frozen=True)
+    class _selection(snug.Set):
 
-Station.ALL = snug.Collection(
-    load=Station.load,
-    request=snug.Request('stations-v2')
-)
+        def __request__(self):
+            return snug.Request('stations-v2')
+
+    ALL = _selection()
 
 
 class Departure(snug.Resource):
@@ -57,9 +61,12 @@ class Departure(snug.Resource):
     travel_tip = snug.Field(apiname='ReisTip/text()', optional=True)
     comments = snug.Field(apiname='Opmerkingen/text()', optional=True)
 
-    @staticmethod
-    def subset_request(filters):
-        return snug.Request('avt', params=filters)
+    @dataclass(frozen=True)
+    class selection(snug.Set):
+        station: str
+
+        def __request__(self):
+            return snug.Request('avt', params={'station': self.station})
 
     def __str__(self):
         delaytext = f'[{self.delay}]' if self.delay else ''
@@ -166,18 +173,28 @@ class Journey(snug.Resource):
                 f' | {self.actual_duration} | {self.transfer_count}'
                 + (' (!)' if self.notifications else ''))
 
+    @dataclass(frozen=True)
+    class options(snug.Set):
+        start:     str
+        end:       str
+        via:       t.Optional[str] = None
+        before:    t.Optional[int] = None
+        after:     t.Optional[int] = None
+        time:      t.Optional[datetime] = None
+        hsl:       t.Optional[bool] = None
+        year_card: t.Optional[bool] = None
 
-@dataclass(frozen=True)
-class JourneyOptionsQuery(snug.Requestable):
-    start: str
-    end: str
+        APINAMES = [
+            'fromStation',
+            'toStation',
+            'viaStation',
+            'previousAdvices',
+            'nextAdvices',
+            'dateTime',
+            'hslAllowed',
+            'yearCard',
+        ]
 
-    def __request__(self):
-        params = dict(zip(('fromStation', 'toStation'), astuple(self)))
-        return snug.Request('treinplanner', params=params)
-
-    def __load_response__(self, response):
-        return list(map(Journey.load, response))
-
-
-journey_options = JourneyOptionsQuery
+        def __request__(self):
+            params = dict(filteritems(zip(self.APINAMES, astuple(self))))
+            return snug.Request('treinplanner', params=params)

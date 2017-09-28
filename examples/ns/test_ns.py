@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 import snug
 import ns
 
@@ -10,45 +12,58 @@ auth = tuple(json.loads(CRED_PATH.read_bytes()))
 my_ns = snug.Session(api=ns.api, auth=auth)
 
 all_stations = ns.Station.ALL
-utrecht_departures = ns.Departure[dict(station='ut')]
+utrecht_departures = ns.Departure.selection(station='ut')
+travel_options = ns.Journey.options(start='breda', end='amsterdam')
+travel_options_no_hsl = travel_options.select(hsl='false')
+
+live = pytest.config.getoption('--live')
 
 
 def test_all_stations():
-    assert isinstance(all_stations, snug.Collection)
+    assert isinstance(all_stations, snug.Set)
     assert snug.req(all_stations) == snug.Request('stations-v2')
 
-    stations = my_ns.get(all_stations)
-    print(stations)
+    if live:
+        stations = my_ns.get(all_stations)
 
-    assert isinstance(stations, list)
+        assert isinstance(stations, list)
 
-    amsterdam_stations = [s for s in stations
-                          if s.full_name.startswith('Amsterdam')]
-    assert len(amsterdam_stations) == 11
+        amsterdam_stations = [s for s in stations
+                              if s.full_name.startswith('Amsterdam')]
+        assert len(amsterdam_stations) == 11
 
-    den_bosch = stations[0]
-    assert den_bosch.synonyms == ["Hertogenbosch ('s)", 'Den Bosch']
+        den_bosch = stations[0]
+        assert den_bosch.synonyms == ["Hertogenbosch ('s)", 'Den Bosch']
 
 
 def test_departures():
-    assert isinstance(ns.Departure, snug.Filterable)
-    assert isinstance(utrecht_departures, snug.SubSet)
+    assert isinstance(utrecht_departures, snug.Set)
     assert snug.req(utrecht_departures) == snug.Request(
         'avt', params=dict(station='ut'))
 
-    departures = my_ns.get(utrecht_departures)
+    if live:
+        departures = my_ns.get(utrecht_departures)
 
-    assert len(departures) >= 10
-    print(departures)
-    departure = departures[0]
-    assert isinstance(departure, ns.Departure)
+        assert len(departures) >= 10
+        departure = departures[0]
+        assert isinstance(departure, ns.Departure)
 
 
 def test_journey_options():
-    options = ns.journey_options(start='breda', end='amsterdam')
-    assert isinstance(options, snug.Requestable)
-    assert snug.req(options)
+    assert isinstance(travel_options, snug.Set)
+    assert snug.req(travel_options) == snug.Request(
+        'treinplanner',
+        params={'fromStation': 'breda', 'toStation': 'amsterdam'})
 
-    options = my_ns.get(options)
-    assert len(options) >= 10
-    assert isinstance(options[0], ns.Journey)
+    if live:
+        options = my_ns.get(travel_options)
+        assert len(options) >= 10
+        assert isinstance(options[0], ns.Journey)
+
+        assert isinstance(travel_options_no_hsl, snug.Set)
+        assert snug.req(travel_options_no_hsl) == snug.Request(
+            'treinplanner',
+            params={'fromStation': 'breda',
+                    'toStation': 'amsterdam',
+                    'hslAllowed': 'false'}
+        )

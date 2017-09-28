@@ -1,9 +1,13 @@
-import reprlib
+import enum
 import operator
+import reprlib
+import typing as t
 from datetime import datetime
+from operator import truth
 
 import snug
-from toolz import flip, partial
+from toolz import flip, partial, valfilter
+from dataclasses import dataclass, asdict
 
 parse_datetime = partial(flip(datetime.strptime), '%Y-%m-%dT%H:%M:%SZ')
 
@@ -16,78 +20,8 @@ api = snug.Api('https://api.github.com/',
                parse_response=operator.methodcaller('json'))
 
 
-class Issue(snug.Resource):
-    number = snug.Field()
-    title = snug.Field()
-    body = snug.Field()
-    state = snug.Field()
-
-    def __str__(self):
-        return f'#{self.number} {self.title}'
-
-    @staticmethod
-    def subset_request(filters):
-        return snug.Request('issues', params=filters)
-
-    @staticmethod
-    def item_request(key):
-        owner, repo, number = key
-        return snug.Request(f'repos/{owner}/{repo}/issues/{number}')
-
-
-Issue.ASSIGNED = snug.Collection(
-    load=Issue.load,
-    request=snug.Request('issues')
-)
-
-
-class User(snug.Resource):
-    avatar_url = snug.Field()
-    bio = snug.Field()
-    blog = snug.Field()
-    company = snug.Field()
-    created_at = snug.Field()
-    email = snug.Field()
-    events_url = snug.Field()
-    followers = snug.Field()
-    followers_url = snug.Field()
-    following = snug.Field()
-    following_url = snug.Field()
-    gists_url = snug.Field()
-    gravatar_id = snug.Field()
-    hireable = snug.Field()
-    html_url = snug.Field()
-    id = snug.Field()
-    location = snug.Field()
-    login = snug.Field()
-    name = snug.Field()
-    organizations_url = snug.Field()
-    public_gists = snug.Field()
-    public_repos = snug.Field()
-    received_events_url = snug.Field()
-    repos_url = snug.Field()
-    site_admin = snug.Field()
-    starred_url = snug.Field()
-    subscriptions_url = snug.Field()
-    updated_at = snug.Field()
-    url = snug.Field()
-
-
-User.CURRENT = snug.Node(
-    load=User.load,
-    request=snug.Request('user'),
-    connections={
-        'issues': lambda _:
-        snug.Collection(
-            request=snug.Request('user/issues'),
-            load=Issue.load
-        )
-    }
-)
-
-
 class Repo(snug.Resource):
-
+    """a github repository"""
     name = snug.Field()
     archive_url = snug.Field()
     assignees_url = snug.Field()
@@ -164,30 +98,49 @@ class Repo(snug.Resource):
         return '{} - {}'.format(
             self.name, _repr.repr(self.description))
 
-    @staticmethod
-    def subset_request(filters):
-        return snug.Request('repositories', params=filters)
+    @dataclass(frozen=True)
+    class lookup(snug.Item):
+        """repository lookup by owner & name"""
+        owner: str
+        name:  str
 
-    @staticmethod
-    def item_request(key):
-        owner, name = key
-        return snug.Request(f'repos/{owner}/{name}')
+        def __request__(self):
+            return snug.Request(f'repos/{self.owner}/{self.name}')
 
-    @snug.Connection
-    def issues(item):
-        owner, name = item.key
-        base_url = f'repos/{owner}/{name}/issues'
-        return snug.QueryableSet(
-            request=snug.Request(base_url),
-            load=Issue.load,
-            item_request=lambda issuenr:
-                snug.Request(f'{base_url}/{issuenr}'),
-            subset_request=lambda filters:
-                snug.Request(base_url, params=filters)
-        )
+        @dataclass
+        class issues(snug.Indexable, snug.Set):
+            """a set of issues for a repository"""
+            repo: 'Repo.lookup'
+            labels: str = None
+            state: str = None
+
+            def __request__(self):
+                params = asdict(self)
+                params.pop('repo')
+                return snug.Request(
+                    f'repos/{self.repo.owner}/{self.repo.name}/issues',
+                    params=valfilter(truth, params))
+
+        @dataclass(frozen=True)
+        class issue(snug.Item):
+            repo: 'Repo.lookup'
+            number: int
+
+            def __request__(self):
+                return snug.Request(
+                    f'repos/{self.repo.owner}/'
+                    f'{self.repo.name}/issues/{self.number}')
+
+    @dataclass(frozen=True)
+    class selection(snug.Set):
+        """a selection on repositories"""
+
+        def __request__(self):
+            return snug.Request('repositories')
 
 
 class Organization(snug.Resource):
+    """a github organization"""
     avatar_url = snug.Field()
     blog = snug.Field()
     company = snug.Field()
@@ -213,16 +166,127 @@ class Organization(snug.Resource):
     repos_url = snug.Field()
     type = snug.Field()
 
+    @dataclass(frozen=True)
+    class lookup(snug.Item):
+        """Organization lookup by login"""
+        login: str
+
+        def __request__(self):
+            return snug.Request(f'orgs/{self.login}')
+
+    @dataclass(frozen=True)
+    class selection(snug.Set):
+
+        def __request__(self):
+            return snug.Request('organizations')
+
     def __str__(self):
         try:
             return self.name
         except KeyError:
             return self.login
 
-    @staticmethod
-    def subset_request(filters):
-        return snug.Request('organizations', params=filters)
 
-    @staticmethod
-    def item_request(key):
-        return snug.Request(f'orgs/{key}')
+class Issue(snug.Resource):
+    """a github issue or pull-request"""
+    number = snug.Field()
+    title = snug.Field()
+    body = snug.Field()
+    state = snug.Field()
+
+    def __str__(self):
+        return f'#{self.number} {self.title}'
+
+    class State(enum.Enum):
+        OPEN = 'open'
+        CLOSED = 'closed'
+        ALL = 'all'
+
+    class Sort(enum.Enum):
+        CREATED = 'created'
+        UPDATED = 'updated'
+        COMMENTS = 'comments'
+
+    class Filter(enum.Enum):
+        ASSIGNED = 'assigned'
+        CREATED = 'created'
+        MENTIONED = 'mentioned'
+        SUBSCRIBED = 'subscribed'
+        ALL = 'all'
+
+    @dataclass
+    class lookup(snug.Item):
+        """an issue referenced by repo & number"""
+        repo: t.Union['Repo', 'Repo.lookup']
+        number: int
+
+        def __request__(self):
+            return snug.Request(f'repos/{self.repo.owner}/{self.repo.name}/'
+                                f'issues/{self.number}')
+
+    @dataclass
+    class selection(snug.Set):
+        """a selection of assigned issues"""
+        filter: t.Optional[str] = None
+        state:  t.Optional['Issue.State'] = None
+        labels: t.Optional[str] = None
+        sort:   t.Optional['Issue.Sort'] = None
+        since:  t.Optional[datetime] = None
+
+        def __request__(self):
+            params = valfilter(truth, asdict(self))
+            return snug.Request('issues', params=params)
+
+
+class User(snug.Resource):
+    """a github user"""
+    avatar_url = snug.Field()
+    bio = snug.Field()
+    blog = snug.Field()
+    company = snug.Field()
+    created_at = snug.Field()
+    email = snug.Field()
+    events_url = snug.Field()
+    followers = snug.Field()
+    followers_url = snug.Field()
+    following = snug.Field()
+    following_url = snug.Field()
+    gists_url = snug.Field()
+    gravatar_id = snug.Field()
+    hireable = snug.Field()
+    html_url = snug.Field()
+    id = snug.Field()
+    location = snug.Field()
+    login = snug.Field()
+    name = snug.Field()
+    organizations_url = snug.Field()
+    public_gists = snug.Field()
+    public_repos = snug.Field()
+    received_events_url = snug.Field()
+    repos_url = snug.Field()
+    site_admin = snug.Field()
+    starred_url = snug.Field()
+    subscriptions_url = snug.Field()
+    updated_at = snug.Field()
+    url = snug.Field()
+
+    class _Current(snug.Item):
+
+        def __request__(self):
+            return snug.Request('user')
+
+        @dataclass(frozen=True)
+        class issues(snug.Set):
+            user: 'User'
+
+            def __request__(self):
+                return snug.Request('user/issues')
+
+    CURRENT = _Current()
+    """a reference to the current user"""
+
+
+# TODO: set this more nicely
+Repo.lookup.issues.TYPE = Issue
+Repo.lookup.issue.TYPE = Issue
+User._Current.issues.TYPE = Issue
