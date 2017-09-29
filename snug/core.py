@@ -2,7 +2,9 @@
 
 Todos
 -----
-* senibly binding connection classes
+* sensibly binding connection classes
+* serializing query params
+* simple set/item implementations
 """
 import abc
 import collections
@@ -49,12 +51,15 @@ class Indexable(abc.ABC):
 
 
 class BoundMeta(abc.ABCMeta):
+    """used to bind classes to the parent class in which they are declared"""
 
     def __set_name__(self, kls, name):
+        """when bound to a class, set the ``TYPE`` class variable"""
         self.TYPE = getattr(self, 'TYPE', None) or kls
         self.__name__ = f'{kls.__name__}.{self.__name__}'
 
     def __get__(self, instance, cls):
+        """as in a method, pass the current instance as first argument"""
         if instance is None:
             return self
         else:
@@ -62,27 +67,29 @@ class BoundMeta(abc.ABCMeta):
 
 
 class Item(Requestable, metaclass=BoundMeta):
-    """a parametrized item"""
+    """mixin for requestable items"""
 
     def __load_response__(self, response):
         return self.TYPE.load(response)
 
 
 class Set(Requestable, metaclass=BoundMeta):
-    """abc for a collection of objects with a type"""
+    """mixin for requestable sets"""
 
     def select(self, **kwargs) -> 'Set':
         return replace(self, **kwargs)
 
-    def __load_response__(self, response) -> t.Any:
+    def __load_response__(self, response):
         return list(map(self.TYPE.load, response))
 
 
 def req(obj: Requestable) -> Request:
+    """get the request for an object"""
     return obj.__request__()
 
 
-def load(obj: Requestable, response: requests.Response) -> t.Any:
+def load(obj: Requestable, response: requests.Response):
+    """load a request result into a query"""
     return obj.__load_response__(response)
 
 
@@ -120,16 +127,7 @@ class Api:
 
 @dataclass
 class Field:
-    """an attribute accessor for a resource.
-    Implements python's descriptor protocol
-
-    Parameters
-    ----------
-    load
-        callable to process a value from an API object to python
-    apiname
-        the name of the field on the api object
-    """
+    """an attribute accessor for a resource"""
     apiname:  str = None  # if not given, will be set when bound to a class
     load:     t.Callable = identity
     name:     str = None  # set when bound to a class
@@ -142,8 +140,7 @@ class Field:
         self.apiname = self.apiname or name
 
     def __get__(self, instance, cls):
-        """part of the descriptor protocol.
-        On a class, returns the field.
+        """On a class, returns the field.
         On an instance, returns the field value"""
         if instance is None:  # i.e. lookup on class
             return self
