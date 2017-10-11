@@ -139,7 +139,6 @@ class TestResource:
             user = snug.Field()
 
         assert Post.title.name == 'title'
-        assert Post.title.resource is Post
 
         expect_fields = {
             'title': Post.title,

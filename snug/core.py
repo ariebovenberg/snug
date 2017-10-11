@@ -7,7 +7,6 @@ Todos
 * simple set/item implementations
 * ``Response`` object
 """
-import abc
 import collections
 import typing as t
 from functools import singledispatch, partial
@@ -137,12 +136,11 @@ class Field:
     apiname:  str = None  # if not given, will be set when bound to a class
     load:     t.Callable = identity
     name:     str = None  # set when bound to a class
-    resource: ResourceClass = None  # set when bound to a class
     optional: bool = False
     list:     bool = False
 
     def __set_name__(self, resource, name):
-        self.resource, self.name = resource, name
+        self.name = name
         self.apiname = self.apiname or name
 
     def __get__(self, instance, cls):
