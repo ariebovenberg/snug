@@ -11,15 +11,15 @@ auth = tuple(json.loads(CRED_PATH.read_bytes()))
 
 my_github = snug.Session(gh.api, auth=auth)
 
-all_orgs = gh.Organization.selection()
-one_org = gh.Organization['github']
-one_repo = gh.Repo['github', 'hub']
-all_repos = gh.Repo.selection()
+all_orgs = gh.orgs()
+one_org = gh.org('github')
+one_repo = gh.repo('github', 'hub')
+all_repos = gh.repos()
 
-assigned_issues = gh.Issue.selection()
-one_issue = gh.Issue[one_repo, 123]
+assigned_issues = gh.issues()
+one_issue = gh.issue(one_repo, number=123)
 
-current_user = gh.User.CURRENT
+current_user = gh.current_user()
 my_issues = current_user.issues()
 
 repo_issues = one_repo.issues()
@@ -110,7 +110,7 @@ def test_current_user():
 def test_current_user_issues():
     assert isinstance(my_issues, snug.Set)
     assert snug.req(my_issues) == snug.Request('user/issues')
-    assert repo_issues.TYPE is gh.Issue
+    assert repo_issues.type is gh.Issue
 
     if live:
         issues = my_github.get(my_issues)
@@ -121,7 +121,7 @@ def test_all_repo_issues():
     assert isinstance(repo_issues, snug.Set)
     assert snug.req(repo_issues) == snug.Request(
         'repos/github/hub/issues')
-    assert repo_issues.TYPE is gh.Issue
+    assert repo_issues.type is gh.Issue
 
     if live:
         issues = my_github.get(repo_issues)
@@ -135,14 +135,14 @@ def test_one_repo_issue():
     assert isinstance(one_repo_issue, snug.Item)
     assert snug.req(one_repo_issue) == snug.Request(
         'repos/github/hub/issues/123')
-    assert one_repo_issue.TYPE is gh.Issue
+    assert one_repo_issue.type is gh.Issue
 
 
 def test_filtered_repo_issues():
     assert isinstance(one_repos_fixed_bugs, snug.Set)
     assert snug.req(one_repos_fixed_bugs) == snug.Request(
         'repos/github/hub/issues', params=dict(labels='bug', state='closed'))
-    assert one_repos_fixed_bugs.TYPE is gh.Issue
+    assert one_repos_fixed_bugs.type is gh.Issue
 
     if live:
         issues = my_github.get(one_repos_fixed_bugs)

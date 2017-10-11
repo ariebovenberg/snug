@@ -6,7 +6,6 @@ import requests
 from dataclasses import dataclass
 
 import snug
-from toolz import compose, identity
 
 
 @pytest.fixture
@@ -34,34 +33,25 @@ def Post():
         body = snug.Field()
         user = snug.Field()
 
-        class selection(snug.Set):
-
-            def __request__(self):
-                return snug.Request('polls/')
-
-        @dataclass
-        class lookup(snug.Item):
-            id: int
-
-            def __request__(self):
-                return snug.Request('polls/{}/'.format(self.id))
-
-    return Post
-
-
-@pytest.fixture
-def indexable(Post):
     return Post
 
 
 @pytest.fixture
 def set_(Post):
-    return Post.selection()
+    return snug.AtomicSet(type=Post, request=snug.Request('posts/recent/'))
 
 
 @pytest.fixture
 def item(Post):
-    return Post[32]
+
+    @dataclass(frozen=True)
+    class post(snug.Item, type=Post):
+        id: int
+
+        def __request__(self):
+            return snug.Request(f'posts/{self.id}/')
+
+    return post(32)
 
 
 @pytest.fixture
@@ -192,9 +182,6 @@ class TestResourceClass:
         assert isinstance(instance, Post)
         assert instance.api_obj is api_obj
 
-    def test_indexable(self, Post):
-        assert isinstance(Post, snug.Indexable)
-
 
 class TestGetitem:
 
@@ -228,7 +215,7 @@ class TestGetitem:
 
 def test_set(set_, Post):
     assert isinstance(set_, snug.Requestable)
-    assert set_.TYPE is Post
+    assert set_.type is Post
 
     posts = snug.load(set_, [
         {'title': 'hello',
@@ -242,13 +229,8 @@ def test_set(set_, Post):
     assert all(isinstance(p, Post) for p in posts)
 
 
-def test_indexable(indexable):
-    item = indexable[5]
-    assert item == indexable.lookup(5)
-
-
 def test_item(item, Post):
-    assert item.TYPE is Post
+    assert item.type is Post
     assert isinstance(item, snug.Requestable)
 
     post = snug.load(item, {'title': 'hello', 'body': 'message', 'author': 1})

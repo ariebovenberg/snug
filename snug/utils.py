@@ -1,5 +1,6 @@
 """Miscellaneous tools and boilerplate"""
 from operator import truth, itemgetter
+from functools import partial
 
 from dataclasses import asdict
 from toolz import compose
@@ -18,7 +19,4 @@ def replace(instance, **kwargs):
 
 
 _truthy_item = compose(truth, itemgetter(1))
-
-
-def filteritems(items):
-    return filter(_truthy_item, items)
+filteritems = partial(filter, _truthy_item)

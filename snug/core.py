@@ -5,6 +5,7 @@ Todos
 * sensibly binding connection classes
 * serializing query params
 * simple set/item implementations
+* ``Response`` object
 """
 import abc
 import collections
@@ -29,7 +30,7 @@ class Request:
     headers: t.Mapping[str, str] = _dictfield()
 
 
-class Requestable(abc.ABC):
+class Requestable:
     """mixin for objects which may be requested from an API"""
 
     def __request__(self) -> Request:
@@ -39,23 +40,10 @@ class Requestable(abc.ABC):
         raise NotImplementedError()
 
 
-class Indexable(abc.ABC):
-    """mixin for objects which support item lookup by key"""
-
-    def lookup(self, *args, **kwargs) -> Requestable:
-        raise NotImplementedError()
-
-    def __getitem__(self, key) -> Requestable:
-        return (self.lookup(*key) if isinstance(key, tuple)
-                else self.lookup(key))
-
-
-class BoundMeta(abc.ABCMeta):
+class BoundMeta(type):
     """used to bind classes to the parent class in which they are declared"""
 
     def __set_name__(self, kls, name):
-        """when bound to a class, set the ``TYPE`` class variable"""
-        self.TYPE = getattr(self, 'TYPE', None) or kls
         self.__name__ = f'{kls.__name__}.{self.__name__}'
 
     def __get__(self, instance, cls):
@@ -69,18 +57,36 @@ class BoundMeta(abc.ABCMeta):
 class Item(Requestable, metaclass=BoundMeta):
     """mixin for requestable items"""
 
+    def __init_subclass__(cls, type, **kwargs):
+        cls.type = type
+
     def __load_response__(self, response):
-        return self.TYPE.load(response)
+        return self.type.load(response)
 
 
-class Set(Requestable, metaclass=BoundMeta):
+class Set(Requestable):
     """mixin for requestable sets"""
 
     def select(self, **kwargs) -> 'Set':
         return replace(self, **kwargs)
 
     def __load_response__(self, response):
-        return list(map(self.TYPE.load, response))
+        return list(map(self.type.load, response))
+
+
+class QuerySet(Set, metaclass=BoundMeta):
+
+    def __init_subclass__(cls, type, **kwargs):
+        cls.type = type
+
+
+@dataclass(frozen=True)
+class AtomicSet(Set):
+    type: 'Resource'
+    request: Request
+
+    def __request__(self):
+        return self.request
 
 
 def req(obj: Requestable) -> Request:
@@ -93,7 +99,7 @@ def load(obj: Requestable, response: requests.Response):
     return obj.__load_response__(response)
 
 
-class ResourceClass(Indexable, type):
+class ResourceClass(type):
     """Metaclass for resource classes"""
 
     def __new__(cls, name, bases, dct):

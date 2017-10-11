@@ -11,9 +11,9 @@ auth = tuple(json.loads(CRED_PATH.read_bytes()))
 
 my_ns = snug.Session(api=ns.api, auth=auth)
 
-all_stations = ns.Station.ALL
-utrecht_departures = ns.Departure.selection(station='ut')
-travel_options = ns.Journey.options(start='breda', end='amsterdam')
+all_stations = ns.stations
+utrecht_departures = ns.departures(station='ut')
+travel_options = ns.journey_options(start='breda', end='amsterdam')
 travel_options_no_hsl = travel_options.select(hsl='false')
 
 live = pytest.config.getoption('--live')
