@@ -1,9 +1,5 @@
 """Miscellaneous tools and boilerplate"""
-from operator import truth, itemgetter
-from functools import partial
-
 from dataclasses import asdict
-from toolz import compose
 
 
 def onlyone(iterable):
@@ -14,9 +10,24 @@ def onlyone(iterable):
 
 def replace(instance, **kwargs):
     """replace values in a dataclass instance"""
-    assert hasattr(instance, '__dataclass_fields__')
     return instance.__class__(**{**asdict(instance), **kwargs})
 
 
-_truthy_item = compose(truth, itemgetter(1))
-filteritems = partial(filter, _truthy_item)
+def apply(func, args=(), kwargs=None):
+    """apply args and kwargs to a function"""
+    return func(*args, **kwargs or {})
+
+
+def notnone(obj):
+    """return whether an object is not None"""
+    return obj is not None
+
+
+class StrRepr():
+    """mixin which includes a __repr__ based on __str__"""
+
+    def __str__(self):
+        return '{0.__class__.__name__} object'.format(self)
+
+    def __repr__(self):
+        return '<{0.__class__.__name__}: {0}>'.format(self)
