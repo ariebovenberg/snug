@@ -152,5 +152,5 @@ class TestGetitem:
             multiple=True, optional=False) == ['foo', 'bar']
 
         with pytest.raises(LookupError, match='blabla'):
-            load.getitem(xml, 'MyParent.blabla', multiple=True,
+            load.getitem(xml, 'MyParent.blabla', multiple=False,
                          optional=False)
