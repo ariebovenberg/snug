@@ -1,29 +1,28 @@
 import enum
-from operator import attrgetter
+import typing as t
 from datetime import datetime
+from functools import partial
+from operator import attrgetter
 
-from toolz import partial, flip
+from dataclasses import dataclass
 
 import snug
 
-parse_datetime = partial(flip(datetime.strptime), '%Y-%m-%dT%H:%M:%S%z')
-parse_bool = dict(true=True, false=False).__getitem__
+dclass = partial(dataclass, frozen=True, repr=False)
 
 
-class Station(snug.Resource):
-    """a railway station"""
-    code = snug.Field('Code/text()')
-    type = snug.Field('Type/text()')
-    country = snug.Field('Land/text()')
-    uic = snug.Field('UICCode/text()')
-    lat = snug.Field('Lat/text()')
-    lon = snug.Field('Lon/text()')
-
-    name = snug.Field('Namen/Medium/text()')
-    full_name = snug.Field('Namen/Lang/text()')
-    short_name = snug.Field('Namen/Kort/text()')
-
-    synonyms = snug.Field('Synoniemen/Synoniem/text()', list=True)
+@dclass()
+class Station(snug.utils.StrRepr):
+    name:       str
+    full_name:  str
+    short_name: str
+    code:       str
+    type:       str
+    country:    str
+    uic:        str
+    lat:        float
+    lon:        float
+    synonyms:   t.List[str]
 
     latlon = property(attrgetter('lat', 'lon'))
 
@@ -32,28 +31,34 @@ class Station(snug.Resource):
         return self.full_name + country_suffix
 
 
-class Departure(snug.Resource):
+@dclass()
+class Departure(snug.utils.StrRepr):
     """a train departure"""
-    ride_number = snug.Field('RitNummer/text()', load=int)
-    time = snug.Field(apiname='VertrekTijd/text()', load=parse_datetime)
-    delay = snug.Field(apiname='VertrekVertragingTekst/text()', optional=True)
-    destination = snug.Field(apiname='EindBestemming/text()')
-    train_type = snug.Field(apiname='TreinSoort/text()')
-    route_text = snug.Field(apiname='RouteTekst/text()', optional=True)
-    carrier = snug.Field(apiname='Vervoerder/text()')
-    platform = snug.Field(apiname='VertrekSpoor/text()')
-    travel_tip = snug.Field(apiname='ReisTip/text()', optional=True)
-    comments = snug.Field(apiname='Opmerkingen/text()', optional=True)
+    ride_number:      int
+    time:             datetime
+    delay:            t.Optional[str]
+    destination:      str
+    train_type:       str
+    route_text:       t.Optional[str]
+    carrier:          str
+    platform:         str
+    platform_changed: bool
+    travel_tip:       t.Optional[str]
+    comments:         t.Optional[str]
 
     def __str__(self):
         delaytext = f'[{self.delay}]' if self.delay else ''
-        return f'{self.time:%H:%M}{delaytext} - {self.destination}'
+        platform = f'{self.platform}{"(!)" if self.platform_changed else ""}'
+        return (f'{self.time:%H:%M}{delaytext} | {self.destination} '
+                f'| {platform}')
 
 
-class Journey(snug.Resource):
+@dclass()
+class Journey(snug.utils.StrRepr):
     """a journey option"""
 
-    class Component(snug.Resource):
+    @dclass()
+    class Component(snug.utils.StrRepr):
         """a journey option component"""
 
         class Status(enum.Enum):
@@ -68,17 +73,14 @@ class Journey(snug.Resource):
             def __repr__(self):
                 return f'Status.{self.name}'
 
-        class Stop(snug.Resource):
+        @dclass()
+        class Stop(snug.utils.StrRepr):
             """a travel stop on a journey component"""
-
-            name = snug.Field('Naam/text()')
-            time = snug.Field('Tijd/text()', load=parse_datetime,
-                              optional=True)
-            delay = snug.Field('VertrekVertraging/text()', optional=True)
-            platform = snug.Field('Spoor/text()', optional=True)
-            platform_changed = snug.Field('Spoor/@wijziging',
-                                          optional=True,
-                                          load=parse_bool)
+            name:             str
+            time:             t.Optional[datetime]
+            delay:            t.Optional[str]
+            platform:         t.Optional[str]
+            platform_changed: t.Optional[bool]
 
             def __str__(self):
                 time = f'{self.time:%H:%M}' if self.time else '??:??'
@@ -89,15 +91,13 @@ class Journey(snug.Resource):
                 return (f'{self.name} | {time} {delay_text}'
                         f'{platform_text}{platform_changed}')
 
-        kind = snug.Field('@reisSoort')
-        carrier = snug.Field('Vervoerder/text()')
-        type = snug.Field('VervoerType/text()')
-        ride_number = snug.Field('RitNummer/text()', load=int)
-        status = snug.Field('Status/text()', load=Status)
-        details = snug.Field('Reisdetails.Reisdetail/text()',
-                             load=list,
-                             optional=True)
-        stops = snug.Field('ReisStop', load=Stop.load, list=True)
+        kind:        str
+        carrier:     str
+        type:        str
+        ride_number: int
+        status:      Status
+        details:     t.List[str]
+        stops:       t.List[Stop]
 
         def __str__(self):
             status_suffix = (f' [{self.status.name}]'
@@ -105,11 +105,12 @@ class Journey(snug.Resource):
                              else '')
             return f'({self.carrier}) {self.type}' + status_suffix
 
-    class Notification(snug.Resource):
+    @dclass()
+    class Notification(snug.utils.StrRepr):
         """an notification about a journey option"""
-        id = snug.Field('Id/text()', optional=True)
-        serious = snug.Field('Ernstig/text()', load=parse_bool)
-        text = snug.Field('Text/text()')
+        id:      t.Optional[str]
+        serious: bool
+        text:    str
 
         def __str__(self):
             return self.text.upper() if self.serious else self.text
@@ -122,28 +123,22 @@ class Journey(snug.Resource):
         NEW = 'NIEUW'
         NOT_OPTIMAL = 'NIET-OPTIMAAL'
         NOT_POSSIBLE = 'NIET-MOGELIJK'
-        PLAN_CHANGED = 'PLAN-GEWIJZIGD'
+        PLAN_CHANGED = 'PLAN-GEWIJZGD'
 
         def __repr__(self):
             return f'Status.{self.name}'
 
-    transfer_count = snug.Field('AantalOverstappen/text()')
-    planned_duration = snug.Field('GeplandeReisTijd/text()')
-    planned_departure = snug.Field('GeplandeVertrekTijd/text()',
-                                   load=parse_datetime)
-    planned_arrival = snug.Field('GeplandeAankomstTijd/text()',
-                                 load=parse_datetime)
-    actual_duration = snug.Field('ActueleReisTijd/text()')
-    actual_departure = snug.Field('ActueleVertrekTijd/text()',
-                                  load=parse_datetime)
-    actual_arrival = snug.Field('ActueleAankomstTijd/text()',
-                                load=parse_datetime)
-    is_optimal = snug.Field('Optimaal/text()', load=parse_bool)
-    components = snug.Field('ReisDeel', load=Component.load, list=True)
-    notifications = snug.Field('Melding',
-                               load=Notification.load, list=True,
-                               optional=True)
-    status = snug.Field(apiname='Status/text()', load=Status)
+    transfer_count:    int
+    planned_duration:  str
+    planned_departure: datetime
+    planned_arrival:   datetime
+    actual_duration:   str
+    actual_departure:  datetime
+    actual_arrival:    datetime
+    optimal:           bool
+    components:        t.List[Component]
+    notifications:     t.Optional[t.List[Notification]]
+    status:            Status
 
     def __str__(self):
         return (f'{self.actual_departure:%H:%M} -> {self.actual_arrival:%H:%M}'
