@@ -28,3 +28,17 @@ def test_replace():
     comment = Comment('my comment', 'blabla')
     newcomment = utils.replace(comment, body='actual comment')
     assert newcomment == Comment('my comment', 'actual comment')
+
+
+def test_str_repr():
+
+    class User(utils.StrRepr):
+
+        def __str__(self):
+            return 'foo'
+
+    # instance repr
+    user = User()
+    assert repr(user) == '<User: foo>'
+    del User.__str__
+    assert repr(user) == '<User: User object>'
