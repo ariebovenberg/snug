@@ -13,7 +13,7 @@ test-examples:
 	pytest examples/
 
 coverage:
-	pytest --cov=snug --cov-report html --cov-report term --cov-branch
+	pytest --cov=snug --cov-report html --cov-report term --cov-branch --cov-fail-under 100
 
 publish: clean
 	rm -rf build dist .egg snug.egg-info
