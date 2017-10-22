@@ -1,2 +1,2 @@
-from .core import *  # noqa
+from .query import *  # noqa
 from .types import *  # noqa
