@@ -3,8 +3,6 @@ branches:
     - master
 language: python
 python:
-  - "3.4"
-  - "3.5"
   - "3.6"
   - "3.7-dev"
 install: 
@@ -13,6 +11,6 @@ install:
 matrix:
   include:
     - python: 3.6
-      env: TOXENV=flake8
+      env: TOXENV=lint
 script: tox
 after_success: coveralls
