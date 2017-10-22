@@ -1,4 +1,4 @@
-"""Miscellaneous tools and boilerplate"""
+"""Miscellaneous tools and shortcuts"""
 from dataclasses import asdict
 
 

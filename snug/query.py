@@ -4,6 +4,7 @@ Todos
 -----
 * serializing query params
 * pagination
+* Query as typing.Generic?
 """
 import typing as t
 import types
@@ -13,7 +14,7 @@ from operator import methodcaller
 
 from dataclasses import dataclass, field, astuple
 
-from toolz import identity, compose
+from toolz import compose
 
 from . import http
 from .utils import apply
@@ -24,8 +25,8 @@ _dictfield = partial(field, default_factory=dict)
 @dataclass(frozen=True)
 class Api:
     """an API endpoint"""
-    prepare: t.Callable[[http.Request], http.Request] = identity
-    parse:   t.Callable[[http.Response], t.Any] = identity
+    prepare: t.Callable[[http.Request], http.Request]
+    parse:   t.Callable[[http.Response], t.Any]
 
 
 class _Bound(type):

@@ -22,4 +22,6 @@ Snug
 
 (Work in progress)
 
-Wrap REST APIs to fit nicely into your python code.
+Wrap REST APIs to fit nicely into your python code. Python >=3.6 only.
+
+Check the ``examples/`` directory for some samples.

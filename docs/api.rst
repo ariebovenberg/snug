@@ -1,10 +1,23 @@
 API reference
 =============
 
-Core
+Query
+-----
+
+.. automodule:: snug.query
+   :members:
+
+Deserialization
+---------------
+
+.. automodule:: snug.load
+   :members:
+
+
+HTTP
 ----
 
-.. automodule:: snug.core
+.. automodule:: snug.http
    :members:
 
 Utils

@@ -43,9 +43,9 @@ class repo(snug.Query, rtype=Repo):
         return snug.Request(f'repos/{self.owner}/{self.name}')
 
     @snug.query.from_func(rtype=t.List[Issue])
-    def issues(repo: 'repo',
+    def issues(repo:   'repo',
                labels: t.Optional[str]=None,
-               state: t.Optional[str]=None):
+               state:  t.Optional[str]=None):
         return snug.Request(
             f'repos/{repo.owner}/{repo.name}/issues',
             params=valfilter(notnone, {
@@ -94,10 +94,10 @@ def issues(filter: t.Optional[str]=None,
     """a selection of assigned issues"""
     return snug.Request('issues', params=valfilter(notnone, {
         'filter': filter,
-        'state': state,
+        'state':  state,
         'labels': labels,
-        'sort': sort,
-        'since': since,
+        'sort':   sort,
+        'since':  since,
     }))
 
 
