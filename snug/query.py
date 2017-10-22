@@ -1,4 +1,4 @@
-"""The core components
+"""high-level query interface
 
 Todos
 -----
@@ -28,7 +28,7 @@ class Api:
     parse:   t.Callable[[http.Response], t.Any] = identity
 
 
-class BoundMeta(type):
+class _Bound(type):
     """used to bind classes to the parent class in which they are declared"""
 
     def __set_name__(self, kls, name):
@@ -39,7 +39,7 @@ class BoundMeta(type):
         return self if instance is None else partial(self, instance)
 
 
-class Query(metaclass=BoundMeta):
+class Query(metaclass=_Bound):
     """base for all queries. Can be used as a base class,
     or initialized directly"""
     def __init__(self, request, rtype):
