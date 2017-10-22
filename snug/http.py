@@ -1,3 +1,4 @@
+"""basic HTTP tools"""
 import typing as t
 from base64 import b64encode
 from functools import partial, singledispatch
@@ -8,7 +9,6 @@ from dataclasses import dataclass, field
 from .utils import replace
 
 _dictfield = partial(field, default_factory=dict)
-
 Headers = t.Mapping[str, str]
 
 
@@ -21,22 +21,22 @@ class Request:
     method:  str = 'GET'
 
     def add_headers(self, headers: Headers) -> 'Request':
-        """get a copy with added headers"""
+        """new request with added headers"""
         return replace(self, headers={**self.headers, **headers})
 
     def add_prefix(self, prefix: str) -> 'Request':
-        """get a copy with added url prefix"""
+        """new request with added url prefix"""
         return replace(self, url=prefix + self.url)
 
     def add_params(self, params: t.Mapping[str, str]) -> 'Request':
-        """get a copy with added params"""
+        """new request with added params"""
         return replace(self, params={**self.params, **params})
 
-    def add_basic_auth(self, username, password):
+    def add_basic_auth(self, username: str, password: str):
+        """new request with "basic" authentication"""
         encoded = b64encode(f'{username}:{password}'.encode('ascii'))
         return self.add_headers({
-            'Authorization': f'Basic {encoded.decode("ascii")}'
-        })
+            'Authorization': f'Basic {encoded.decode("ascii")}'})
 
 
 @dataclass(frozen=True)

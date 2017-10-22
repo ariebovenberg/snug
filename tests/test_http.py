@@ -1,5 +1,6 @@
 from unittest import mock
 
+import pytest
 import requests
 
 from snug import http
@@ -41,22 +42,32 @@ class TestRequest:
             })
 
 
-def test_send_request_with_requests_session():
-    req = http.Request('my/url/',
-                       headers={'my-header': 'foo'},
-                       params={'param1': 4})
-    client = requests.Session()
+class TestSend:
 
-    with mock.patch.object(client, 'get', autospec=True) as getter:
-        response = http.send(client, req)
+    def test_invalid_client(self):
 
-    getter.assert_called_once_with('my/url/',
-                                   headers={'my-header': 'foo'},
-                                   params={'param1': 4})
-    raw_response = getter.return_value
-    assert raw_response.raise_for_status.called
-    assert response == http.Response(
-        raw_response.status_code,
-        content=raw_response.content,
-        headers=raw_response.headers,
-    )
+        class MyClass():
+            pass
+
+        with pytest.raises(TypeError, match='MyClass'):
+            http.send(MyClass(), http.Request('my/url/'))
+
+    def test_with_requests_session(self):
+        req = http.Request('my/url/',
+                           headers={'my-header': 'foo'},
+                           params={'param1': 4})
+        client = requests.Session()
+
+        with mock.patch.object(client, 'get', autospec=True) as getter:
+            response = http.send(client, req)
+
+        getter.assert_called_once_with('my/url/',
+                                       headers={'my-header': 'foo'},
+                                       params={'param1': 4})
+        raw_response = getter.return_value
+        assert raw_response.raise_for_status.called
+        assert response == http.Response(
+            raw_response.status_code,
+            content=raw_response.content,
+            headers=raw_response.headers,
+        )

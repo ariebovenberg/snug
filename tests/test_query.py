@@ -1,16 +1,17 @@
+import json
 import typing as t
+from operator import methodcaller, attrgetter
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from toolz import compose
 
 import snug
 
 
 @dataclass
 class Post:
-    id:            int
-    title:         str
-    archived:      bool
-    comment_count: int
+    id:    int
+    title: str
 
 
 @dataclass
@@ -19,51 +20,65 @@ class Comment:
     text: str
 
 
-def test_subclassing():
-
-    @dataclass(frozen=True)
-    class posts(snug.Query, rtype=t.List[Post]):
-        count: int
-
-        @property
-        def __req__(self):
-            return snug.Request('posts/', params={'max': self.count})
-
-    query = posts(count=2)
-    assert isinstance(query, snug.query.Query)
-    assert query.count == 2
-    assert query.__rtype__ == t.List[Post]
-    assert query.__req__ == snug.Request('posts/', params={'max': 2})
+@dataclass
+class MockClient:
+    responses: field(default_factory=dict)
 
 
-def test_init():
-    recent_posts = snug.Query(request=snug.Request('posts/recent/'),
-                              rtype=t.List[Post])
-    assert isinstance(recent_posts, snug.Query)
+@snug.http.send.register(MockClient)
+def _send_with_test_client(client, request):
+    try:
+        return next(resp for req, resp in client.responses
+                    if req == request)
+    except StopIteration:
+        raise LookupError(f'no response for {request}')
 
 
-def test_binding():
+class TestQuery:
 
-    @dataclass(frozen=True)
-    class post(snug.Query, rtype=Post):
-        """a post by its ID"""
-        id: int
+    def test_subclassing(self):
 
         @dataclass(frozen=True)
-        class comments(snug.Query, rtype=t.List[Comment]):
-            """comments for this post"""
-            post:  'post'
-            sort:  bool
-            count: int = 15
+        class posts(snug.Query, rtype=t.List[Post]):
+            count: int
 
-    assert 'post.comments' in repr(post.comments)
-    assert issubclass(post.comments, snug.Query)
+            @property
+            def __req__(self):
+                return snug.Request('posts/', params={'max': self.count})
 
-    post34 = post(id=34)
-    post_comments = post34.comments(sort=True)
+        query = posts(count=2)
+        assert isinstance(query, snug.query.Query)
+        assert query.count == 2
+        assert query.__rtype__ == t.List[Post]
+        assert query.__req__ == snug.Request('posts/', params={'max': 2})
 
-    assert isinstance(post_comments, snug.Query)
-    assert post_comments == post.comments(post=post34, sort=True)
+    def test_init(self):
+        recent_posts = snug.Query(request=snug.Request('posts/recent/'),
+                                  rtype=t.List[Post])
+        assert isinstance(recent_posts, snug.Query)
+
+    def test_binding(self):
+
+        @dataclass(frozen=True)
+        class post(snug.Query, rtype=Post):
+            """a post by its ID"""
+            id: int
+
+            @dataclass(frozen=True)
+            class comments(snug.Query, rtype=t.List[Comment]):
+                """comments for this post"""
+                post:  'post'
+                sort:  bool
+                count: int = 15
+
+        assert 'post.comments' in repr(post.comments)
+        assert issubclass(post.comments, snug.Query)
+
+        post34 = post(id=34)
+        post_comments = post34.comments(sort=True)
+
+        assert isinstance(post_comments, snug.Query)
+        assert post_comments == post.comments(post=post34, sort=True)
 
 
 class TestFromFunc:
@@ -105,3 +120,35 @@ class TestFromFunc:
 
         my_post = post(id=5)
         assert my_post.__req__ == snug.Request('posts/5/')
+
+
+def test_resolve():
+
+    @snug.query.from_func(rtype=Post)
+    def post(id: int):
+        """a post by its ID"""
+        return snug.Request(f'posts/{id}/')
+
+    query = post(id=4)
+
+    def load(dtype, data):
+        assert dtype is Post
+        return dtype(**data)
+
+    api = snug.Api(
+        prepare=methodcaller('add_prefix', 'mysite.com/api/'),
+        parse=compose(
+            json.loads,
+            methodcaller('decode'),
+            attrgetter('content'))
+    )
+
+    client = MockClient([
+        (snug.Request('mysite.com/api/posts/4/',
+                      headers={'Authorization': 'me'}),
+         snug.Response(200, b'{"id": 4, "title": "my post!"}', headers={}))
+    ])
+    auth = methodcaller('add_headers', {'Authorization': 'me'})
+
+    assert snug.resolve(query, api=api, client=client, auth=auth,
+                        load=load)

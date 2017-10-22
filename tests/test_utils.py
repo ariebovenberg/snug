@@ -42,3 +42,27 @@ def test_str_repr():
     assert repr(user) == '<User: foo>'
     del User.__str__
     assert repr(user) == '<User: User object>'
+
+
+class TestApply:
+
+    def test_defaults(self):
+
+        def func():
+            return 'foo'
+
+        assert utils.apply(func) == 'foo'
+
+    def test_simple(self):
+
+        def func(a, b, c):
+            return a + b + c
+
+        assert utils.apply(func, (1, 2), {'c': 5}) == 8
+
+
+def test_isnone():
+    assert not utils.notnone(None)
+    assert utils.notnone(object())
+    assert utils.notnone(True)
+    assert utils.notnone(False)

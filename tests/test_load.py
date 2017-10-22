@@ -154,3 +154,6 @@ class TestGetitem:
         with pytest.raises(LookupError, match='blabla'):
             load.getitem(xml, 'MyParent.blabla', multiple=False,
                          optional=False)
+
+        assert load.getitem(xml, 'MyParent/Child2/text()', multiple=False,
+                            optional=True) is None

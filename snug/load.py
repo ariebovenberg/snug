@@ -1,3 +1,4 @@
+"""tools for deserialization"""
 import collections
 import typing as t
 from operator import attrgetter
