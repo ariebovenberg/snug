@@ -29,7 +29,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
     ],
-    keywords=['api', 'wrapper', 'rest', 'orm'],
+    keywords=['api', 'wrapper', 'rest'],
     install_requires=[
         'requests>=2.13.0,<3',
         'lxml>=3.8.0,<4',
