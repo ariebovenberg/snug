@@ -15,7 +15,7 @@ live = pytest.config.getoption('--live')
 CRED_PATH = Path('~/.snug/ns.json').expanduser()
 auth = json.loads(CRED_PATH.read_bytes())
 
-resolve = partial(ns.execute, client=requests.Session(),
+resolve = partial(ns.resolve, client=requests.Session(),
                   auth=methodcaller('add_basic_auth', *auth))
 
 all_stations = ns.stations

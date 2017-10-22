@@ -16,7 +16,7 @@ api = snug.Api(
     prepare=methodcaller('add_prefix', 'https://webservices.ns.nl/ns-api-'),
     parse=compose(lxml.etree.fromstring, attrgetter('content')),
 )
-
+resolve = partial(snug.query.resolve, api=api, load=load)
 
 stations = snug.Query(request=snug.Request('stations-v2'),
                       rtype=t.List[Station])
@@ -49,6 +49,3 @@ def journey_options(origin:      str,
         'hslAllowed':      hsl,
         'yearCard':        year_card,
     }))
-
-
-execute = partial(snug.query.execute, api=api, load=load)

@@ -82,7 +82,7 @@ class from_func:
             ))
 
 
-def execute(query: Query,
+def resolve(query: Query,
             api:  Api,
             load: t.Callable,
             auth: t.Callable[[http.Request], http.Request],
