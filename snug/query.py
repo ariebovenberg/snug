@@ -15,7 +15,7 @@ from operator import methodcaller, attrgetter
 
 import requests
 from dataclasses import dataclass, field, astuple
-from toolz import compose, identity
+from toolz import compose, identity, thread_last
 
 from . import http
 from .utils import apply
@@ -57,10 +57,10 @@ class _Bound(type):
 class Query(metaclass=_Bound):
     """base for all queries. Can be used as a base class,
     or initialized directly"""
-    def __init__(self, request, rtype=types.SimpleNamespace):
+    def __init__(self, request, rtype):
         self.__req__, self.__rtype__ = request, rtype
 
-    def __init_subclass__(cls, rtype=types.SimpleNamespace, **kwargs):
+    def __init_subclass__(cls, rtype, **kwargs):
         cls.__rtype__ = rtype
 
     __req__ = NotImplemented
@@ -98,10 +98,25 @@ class from_func:
 
 
 def resolve(query: Query,
-            api:   Api=simple_json_api,
-            load:  t.Callable=simple_loader,
-            auth:  t.Callable[[http.Request], http.Request]=identity,
-            client=requests.Session()):
+            api:   Api,
+            load:  t.Callable,
+            auth:  t.Callable[[http.Request], http.Request],
+            client):
     """execute a query"""
-    request = auth(api.prepare(query.__req__))
-    return load(query.__rtype__, api.parse(http.send(client, request)))
+    return thread_last(
+        query,
+        attrgetter('__req__'),
+        api.prepare,
+        auth,
+        (http.send, client),
+        api.parse,
+        (load, query.__rtype__))
+
+
+simple_resolve = partial(
+    resolve,
+    api=simple_json_api,
+    load=simple_loader,
+    auth=identity,
+    client=requests.Session())
+"""a basic resolver"""

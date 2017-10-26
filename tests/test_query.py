@@ -39,17 +39,6 @@ def _send_with_test_client(client, request):
 
 class TestQuery:
 
-    def test_defaults(self):
-
-        @dataclass(frozen=True)
-        class objects(snug.Query):
-            count: int
-
-        assert objects.__rtype__ is types.SimpleNamespace
-
-        my_objects = snug.Query(Request('/objects/all/'))
-        assert my_objects.__rtype__ is types.SimpleNamespace
-
     def test_subclassing(self):
 
         @dataclass(frozen=True)
@@ -136,54 +125,55 @@ class TestFromFunc:
         assert my_post.__req__ == snug.Request('posts/5/')
 
 
-class TestResolve:
+def test_resolve():
 
-    def test_resolve(self):
+    @snug.query.from_func(rtype=Post)
+    def post(id: int):
+        """a post by its ID"""
+        return snug.Request(f'posts/{id}/')
 
-        @snug.query.from_func(rtype=Post)
-        def post(id: int):
-            """a post by its ID"""
-            return snug.Request(f'posts/{id}/')
+    query = post(id=4)
 
-        query = post(id=4)
+    def load(dtype, data):
+        assert dtype is Post
+        return dtype(**data)
 
-        def load(dtype, data):
-            assert dtype is Post
-            return dtype(**data)
+    api = snug.Api(
+        prepare=methodcaller('add_prefix', 'mysite.com/api/'),
+        parse=compose(
+            json.loads,
+            methodcaller('decode'),
+            attrgetter('content'))
+    )
 
-        api = snug.Api(
-            prepare=methodcaller('add_prefix', 'mysite.com/api/'),
-            parse=compose(
-                json.loads,
-                methodcaller('decode'),
-                attrgetter('content'))
-        )
+    client = MockClient([
+        (snug.Request('mysite.com/api/posts/4/',
+                        headers={'Authorization': 'me'}),
+            snug.Response(200, b'{"id": 4, "title": "my post!"}', headers={}))
+    ])
+    auth = methodcaller('add_headers', {'Authorization': 'me'})
 
-        client = MockClient([
-            (snug.Request('mysite.com/api/posts/4/',
-                          headers={'Authorization': 'me'}),
-             snug.Response(200, b'{"id": 4, "title": "my post!"}', headers={}))
-        ])
-        auth = methodcaller('add_headers', {'Authorization': 'me'})
+    response = snug.resolve(query, api=api, client=client, auth=auth,
+                            load=load)
+    assert isinstance(response, Post)
+    assert response == Post(id=4, title='my post!')
 
-        response = snug.resolve(query, api=api, client=client, auth=auth,
-                                load=load)
-        assert isinstance(response, Post)
-        assert response == Post(id=4, title='my post!')
 
-    @mock.patch('snug.http.send', autospec=True,
-                return_value=snug.Response(
-                    200, b'{"id": 4, "title": "another post"}', headers={}))
-    def test_defaults(self, http_send):
+@mock.patch('snug.http.send', autospec=True,
+            return_value=snug.Response(
+                200, b'{"id": 4, "title": "another post"}', headers={}))
+def test_simple_resolver(http_send):
 
-        @snug.query.from_func()
-        def post(id: int):
-            """a post by its ID"""
-            return snug.Request(f'/posts/{id}/')
+    resolve = snug.query.simple_resolve
 
-        post_4 = post(id=4)
-        response = snug.resolve(post_4)
-        assert response == types.SimpleNamespace(id=4, title='another post')
+    @snug.query.from_func(rtype=Post)
+    def post(id: int):
+        """a post by its ID"""
+        return snug.Request(f'/posts/{id}/')
+
+    post_4 = post(id=4)
+    response = resolve(post_4)
+    assert response == Post(id=4, title='another post')
 
 
 def test_simple_json_api():
@@ -193,9 +183,7 @@ def test_simple_json_api():
 
 
 def test_simple_loader():
-    load = snug.load.simple_loader
+    load = snug.query.simple_loader
     loaded = load(Post, {'id': 9, 'title': 'hello'})
     assert isinstance(loaded, Post)
     assert loaded == Post(id=9, title='hello')
-
-

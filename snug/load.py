@@ -109,12 +109,6 @@ def optional(typeargs, value, loaders):
     return value if value is None else load(subtype, value, loaders=loaders)
 
 
-def simple_loader(cls, data):
-    """simple load function which initializes classes
-    by using data as keyword arguments"""
-    return cls(**data)
-
-
 @curry
 def load(cls: type, value, loaders: LoadRegistry):
     """load an object with given type. Curried function.
