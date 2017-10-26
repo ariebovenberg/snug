@@ -20,11 +20,10 @@ resolve = partial(gh.resolve,
 
 all_orgs = gh.orgs()
 one_org = gh.org('github')
-one_repo = gh.repo('github', 'hub')
+one_repo = gh.repo(owner='github', name='hub')
 all_repos = gh.repos()
 
 assigned_issues = gh.issues()
-one_issue = gh.issue(one_repo, number=123)
 
 current_user = gh.current_user()
 my_issues = current_user.issues()
@@ -96,18 +95,6 @@ def test_assigned_issues():
         assert isinstance(issues, list)
         assert len(issues) > 1
         assert isinstance(issues[0], gh.Issue)
-
-
-def test_one_issue():
-    assert isinstance(one_issue, snug.Query)
-    assert one_issue.__rtype__ == gh.Issue
-    assert one_issue.__req__ == snug.Request(
-        'repos/github/hub/issues/123')
-
-    if live:
-        issue = resolve(one_issue)
-
-        assert isinstance(issue, gh.Issue)
 
 
 def test_current_user():

@@ -18,8 +18,7 @@ api = snug.Api(
 )
 resolve = partial(snug.query.resolve, api=api, load=load)
 
-stations = snug.Query(request=snug.Request('stations-v2'),
-                      rtype=t.List[Station])
+stations = snug.Query(snug.Request('stations-v2'), rtype=t.List[Station])
 """a list of all stations"""
 
 

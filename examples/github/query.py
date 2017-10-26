@@ -78,13 +78,6 @@ def orgs():
     return snug.Request('organizations')
 
 
-@snug.query.from_func(rtype=Issue)
-def issue(repo: t.Union[Repo, repo], number: int):
-    """an issue referenced by repo & number"""
-    return snug.Request(f'repos/{repo.owner}/{repo.name}/'
-                        f'issues/{number}')
-
-
 @snug.query.from_func(rtype=t.List[Issue])
 def issues(filter: t.Optional[str]=None,
            state:  t.Optional[Issue.State]=None,
