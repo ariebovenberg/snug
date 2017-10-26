@@ -1,11 +1,13 @@
 import json
 import typing as t
 from operator import methodcaller, attrgetter
+from unittest import mock
 
 from dataclasses import dataclass, field
 from toolz import compose
 
 import snug
+from snug import Request, Response
 
 
 @dataclass
@@ -122,33 +124,66 @@ class TestFromFunc:
         assert my_post.__req__ == snug.Request('posts/5/')
 
 
-def test_resolve():
+class TestResolve:
 
-    @snug.query.from_func(rtype=Post)
-    def post(id: int):
-        """a post by its ID"""
-        return snug.Request(f'posts/{id}/')
+    def test_resolve(self):
 
-    query = post(id=4)
+        @snug.query.from_func(rtype=Post)
+        def post(id: int):
+            """a post by its ID"""
+            return snug.Request(f'posts/{id}/')
 
-    def load(dtype, data):
-        assert dtype is Post
-        return dtype(**data)
+        query = post(id=4)
 
-    api = snug.Api(
-        prepare=methodcaller('add_prefix', 'mysite.com/api/'),
-        parse=compose(
-            json.loads,
-            methodcaller('decode'),
-            attrgetter('content'))
-    )
+        def load(dtype, data):
+            assert dtype is Post
+            return dtype(**data)
 
-    client = MockClient([
-        (snug.Request('mysite.com/api/posts/4/',
-                      headers={'Authorization': 'me'}),
-         snug.Response(200, b'{"id": 4, "title": "my post!"}', headers={}))
-    ])
-    auth = methodcaller('add_headers', {'Authorization': 'me'})
+        api = snug.Api(
+            prepare=methodcaller('add_prefix', 'mysite.com/api/'),
+            parse=compose(
+                json.loads,
+                methodcaller('decode'),
+                attrgetter('content'))
+        )
 
-    assert snug.resolve(query, api=api, client=client, auth=auth,
-                        load=load)
+        client = MockClient([
+            (snug.Request('mysite.com/api/posts/4/',
+                          headers={'Authorization': 'me'}),
+             snug.Response(200, b'{"id": 4, "title": "my post!"}', headers={}))
+        ])
+        auth = methodcaller('add_headers', {'Authorization': 'me'})
+
+        response = snug.resolve(query, api=api, client=client, auth=auth,
+                                load=load)
+        assert isinstance(response, Post)
+        assert response == Post(id=4, title='my post!')
+
+    @mock.patch('snug.http.send', autospec=True,
+                return_value=snug.Response(
+                    200, b'{"id": 4, "title": "another post"}', headers={}))
+    def test_defaults(self, http_send):
+
+        @snug.query.from_func(rtype=Post)
+        def post(id: int):
+            """a post by its ID"""
+            return snug.Request(f'/posts/{id}/')
+
+        post_4 = post(id=4)
+        response = snug.resolve(post_4)
+        assert response == Post(id=4, title='another post')
+
+
+def test_simple_json_api():
+    api = snug.query.simple_json_api
+    assert api.prepare(Request('my/url/')) == Request('https://my/url/')
+    assert api.parse(Response(200, b'{"foo": 4}', {})) == {'foo': 4}
+
+
+def test_simple_loader():
+    load = snug.load.simple_loader
+    loaded = load(Post, {'id': 9, 'title': 'hello'})
+    assert isinstance(loaded, Post)
+    assert loaded == Post(id=9, title='hello')
+
+

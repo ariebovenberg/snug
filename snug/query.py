@@ -6,15 +6,16 @@ Todos
 * pagination
 * Query as typing.Generic?
 """
-import typing as t
-import types
 import inspect
+import json
+import types
+import typing as t
 from functools import partial
-from operator import methodcaller
+from operator import methodcaller, attrgetter
 
+import requests
 from dataclasses import dataclass, field, astuple
-
-from toolz import compose
+from toolz import compose, identity
 
 from . import http
 from .utils import apply
@@ -27,6 +28,19 @@ class Api:
     """an API endpoint"""
     prepare: t.Callable[[http.Request], http.Request]
     parse:   t.Callable[[http.Response], t.Any]
+
+
+simple_json_api = Api(
+    prepare=methodcaller('add_prefix', 'https://'),
+    parse=compose(json.loads, methodcaller('decode'), attrgetter('content'))
+)
+"""a simple JSON api"""
+
+
+def simple_loader(cls, data):
+    """simple load function which initializes classes
+    by using data as keyword arguments"""
+    return cls(**data)
 
 
 class _Bound(type):
@@ -84,10 +98,10 @@ class from_func:
 
 
 def resolve(query: Query,
-            api:  Api,
-            load: t.Callable,
-            auth: t.Callable[[http.Request], http.Request],
-            client):
+            api:   Api=simple_json_api,
+            load:  t.Callable=simple_loader,
+            auth:  t.Callable[[http.Request], http.Request]=identity,
+            client=requests.Session()):
     """execute a query"""
     request = auth(api.prepare(query.__req__))
     return load(query.__rtype__, api.parse(http.send(client, request)))
