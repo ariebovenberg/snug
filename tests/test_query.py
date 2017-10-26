@@ -1,4 +1,5 @@
 import json
+import types
 import typing as t
 from operator import methodcaller, attrgetter
 from unittest import mock
@@ -38,6 +39,17 @@ def _send_with_test_client(client, request):
 
 class TestQuery:
 
+    def test_defaults(self):
+
+        @dataclass(frozen=True)
+        class objects(snug.Query):
+            count: int
+
+        assert objects.__rtype__ is types.SimpleNamespace
+
+        my_objects = snug.Query(Request('/objects/all/'))
+        assert my_objects.__rtype__ is types.SimpleNamespace
+
     def test_subclassing(self):
 
         @dataclass(frozen=True)
@@ -46,10 +58,10 @@ class TestQuery:
 
             @property
             def __req__(self):
-                return snug.Request('posts/', params={'max': self.count})
+                return Request('posts/', params={'max': self.count})
 
         query = posts(count=2)
-        assert isinstance(query, snug.query.Query)
+        assert isinstance(query, snug.Query)
         assert query.count == 2
         assert query.__rtype__ == t.List[Post]
         assert query.__req__ == snug.Request('posts/', params={'max': 2})
@@ -164,14 +176,14 @@ class TestResolve:
                     200, b'{"id": 4, "title": "another post"}', headers={}))
     def test_defaults(self, http_send):
 
-        @snug.query.from_func(rtype=Post)
+        @snug.query.from_func()
         def post(id: int):
             """a post by its ID"""
             return snug.Request(f'/posts/{id}/')
 
         post_4 = post(id=4)
         response = snug.resolve(post_4)
-        assert response == Post(id=4, title='another post')
+        assert response == types.SimpleNamespace(id=4, title='another post')
 
 
 def test_simple_json_api():

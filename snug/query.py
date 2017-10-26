@@ -57,10 +57,10 @@ class _Bound(type):
 class Query(metaclass=_Bound):
     """base for all queries. Can be used as a base class,
     or initialized directly"""
-    def __init__(self, request, rtype):
+    def __init__(self, request, rtype=types.SimpleNamespace):
         self.__req__, self.__rtype__ = request, rtype
 
-    def __init_subclass__(cls, rtype, **kwargs):
+    def __init_subclass__(cls, rtype=types.SimpleNamespace, **kwargs):
         cls.__rtype__ = rtype
 
     __req__ = NotImplemented
@@ -77,7 +77,7 @@ class from_func:
     * be fully annotated, without keyword-only arguments
     * have no side-effects
     """
-    rtype: type
+    rtype: type = types.SimpleNamespace
 
     def __call__(self, func: types.FunctionType):
         args, _, _, defaults, _, _, annotations = inspect.getfullargspec(func)
