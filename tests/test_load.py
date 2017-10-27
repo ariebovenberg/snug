@@ -157,3 +157,36 @@ class TestGetitem:
 
         assert load.getitem(xml, 'MyParent/Child2/text()', multiple=False,
                             optional=True) is None
+
+
+class TestSimpleLoader:
+
+    def test_namedtuple(self):
+
+        class User(t.NamedTuple):
+            name: str
+            id:   int
+
+        loaded = load.simple_loader(User, {'name': 'bob',
+                                           'id': 4,
+                                           'extra': '...'})
+        assert isinstance(loaded, User)
+        assert loaded == User(name='bob', id=4)
+
+    def test_dataclass(self):
+
+        @dataclass
+        class User:
+            name: str
+            id:   int
+
+        loaded = load.simple_loader(User, {'name': 'bob',
+                                           'id': 4,
+                                           'extra': '...'})
+        assert isinstance(loaded, User)
+        assert loaded == User(name='bob', id=4)
+
+    def test_list(self):
+        loaded = load.simple_loader(list, [{'foo': 'bar'}, {}])
+        assert isinstance(loaded, list)
+        assert loaded == [{'foo': 'bar'}, {}]

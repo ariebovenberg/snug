@@ -133,6 +133,20 @@ def load(cls: type, value, loaders: LoadRegistry):
     return loader(value)
 
 
+def simple_loader(cls, data):
+    """simple load function which does a "best guess" at loading objects"""
+    if issubclass(cls, tuple) and hasattr(cls, '_fields'):  # i.e. namedtuple
+        return cls(*map(partial(getitem, data, multiple=False, optional=False),
+                        cls._fields))
+    elif hasattr(cls, '__dataclass_fields__'):
+        return cls(*map(partial(getitem, data, multiple=False, optional=False),
+                        cls.__dataclass_fields__))
+    elif cls is list:
+        return list(map(partial(simple_loader, dict), data))
+    else:
+        return cls(data)
+
+
 @singledispatch
 def getitem(obj, key: str, multiple: bool, optional: bool):
     """get a value from an API object"""

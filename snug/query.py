@@ -17,7 +17,7 @@ import requests
 from dataclasses import dataclass, field, astuple
 from toolz import compose, identity, thread_last
 
-from . import http
+from . import http, load
 from .utils import apply
 
 _dictfield = partial(field, default_factory=dict)
@@ -35,12 +35,6 @@ simple_json_api = Api(
     parse=compose(json.loads, methodcaller('decode'), attrgetter('content'))
 )
 """a simple JSON api"""
-
-
-def simple_loader(cls, data):
-    """simple load function which initializes classes
-    by using data as keyword arguments"""
-    return cls(**data)
 
 
 class _Bound(type):
@@ -116,7 +110,7 @@ def resolve(query:  Query,
 simple_resolve = partial(
     resolve,
     api=simple_json_api,
-    loader=simple_loader,
+    loader=load.simple_loader,
     auth=identity,
     client=requests.Session())
 """a basic resolver"""

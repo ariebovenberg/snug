@@ -180,10 +180,3 @@ def test_simple_json_api():
     api = snug.query.simple_json_api
     assert api.prepare(Request('my/url/')) == Request('https://my/url/')
     assert api.parse(Response(200, b'{"foo": 4}', {})) == {'foo': 4}
-
-
-def test_simple_loader():
-    load = snug.query.simple_loader
-    loaded = load(Post, {'id': 9, 'title': 'hello'})
-    assert isinstance(loaded, Post)
-    assert loaded == Post(id=9, title='hello')
