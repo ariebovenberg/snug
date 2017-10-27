@@ -97,10 +97,10 @@ class from_func:
             ))
 
 
-def resolve(query: Query,
-            api:   Api,
-            load:  t.Callable,
-            auth:  t.Callable[[http.Request], http.Request],
+def resolve(query:  Query,
+            api:    Api,
+            loader: t.Callable,
+            auth:   t.Callable[[http.Request], http.Request],
             client):
     """execute a query"""
     return thread_last(
@@ -110,13 +110,13 @@ def resolve(query: Query,
         auth,
         (http.send, client),
         api.parse,
-        (load, query.__rtype__))
+        (loader, query.__rtype__))
 
 
 simple_resolve = partial(
     resolve,
     api=simple_json_api,
-    load=simple_loader,
+    loader=simple_loader,
     auth=identity,
     client=requests.Session())
 """a basic resolver"""

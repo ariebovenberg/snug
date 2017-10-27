@@ -154,7 +154,7 @@ def test_resolve():
     auth = methodcaller('add_headers', {'Authorization': 'me'})
 
     response = snug.resolve(query, api=api, client=client, auth=auth,
-                            load=load)
+                            loader=load)
     assert isinstance(response, Post)
     assert response == Post(id=4, title='my post!')
 
