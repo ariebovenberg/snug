@@ -52,15 +52,32 @@ class TestQuery:
         query = posts(count=2)
         assert isinstance(query, snug.Query)
         assert query.count == 2
-        assert query.__rtype__ == t.List[Post]
+        assert query.__rtype__ is t.List[Post]
         assert query.__req__ == snug.Request('posts/', params={'max': 2})
+
+    def test_subclassing_defaults(self):
+
+        class posts(snug.Query):
+
+            @property
+            def __req__(self):
+                return Request('posts/')
+
+        assert posts.__rtype__ is object
 
     def test_init(self):
         recent_posts = snug.Query(request=snug.Request('posts/recent/'),
                                   rtype=t.List[Post])
         assert isinstance(recent_posts, snug.Query)
+        assert recent_posts.__req__ == snug.Request('posts/recent/')
+        assert recent_posts.__rtype__ is t.List[Post]
 
-    def test_binding(self):
+    def test_init_defaults(self):
+        recent_posts = snug.Query(request=snug.Request('posts/recent/'))
+        assert recent_posts.__req__ == snug.Request('posts/recent/')
+        assert recent_posts.__rtype__ is object
+
+    def test_nested(self):
 
         @dataclass(frozen=True)
         class post(snug.Query, rtype=Post):
@@ -83,15 +100,35 @@ class TestQuery:
         assert isinstance(post_comments, snug.Query)
         assert post_comments == post.comments(post=post34, sort=True)
 
+    def test_as_decorator_with_type(self):
 
-class TestFromFunc:
+        @snug.Query(Post)
+        def post(id: int):
+            return snug.Request(f'posts/{id}/')
+
+        assert issubclass(post, snug.Query)
+        assert post(5).__req__ == snug.Request('posts/5/')
+        assert post.__rtype__ is Post
+
+    def test_as_decorator_no_type(self):
+
+        @snug.Query()
+        def post(id: int):
+            return snug.Request(f'posts/{id}/')
+
+        assert issubclass(post, snug.Query)
+        assert post(5).__req__ == snug.Request('posts/5/')
+        assert post.__rtype__ is object
+
+
+class TestFromRequestFunc:
 
     def test_simple(self):
 
         class Foo:
             pass
 
-        @snug.query.from_func(rtype=t.List[Post])
+        @snug.query.from_request_func(rtype=t.List[Post])
         def posts(count: int, search: str='', archived: bool=False):
             """my docstring..."""
             return snug.Request(
@@ -116,7 +153,7 @@ class TestFromFunc:
 
     def test_no_defaults(self):
 
-        @snug.query.from_func(rtype=Post)
+        @snug.query.from_request_func(rtype=Post)
         def post(id: int):
             """a post by its ID"""
             return snug.Request(f'posts/{id}/')
@@ -127,7 +164,7 @@ class TestFromFunc:
 
 def test_resolve():
 
-    @snug.query.from_func(rtype=Post)
+    @snug.query.from_request_func(Post)
     def post(id: int):
         """a post by its ID"""
         return snug.Request(f'posts/{id}/')
@@ -166,7 +203,7 @@ def test_simple_resolver(http_send):
 
     resolve = snug.query.simple_resolve
 
-    @snug.query.from_func(rtype=Post)
+    @snug.query.from_request_func(rtype=Post)
     def post(id: int):
         """a post by its ID"""
         return snug.Request(f'/posts/{id}/')
