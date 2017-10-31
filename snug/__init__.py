@@ -1,6 +1,6 @@
 """an ORM toolkit for wrapping REST APIs"""
 from .http import Request, Response  # noqa
-from .query import Query, Api, resolve  # noqa
+from .query import Query, Api, resolve, simple_resolve  # noqa
 
 from . import http, load, query  # noqa
 
