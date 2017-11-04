@@ -1,9 +1,12 @@
 import typing as t
+from datetime import datetime
 
+import dateutil.parser
 import lxml.etree
 import pytest
-from toolz import compose, partial
 from dataclasses import dataclass
+from dateutil.tz import tzutc
+from toolz import compose, partial, identity
 
 from snug import load
 
@@ -14,68 +17,33 @@ class User:
     id:          int
     name:        str
     hobbies:     t.Optional[t.List[str]]
-    likes_pizza: t.Optional[bool]
-    height:      float
     nicknames:   t.Set[str]
+    height:      float
+    likes_pizza: t.Optional[bool] = True
 
 
 @pytest.fixture
-def loaders():
-    _loaders = {
-        int:   int,
-        float: float,
-        bool:  {'true': True, 'false': False}.__getitem__,
-        str:   str,
-    }
-    _loaders[t.List] = load.list_
-
-    load.registered_dataclass_loader(User, {
-        'id':          'userid',
-        'name':        'username',
-        'hobbies':     'hobbies',
-        'likes_pizza': 'pizza',
-        'height':      'h',
-        'nicknames':   'nicknames',
-    }, loaders=_loaders)
-
-    return _loaders
+def registry():
+    return load.PrimitiveRegistry({
+        int:        int,
+        float:      float,
+        bool:       {'true': True, 'false': False}.__getitem__,
+        str:        str,
+        type(None): identity,
+        object:     identity,
+        datetime:   dateutil.parser.parse,
+    }) | load.GenericRegistry({
+        t.List:  load.list_loader,
+        t.Set:   load.set_loader,
+    }) | load.get_optional_loader
 
 
-class TestLoad:
-
-    def test_load_generic(self):
-
-        @dataclass(frozen=True)
-        class Tag:
-            name: str
-
-        loaders = {Tag: compose(Tag, '<{}>'.format)}
-        loaders[t.List] = load.list_
-
-        loaded = load.load(t.List[Tag], ['hello', 5, 'there'], loaders=loaders)
-        assert loaded == [Tag('<hello>'), Tag('<5>'), Tag('<there>')]
-
-    def test_load_simple(self):
-
-        @dataclass(frozen=True)
-        class Tag:
-            name: str
-
-        loaders = {Tag: compose(Tag, '<{}>'.format)}
-        assert load.load(Tag, 'foo', loaders=loaders) == Tag('<foo>')
+def test_list_loader():
+    assert load.list_loader((int, ), (int, ), [4, '3', '-1']) == [4, 3, -1]
 
 
-def test_load_list():
-    loaders = {int: int}
-    assert load.list_((int, ), [4, '3', '-1'], loaders) == [4, 3, -1]
-
-
-def test_load_optional():
-    loader = partial(load.optional, [int, type(None)], loaders={int: int})
-    assert loader('4') == 4
-    assert loader(3) == 3
-    assert loader(3.2) == 3
-    assert loader(None) is None
+def test_set_loader():
+    assert load.set_loader((int, ), (int, ), [4, '3', '-1']) == {4, 3, -1}
 
 
 @pytest.mark.parametrize('data, loaded', [
@@ -88,7 +56,7 @@ def test_load_optional():
         'nicknames': []
     },
      User(98, 'wilma', hobbies=['tennis', 'diving'],
-          likes_pizza=True, height=1.64, nicknames=[])),
+          likes_pizza=True, height=1.64, nicknames=set())),
     ({
         'id': '44',
         'username': 'bob',
@@ -96,21 +64,18 @@ def test_load_optional():
         'nicknames': ['bobby'],
     },
      User(44, 'bob', hobbies=None, likes_pizza=None, height=1.85,
-          nicknames=['bobby'])
+          nicknames={'bobby'})
     )
 ])
-def test_registered_dataclass_loader(data, loaded, loaders):
-
-    loader = load.registered_dataclass_loader(User, {
+def test_create_dataclass_loader(data, loaded, registry):
+    dloader = load.create_dataclass_loader(User, registry, {
         'id':          'id',
         'name':        'username',
-        'hobbies':     'hobbies',
         'likes_pizza': 'pizza',
         'height':      'height',
         'nicknames':   'nicknames'
-    }, loaders=loaders)
-    assert loaders[User] is loader
-    assert loader(data) == loaded
+    })
+    assert dloader(data) == loaded
 
 
 class TestGetitem:
@@ -159,34 +124,139 @@ class TestGetitem:
                             optional=True) is None
 
 
-class TestSimpleLoader:
+class TestPrimitiveRegistry:
 
-    def test_namedtuple(self):
+    def test_found(self):
+        registry = load.PrimitiveRegistry({int: round})
+        loader = registry(int)
+        assert loader(3.4) == 3
 
-        class User(t.NamedTuple):
+    def test_not_found(self):
+        registry = load.PrimitiveRegistry({int: round})
+        with pytest.raises(load.UnsupportedType):
+            registry(str)
+
+
+class TestGenericRegistry:
+
+    def test_ok(self):
+
+        @dataclass(frozen=True)
+        class Tag:
             name: str
-            id:   int
 
-        loaded = load.simple_loader(User, {'name': 'bob',
-                                           'id': 4,
-                                           'extra': '...'})
-        assert isinstance(loaded, User)
-        assert loaded == User(name='bob', id=4)
+        registry = load.GenericRegistry({
+            t.List: load.list_loader,
+        }) | load.PrimitiveRegistry({
+            Tag: compose(Tag, '<{}>'.format),
+        })
 
-    def test_dataclass(self):
+        # simple case
+        loader = registry(t.List[Tag])
+        assert loader(['hello', 5, 'there']) == [
+            Tag('<hello>'), Tag('<5>'), Tag('<there>')
+        ]
 
-        @dataclass
-        class User:
+        # recursive case
+        loader = registry(t.List[t.List[Tag]])
+        assert loader([
+            ['hello', 9, 'there'],
+            [],
+            ['another', 'list']
+        ]) == [
+            [Tag('<hello>'), Tag('<9>'), Tag('<there>')],
+            [],
+            [Tag('<another>'), Tag('<list>')]
+        ]
+
+    def test_unsupported_type(self):
+
+        @dataclass(frozen=True)
+        class Tag:
             name: str
-            id:   int
 
-        loaded = load.simple_loader(User, {'name': 'bob',
-                                           'id': 4,
-                                           'extra': '...'})
-        assert isinstance(loaded, User)
-        assert loaded == User(name='bob', id=4)
+        registry = load.GenericRegistry({
+            t.List: load.list_loader,
+        }) | load.PrimitiveRegistry({
+            Tag: compose(Tag, '<{}>'.format),
+        })
+        with pytest.raises(load.UnsupportedType):
+            registry(t.Set[Tag])
 
-    def test_list(self):
-        loaded = load.simple_loader(list, [{'foo': 'bar'}, {}])
-        assert isinstance(loaded, list)
-        assert loaded == [{'foo': 'bar'}, {}]
+        with pytest.raises(load.UnsupportedType):
+            registry(t.List[str])
+
+        with pytest.raises(load.UnsupportedType):
+            registry(object)
+
+
+class TestGetOptionalLoader:
+
+    def test_ok(self):
+
+        @dataclass(frozen=True)
+        class Tag:
+            name: str
+
+        registry = load.PrimitiveRegistry({
+            Tag: compose(Tag, '<{}>'.format)
+        }) | load.get_optional_loader
+
+        loader = registry(t.Optional[Tag])
+        assert loader(None) is None
+        assert loader(5) == Tag('<5>')
+
+
+def test_auto_dataclass_registry(registry):
+
+    @dataclass
+    class Post:
+        title: str
+        posted_at:  datetime
+
+    registry |= load.AutoDataclassRegistry()
+    loader = registry(Post)
+
+    data = {
+        'title':     'hello',
+        'posted_at': '2017-10-18T14:13:05Z'
+    }
+    assert loader(data) == Post(
+        'hello',
+        datetime(2017, 10, 18, 14, 13, 5, tzinfo=tzutc()))
+
+
+def test_simple_registry():
+
+    @dataclass
+    class User:
+        name:     str
+        id:       int
+        nickname: t.Optional[str]
+
+    @dataclass
+    class Post:
+        title:     str
+        user:      User
+        comments:  t.List[str]
+
+    loader = load.simple_registry(Post)
+
+    loaded = loader({
+        'title': 'hello',
+        'comments': ['first!', 'another comment', 5],
+        'user': {
+            'name': 'bob',
+            'id': '543',
+            'extra data': '...',
+        }
+    })
+    assert loaded == Post(
+        title='hello',
+        comments=['first!', 'another comment', '5'],
+        user=User(
+            name='bob',
+            id=543,
+            nickname=None
+        )
+    )

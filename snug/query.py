@@ -105,7 +105,7 @@ class from_request_func:
 
 def resolve(query:  Query,
             api:    Api,
-            loader: t.Callable,
+            loader_registry: t.Callable,
             auth:   t.Callable[[http.Request], http.Request],
             client):
     """execute a query"""
@@ -116,13 +116,13 @@ def resolve(query:  Query,
         auth,
         (http.send, client),
         api.parse,
-        (loader, query.__rtype__))
+        loader_registry(query.__rtype__))
 
 
 simple_resolve = partial(
     resolve,
     api=simple_json_api,
-    loader=load.simple_loader,
+    loader_registry=load.simple_registry,
     auth=identity,
     client=requests.Session())
 """a basic resolver"""

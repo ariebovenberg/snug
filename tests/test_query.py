@@ -164,16 +164,14 @@ class TestFromRequestFunc:
 
 def test_resolve():
 
-    @snug.query.from_request_func(Post)
+    loader_registry = {Post: lambda data: Post(**data)}.__getitem__
+
+    @snug.Query(Post)
     def post(id: int):
         """a post by its ID"""
         return snug.Request(f'posts/{id}/')
 
     query = post(id=4)
-
-    def load(dtype, data):
-        assert dtype is Post
-        return dtype(**data)
 
     api = snug.Api(
         prepare=methodcaller('add_prefix', 'mysite.com/api/'),
@@ -191,7 +189,7 @@ def test_resolve():
     auth = methodcaller('add_headers', {'Authorization': 'me'})
 
     response = snug.resolve(query, api=api, client=client, auth=auth,
-                            loader=load)
+                            loader_registry=loader_registry)
     assert isinstance(response, Post)
     assert response == Post(id=4, title='my post!')
 
