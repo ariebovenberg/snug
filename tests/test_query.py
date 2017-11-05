@@ -1,5 +1,4 @@
 import json
-import types
 import typing as t
 from operator import methodcaller, attrgetter
 from unittest import mock
@@ -35,6 +34,10 @@ def _send_with_test_client(client, request):
                     if req == request)
     except StopIteration:
         raise LookupError(f'no response for {request}')
+
+
+def test_querylike():
+    assert issubclass(snug.Query, snug.Querylike)
 
 
 class TestQuery:
@@ -164,7 +167,7 @@ class TestFromRequestFunc:
 
 def test_resolve():
 
-    loader_registry = {Post: lambda data: Post(**data)}.__getitem__
+    loaders = {Post: lambda data: Post(**data)}.__getitem__
 
     @snug.Query(Post)
     def post(id: int):
@@ -189,7 +192,7 @@ def test_resolve():
     auth = methodcaller('add_headers', {'Authorization': 'me'})
 
     response = snug.resolve(query, api=api, client=client, auth=auth,
-                            loader_registry=loader_registry)
+                            loaders=loaders)
     assert isinstance(response, Post)
     assert response == Post(id=4, title='my post!')
 

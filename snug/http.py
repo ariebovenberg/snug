@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 
 from .utils import replace
 
+__all__ = ['Request', 'Response', 'send']
+
 _dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]
 
