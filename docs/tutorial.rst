@@ -1,6 +1,8 @@
 Tutorial
 ========
 
+.. currentmodule:: snug
+
 This guide explains how to use the building-blocks that ``snug`` provides.
 In this example, we will be wrapping the github v3 REST API.
 
@@ -11,7 +13,7 @@ In this example, we will be wrapping the github v3 REST API.
 Hello query
 -----------
 
-The main building block we'll be working with is ``Query``.
+The main building block we'll be working with is :class:`~snug.query.Query`.
 Queries represent requests to the API, which may be resolved to python objects.
 
 Let's start by creating a simple query for repo's.
@@ -42,8 +44,8 @@ Loading objects
 ---------------
 
 Returning a ``dict`` for our repo is not very nice though.
-In order to convert to neat python objects, we can specify a type
-in our query:
+In order to convert to neat python objects, we can specify the result-type
+of our query:
 
 .. literalinclude:: ../tutorial/loading_objects.py
    :linenos:
@@ -74,7 +76,7 @@ Nested queries
 
 Let's exapand our wrapper with issues. We could create a new query,
 alongside ``repo``, but since issues are linked to a single repo
-it makes sence to nest them. We can do this by using ``Query`` subclassing.
+it makes sence to nest them. We can do this by using :class:`~snug.query.Query` subclassing.
 
 .. literalinclude:: ../tutorial/nested_queries.py
    :linenos:

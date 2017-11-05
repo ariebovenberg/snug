@@ -1,26 +1,32 @@
 API reference
 =============
 
-Query
+.. todo::
+   cleanup the formatting
+
+query
 -----
 
 .. automodule:: snug.query
    :members:
+   :show-inheritance:
 
-Deserialization
----------------
+
+load
+----
 
 .. automodule:: snug.load
    :members:
+   :show-inheritance:
 
 
-HTTP
+http
 ----
 
 .. automodule:: snug.http
    :members:
 
-Utils
+utils
 -----
 
 .. automodule:: snug.utils
