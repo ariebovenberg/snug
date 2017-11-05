@@ -1,4 +1,4 @@
-"""tools for deserialization"""
+"""Tools for deserialization"""
 import abc
 import collections
 import typing as t
@@ -14,6 +14,11 @@ from toolz import valmap, compose, identity
 
 from .utils import onlyone
 
+__all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
+           'PrimitiveRegistry', 'GenericRegistry', 'AutoDataclassRegistry',
+           'create_dataclass_loader', 'list_loader', 'set_loader',
+           'get_optional_loader', 'simple_registry', 'getitem']
+
 T = t.TypeVar('T')
 NoneType = type(None)
 _dictfield = partial(field, default_factory=dict)
@@ -22,26 +27,46 @@ _dictfield = partial(field, default_factory=dict)
 Loader = t.Callable[[t.Any], T]
 
 
-class Registry(t.Generic[T]):
-
-    @abc.abstractmethod
-    def __call__(self, cls: t.Type[T]) -> Loader:
+class Loader(t.Generic[T]):
+    """Interface for loaders (deserializers).
+    Any callable with the signature ``Any -> T`` implements ``Loader[T]``
+    """
+    def __call__(self, value: t.Any) -> T:
+        """loads an object of a particular type from any data"""
         raise NotImplementedError()
 
 
-class NestableRegistry(Registry[T]):
+class Registry(abc.ABC):
+    """Interface for a loader registry.
+    Any callable with signature ``Type[T] -> Loader[T]`` implements it.
+    """
 
     @abc.abstractmethod
-    def __call__(self, cls: t.Type[T], main: Registry) -> Loader:
+    def __call__(self, cls: t.Type[T]) -> Loader[T]:
         raise NotImplementedError()
 
-    def __or__(self, other):
+
+class CombinableRegistry(Registry):
+    """base class for registries which may be combined
+
+    any callable implemeting the signature
+    ``(t.Type[T], Registry) -> Loader[T]``
+    is combinable
+
+    also provides ``__or__`` as a mixin method
+    """
+
+    @abc.abstractmethod
+    def __call__(self, cls: t.Type[T], main: Registry) -> Loader[T]:
+        raise NotImplementedError()
+
+    def __or__(self, other: 'CombinableRegistry') -> 'MultiRegistry':
         return MultiRegistry([self, other])
 
 
 @dataclass(frozen=True, hash=False)
-class MultiRegistry(NestableRegistry[T]):
-    children: t.List[NestableRegistry]
+class MultiRegistry(CombinableRegistry):
+    children: t.List[CombinableRegistry]
 
     def __call__(self, cls, main=None):
         exc = None
@@ -53,12 +78,13 @@ class MultiRegistry(NestableRegistry[T]):
                 exc = excep
         raise exc
 
-    def __or__(self, other: NestableRegistry) -> 'MultiRegistry':
+    def __or__(self, other: CombinableRegistry) -> 'MultiRegistry':
         return MultiRegistry([*self.children, other])
 
 
 @dataclass(frozen=True, hash=False)
-class PrimitiveRegistry(NestableRegistry[T]):
+class PrimitiveRegistry(CombinableRegistry):
+    """a registry of primitive (i.e. non-nested) loaders"""
     registry: t.Mapping[t.Type[T], t.Callable[[t.Any], T]] = _dictfield()
 
     def __call__(self, cls, main=None):
@@ -69,27 +95,26 @@ class PrimitiveRegistry(NestableRegistry[T]):
 
 
 @dataclass(frozen=True, hash=False)
-class GenericRegistry(NestableRegistry[T]):
-    """registry for generic types. E.g. typing.List, typing.Set.
+class GenericRegistry(CombinableRegistry):
+    """registry for generic types. for example :class:`~typing.List`.
 
-    These types must have __origin__ and __args__ attributes
+    These types must have ``__origin__`` and ``__args__`` attributes
     """
     registry: t.Mapping[
         t.Type[T],
         t.Callable[[t.Tuple[type], t.Any, Registry], T]] = _dictfield()
 
-    def __call__(self, cls: t.Type[T], main: Loader=None) -> T:
+    def __call__(self, cls: t.Type[T], main: Registry=None) -> T:
         if not hasattr(cls, '__origin__'):
             raise UnsupportedType(cls)
         try:
             return partial(self.registry[cls.__origin__],
-                           cls.__args__,
                            list(map(main or self, cls.__args__)))
         except KeyError:
             raise UnsupportedType(cls)
 
 
-class UnsupportedType(TypeError):
+class UnsupportedType(LookupError):
     """indicates the loader cannot load the given type"""
 
 
@@ -113,34 +138,33 @@ def create_dataclass_loader(cls, registry, sourcemap=None):
     return dloader
 
 
-def list_loader(subtypes, subloaders, value):
+def list_loader(subloaders, value):
     """loader for the List generic"""
     loader, = subloaders
     return list(map(loader, value))
 
 
-def set_loader(subtypes, subloaders, value):
+def set_loader(subloaders, value):
     """loader for the Set generic"""
     loader, = subloaders
     return set(map(loader, value))
 
 
-def get_optional_loader(cls, main):
-    """a nestable registry for optional types"""
+def get_optional_loader(cls: t.Type[T], main: Registry) -> Loader[T]:
+    """a combinable registry for optional types"""
     if _is_optional_type(cls):
-        return partial(optional_loader, main(cls.__args__[0]))
+        return partial(_optional_loader, main(cls.__args__[0]))
     else:
         raise UnsupportedType(cls)
 
 
-def optional_loader(subloader, value):
+def _optional_loader(subloader, value):
     return value if value is None else subloader(value)
 
 
 @dataclass(frozen=True)
-class AutoDataclassRegistry(NestableRegistry[T]):
+class AutoDataclassRegistry(CombinableRegistry):
     """loader which attempts to load dataclasses with defaults"""
-    cache: t.Mapping[t.Type[T], t.Callable[[t.Any], T]] = field
 
     def __call__(self, cls, main=None):
         if hasattr(cls, '__dataclass_fields__'):
@@ -165,7 +189,7 @@ simple_registry = PrimitiveRegistry({
 
 @singledispatch
 def getitem(obj, key: str, multiple: bool, optional: bool):
-    """get a value from an API object"""
+    """get a value from a data structure"""
     raise TypeError(obj)
 
 

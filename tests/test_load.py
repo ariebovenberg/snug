@@ -39,11 +39,11 @@ def registry():
 
 
 def test_list_loader():
-    assert load.list_loader((int, ), (int, ), [4, '3', '-1']) == [4, 3, -1]
+    assert load.list_loader((int, ), [4, '3', '-1']) == [4, 3, -1]
 
 
 def test_set_loader():
-    assert load.set_loader((int, ), (int, ), [4, '3', '-1']) == {4, 3, -1}
+    assert load.set_loader((int, ), [4, '3', '-1']) == {4, 3, -1}
 
 
 @pytest.mark.parametrize('data, loaded', [

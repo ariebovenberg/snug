@@ -1,10 +1,9 @@
-"""high-level query interface
+"""High-level query interface
 
-Todos
------
+Todo
+----
 * serializing query params
 * pagination
-* Query as typing.Generic?
 """
 import abc
 import inspect
@@ -23,26 +22,29 @@ from .utils import apply
 
 _dictfield = partial(field, default_factory=dict)
 
-__all__ = ['Api', 'Querylike', 'Query', 'resolve', 'simple_resolve']
+__all__ = ['Query', 'resolve', 'Api', 'Querylike', 'simple_resolve']
 
 T = t.TypeVar('T')
 
 
 @dataclass(frozen=True)
 class Api:
-    """an API endpoint"""
+    """an API endpoint
+
+    Parameters
+    ----------
+    prepare
+        function to prepare requests for sending
+    parse
+        function to load responses with
+    """
     prepare: t.Callable[[http.Request], http.Request]
     parse:   t.Callable[[http.Response], t.Any]
 
 
-simple_json_api = Api(
-    prepare=methodcaller('add_prefix', 'https://'),
-    parse=compose(json.loads, methodcaller('decode'), attrgetter('content'))
-)
-"""a simple JSON api"""
-
-
 class Querylike(t.Generic[T]):
+    """interface for query-like objects.
+    Any object with ``__req__`` and ``__rtype__`` implements it"""
 
     @abc.abstractproperty
     def __req__(self) -> http.Request:
@@ -72,8 +74,39 @@ class QueryMeta(t.GenericMeta):
 
 
 class Query(Querylike[T], metaclass=QueryMeta):
-    """base for all queries. Can be used as a base class,
-    or initialized directly"""
+    """A requestable bit of data
+
+    Can be instatiated, subclassed, or used as a decorator, see below.
+
+    Examples
+    --------
+
+    Instantiation results in a static query.
+
+    .. code-block:: python
+
+        latest_post = Query(Request('posts/latest/'), rtype=Post)
+
+    As a decorator, wraps a request-making function in a query subclass.
+
+    .. code-block:: python
+
+        @snug.Query(Post)
+        def post(id: int):
+            \"\"\"lookup a post by id\"\"\"
+            return Request(f'posts/{id}/')
+
+    As a base class, allows more control over query functionality.
+
+    .. code-block:: python
+
+        class post(Query, rtype=Post):
+            def __init__(self, id: int):
+                ...
+            @property
+            def __req__(self):
+                ...
+    """
     def __new__(cls, *args, **kwargs):
         if cls is Query and len(args) < 2 and not kwargs:
             # check if we're being used as a decorator
@@ -122,12 +155,26 @@ class from_request_func:
             ), frozen=True)
 
 
-def resolve(query:   Querylike,
+def resolve(query:   Querylike[T],
             api:     Api,
             loaders: load.Registry,
             auth:    t.Callable[[http.Request], http.Request],
-            client):
-    """resolve a querylike object"""
+            client) -> T:
+    """resolve a querylike object.
+
+    Parameters
+    ----------
+    query
+        the querylike object to evaluate
+    api
+        the API to handle the request
+    loaders
+        The registry of object loaders
+    auth
+        The authentication object
+    client
+        The HTTP client with which to send the requests
+    """
     return thread_last(
         query,
         attrgetter('__req__'),
@@ -138,9 +185,13 @@ def resolve(query:   Querylike,
         loaders(query.__rtype__))
 
 
+_simple_json_api = Api(
+    prepare=methodcaller('add_prefix', 'https://'),
+    parse=compose(json.loads, methodcaller('decode'), attrgetter('content'))
+)
 simple_resolve = partial(
     resolve,
-    api=simple_json_api,
+    api=_simple_json_api,
     loaders=load.simple_registry,
     auth=identity,
     client=requests.Session())

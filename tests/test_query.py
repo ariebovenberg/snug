@@ -207,14 +207,10 @@ def test_simple_resolver(http_send):
     @snug.query.from_request_func(rtype=Post)
     def post(id: int):
         """a post by its ID"""
-        return snug.Request(f'/posts/{id}/')
+        return snug.Request(f'mysite.com/posts/{id}/')
 
     post_4 = post(id=4)
     response = resolve(post_4)
+    http_send.assert_called_once_with(mock.ANY,
+                                      Request('https://mysite.com/posts/4/'))
     assert response == Post(id=4, title='another post')
-
-
-def test_simple_json_api():
-    api = snug.query.simple_json_api
-    assert api.prepare(Request('my/url/')) == Request('https://my/url/')
-    assert api.parse(Response(200, b'{"foo": 4}', {})) == {'foo': 4}
