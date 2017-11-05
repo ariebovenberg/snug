@@ -1,7 +1,6 @@
 -e .
+-r docs.txt
 pytest
 pytest-coverage
-sphinx
 wheel
 twine
-sphinx-autodoc-typehints

@@ -1,7 +1,7 @@
 .PHONY: docs test build publish clean
 
 init:
-	pip install -r requirements.txt
+	pip install -r requirements/dev.txt
 
 docs:
 	@touch docs/api.rst  # ensure api docs always rebuilt
