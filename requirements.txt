@@ -4,3 +4,4 @@ pytest-coverage
 sphinx
 wheel
 twine
+sphinx-autodoc-typehints
