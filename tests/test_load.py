@@ -207,23 +207,35 @@ class TestGetOptionalLoader:
         assert loader(5) == Tag('<5>')
 
 
-def test_auto_dataclass_registry(registry):
+class TestAutoDataclassRegistry:
 
-    @dataclass
-    class Post:
-        title: str
-        posted_at:  datetime
+    def test_ok(self, registry):
 
-    registry |= load.AutoDataclassRegistry()
-    loader = registry(Post)
+        @dataclass
+        class Post:
+            title: str
+            posted_at:  datetime
 
-    data = {
-        'title':     'hello',
-        'posted_at': '2017-10-18T14:13:05Z'
-    }
-    assert loader(data) == Post(
-        'hello',
-        datetime(2017, 10, 18, 14, 13, 5, tzinfo=tzutc()))
+        registry |= load.AutoDataclassRegistry()
+        loader = registry(Post)
+
+        data = {
+            'title':     'hello',
+            'posted_at': '2017-10-18T14:13:05Z'
+        }
+        assert loader(data) == Post(
+            'hello',
+            datetime(2017, 10, 18, 14, 13, 5, tzinfo=tzutc()))
+
+    def test_not_supported(self, registry):
+
+        class MyClass():
+            pass
+
+        registry |= load.AutoDataclassRegistry()
+
+        with pytest.raises(load.UnsupportedType):
+            registry(MyClass)
 
 
 def test_simple_registry():

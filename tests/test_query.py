@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from toolz import compose
 
 import snug
-from snug import Request, Response
+from snug import Request
 
 
 @dataclass
@@ -116,6 +116,16 @@ class TestQuery:
     def test_as_decorator_no_type(self):
 
         @snug.Query()
+        def post(id: int):
+            return snug.Request(f'posts/{id}/')
+
+        assert issubclass(post, snug.Query)
+        assert post(5).__req__ == snug.Request('posts/5/')
+        assert post.__rtype__ is object
+
+    def test_as_decorator_no_call(self):
+
+        @snug.Query
         def post(id: int):
             return snug.Request(f'posts/{id}/')
 
