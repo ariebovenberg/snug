@@ -1,4 +1,10 @@
-"""Tools for deserialization"""
+"""Tools for deserialization
+
+Todo
+----
+* resolve forward declarations in dataclass signatures
+* auto namedtuple registry
+"""
 import abc
 import collections
 import typing as t
@@ -22,9 +28,6 @@ __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
 T = t.TypeVar('T')
 NoneType = type(None)
 _dictfield = partial(field, default_factory=dict)
-
-
-Loader = t.Callable[[t.Any], T]
 
 
 class Loader(t.Generic[T]):
