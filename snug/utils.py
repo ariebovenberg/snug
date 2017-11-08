@@ -24,7 +24,7 @@ def notnone(obj):
 
 
 class StrRepr():
-    """mixin which includes a __repr__ based on __str__"""
+    """mixin which adds a ``__repr__`` based on ``__str__``"""
 
     def __str__(self):
         return '{0.__class__.__name__} object'.format(self)

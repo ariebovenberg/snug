@@ -191,7 +191,8 @@ def test_resolve():
         parse=compose(
             json.loads,
             methodcaller('decode'),
-            attrgetter('content'))
+            attrgetter('content')),
+        add_auth=lambda req, auth: req.add_headers({'Authorization': 'me'}),
     )
 
     client = MockClient([
@@ -199,9 +200,8 @@ def test_resolve():
                         headers={'Authorization': 'me'}),
             snug.Response(200, b'{"id": 4, "title": "my post!"}', headers={}))
     ])
-    auth = methodcaller('add_headers', {'Authorization': 'me'})
 
-    response = snug.resolve(query, api=api, client=client, auth=auth,
+    response = snug.resolve(query, api=api, client=client, auth='me',
                             loaders=loaders)
     assert isinstance(response, Post)
     assert response == Post(id=4, title='my post!')

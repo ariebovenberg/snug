@@ -15,7 +15,7 @@ from operator import methodcaller, attrgetter
 
 import requests
 from dataclasses import dataclass, field, astuple
-from toolz import compose, identity, thread_last
+from toolz import compose, thread_last, flip
 
 from . import http, load
 from .utils import apply
@@ -25,11 +25,12 @@ _dictfield = partial(field, default_factory=dict)
 __all__ = ['Query', 'resolve', 'Api', 'Querylike', 'simple_resolve']
 
 T = t.TypeVar('T')
+T_auth = t.TypeVar('T_auth')
 
 
 @dataclass(frozen=True)
-class Api:
-    """an API endpoint
+class Api(t.Generic[T_auth]):
+    """request and response protocols for an API
 
     Parameters
     ----------
@@ -37,9 +38,12 @@ class Api:
         function to prepare requests for sending
     parse
         function to load responses with
+    add_auth
+        function to apply authentication to a request
     """
     prepare: t.Callable[[http.Request], http.Request]
     parse:   t.Callable[[http.Response], t.Any]
+    add_auth: t.Callable[[http.Request, T_auth], http.Request]
 
 
 class Querylike(t.Generic[T]):
@@ -74,9 +78,8 @@ class QueryMeta(t.GenericMeta):
 
 
 class Query(Querylike[T], metaclass=QueryMeta):
-    """A requestable bit of data
-
-    Can be instatiated, subclassed, or used as a decorator, see below.
+    """A requestable bit of data.
+    Can be instatiated, subclassed, or used as a decorator.
 
     Examples
     --------
@@ -156,9 +159,9 @@ class from_request_func:
 
 
 def resolve(query:   Querylike[T],
-            api:     Api,
+            api:     Api[T_auth],
             loaders: load.Registry,
-            auth:    t.Callable[[http.Request], http.Request],
+            auth:    T_auth,
             client) -> T:
     """resolve a querylike object.
 
@@ -179,7 +182,7 @@ def resolve(query:   Querylike[T],
         query,
         attrgetter('__req__'),
         api.prepare,
-        auth,
+        (flip(api.add_auth), auth),
         (http.send, client),
         api.parse,
         loaders(query.__rtype__))
@@ -187,12 +190,14 @@ def resolve(query:   Querylike[T],
 
 _simple_json_api = Api(
     prepare=methodcaller('add_prefix', 'https://'),
-    parse=compose(json.loads, methodcaller('decode'), attrgetter('content'))
+    parse=compose(json.loads, methodcaller('decode'), attrgetter('content')),
+    add_auth=lambda req, auth: (req if auth is None
+                                else req.add_basic_auth(auth))
 )
 simple_resolve = partial(
     resolve,
     api=_simple_json_api,
     loaders=load.simple_registry,
-    auth=identity,
+    auth=None,
     client=requests.Session())
 """a basic resolver"""

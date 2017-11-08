@@ -23,19 +23,44 @@ class Request:
     method:  str = 'GET'
 
     def add_headers(self, headers: Headers) -> 'Request':
-        """new request with added headers"""
+        """new request with added headers
+
+        Parameters
+        ----------
+        headers
+            the headers to add
+        """
         return replace(self, headers={**self.headers, **headers})
 
     def add_prefix(self, prefix: str) -> 'Request':
-        """new request with added url prefix"""
+        """new request with added url prefix
+
+        Parameters
+        ----------
+        prefix
+            the URL prefix
+        """
         return replace(self, url=prefix + self.url)
 
     def add_params(self, params: t.Mapping[str, str]) -> 'Request':
-        """new request with added params"""
+        """new request with added params
+
+        Parameters
+        ----------
+        params
+            the parameters to add
+        """
         return replace(self, params={**self.params, **params})
 
-    def add_basic_auth(self, username: str, password: str):
-        """new request with "basic" authentication"""
+    def add_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
+        """new request with "basic" authentication
+
+        Parameters
+        ----------
+        credentials
+            the username-password pair
+        """
+        username, password = credentials
         encoded = b64encode(f'{username}:{password}'.encode('ascii'))
         return self.add_headers({
             'Authorization': f'Basic {encoded.decode("ascii")}'})
@@ -43,7 +68,17 @@ class Request:
 
 @dataclass(frozen=True)
 class Response:
-    """a simple HTTP response"""
+    """a simple HTTP response
+
+    Parameters
+    ----------
+    status_code
+        the HTTP status code
+    content
+        the response content
+    headers
+        the headers of the response
+    """
     status_code: int
     content:     bytes
     headers:     Headers
@@ -51,7 +86,18 @@ class Response:
 
 @singledispatch
 def send(client, request: Request) -> Response:
-    """send an HTTP request, returning a Response"""
+    """send an HTTP request, returning a Response
+
+    This is a :func:`~functools.singledispatch` function:
+    different types of HTTP clients can be supported by registering them.
+
+    Parameters
+    ----------
+    client
+        the HTTP client
+    request
+        the request to send
+    """
     raise TypeError(client)
 
 

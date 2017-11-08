@@ -34,7 +34,7 @@ class TestRequest:
 
     def test_add_basic_auth(self):
         req = http.Request('my/url/', headers={'foo': 'bar'})
-        newreq = req.add_basic_auth('Aladdin', password='OpenSesame')
+        newreq = req.add_basic_auth(('Aladdin', 'OpenSesame'))
         assert newreq == http.Request(
             'my/url/', headers={
                 'foo': 'bar',
