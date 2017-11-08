@@ -76,7 +76,7 @@ class TestQuery:
         assert recent_posts.__rtype__ is t.List[Post]
 
     def test_init_defaults(self):
-        recent_posts = snug.Query(request=snug.Request('posts/recent/'))
+        recent_posts = snug.Query(snug.Request('posts/recent/'))
         assert recent_posts.__req__ == snug.Request('posts/recent/')
         assert recent_posts.__rtype__ is object
 

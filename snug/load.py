@@ -128,7 +128,9 @@ def create_dataclass_loader(cls, registry, sourcemap=None):
     sources = map(sourcemap.__getitem__, fields)
     typeinfos = map(_deconstruct_type, fields.values())
 
-    itemgetters = (
+    # coverage examption here because branch coverage
+    # cannot tell if the generator is fully consumed by zip().
+    itemgetters = (  # pragma: no cover
         partial(getitem, key=source, multiple=multiple, optional=optional)
         for source, (_, multiple, optional) in zip(sources, typeinfos)
     )
