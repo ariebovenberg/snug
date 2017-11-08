@@ -1,7 +1,11 @@
+import typing as t
+
 import pytest
 
-from snug import utils
+import snug
 from dataclasses import dataclass
+
+utils = snug.utils
 
 
 class TestOnlyOne:
