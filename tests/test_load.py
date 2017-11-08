@@ -6,7 +6,7 @@ import lxml.etree
 import pytest
 from dataclasses import dataclass
 from dateutil.tz import tzutc
-from toolz import compose, partial, identity
+from toolz import compose, identity
 
 from snug import load
 
