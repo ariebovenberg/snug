@@ -118,7 +118,7 @@ class GenericRegistry(CombinableRegistry):
 
 
 class UnsupportedType(LookupError):
-    """indicates the loader cannot load the given type"""
+    """indicates the registry does not have a loader for the given type"""
 
 
 def create_dataclass_loader(cls, registry, sourcemap=None):
@@ -169,7 +169,7 @@ def _optional_loader(subloader, value):
 
 @dataclass(frozen=True)
 class AutoDataclassRegistry(CombinableRegistry):
-    """loader which attempts to load dataclasses with defaults"""
+    """registry which creates dataclass loaders on-the-fly"""
 
     def __call__(self, cls, main=None):
         if hasattr(cls, '__dataclass_fields__'):
