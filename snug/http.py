@@ -13,6 +13,8 @@ __all__ = ['Request', 'Response', 'send']
 _dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]
 
+T = t.TypeVar('T')
+
 
 @dataclass(frozen=True)
 class Request:
@@ -67,7 +69,7 @@ class Request:
 
 
 @dataclass(frozen=True)
-class Response:
+class Response(t.Generic[T]):
     """a simple HTTP response
 
     Parameters
@@ -80,8 +82,17 @@ class Response:
         the headers of the response
     """
     status_code: int
-    content:     bytes
+    content:     T
     headers:     Headers
+
+    def __getitem__(self, key):
+        return self.content[key]
+
+    def __len__(self):
+        return len(self.content)
+
+    def __iter__(self):
+        return iter(self.content)
 
 
 @singledispatch
