@@ -132,7 +132,7 @@ def create_dataclass_loader(cls, registry, sourcemap=None):
     # cannot tell if the generator is fully consumed by zip().
     itemgetters = (  # pragma: no cover
         partial(getitem, key=source, multiple=multiple, optional=optional)
-        for source, (_, multiple, optional) in zip(sources, typeinfos)
+        for source, (multiple, optional) in zip(sources, typeinfos)
     )
     loaders = map(registry, fields.values())
     getters = list(starmap(compose, zip(loaders, itemgetters)))
@@ -171,11 +171,24 @@ def _optional_loader(subloader, value):
 class AutoDataclassRegistry(CombinableRegistry):
     """registry which creates dataclass loaders on-the-fly"""
 
-    def __call__(self, cls, main=None):
+    def __call__(self, cls, main):
         if hasattr(cls, '__dataclass_fields__'):
-            return create_dataclass_loader(cls, main or self)
+            return create_dataclass_loader(cls, main)
         else:
             raise UnsupportedType(cls)
+
+
+@dataclass(frozen=True)
+class DataclassRegistry(CombinableRegistry):
+    """registry for dataclasses"""
+    confs: t.Mapping[t.Type[T], t.Mapping[str, str]]
+
+    def __call__(self, cls, main):
+        try:
+            sourcemap = self.confs[cls]
+        except KeyError:
+            raise UnsupportedType(cls)
+        return create_dataclass_loader(cls, main, sourcemap)
 
 
 simple_registry = PrimitiveRegistry({
@@ -242,4 +255,4 @@ def _deconstruct_type(typ):
     if multiple:
         typ, = typ.__args__
 
-    return (typ, multiple, optional)
+    return multiple, optional
