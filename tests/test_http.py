@@ -42,6 +42,13 @@ class TestRequest:
             })
 
 
+class TestResponse:
+
+    def test_parse_content(self):
+        resp = http.Response(200, 'my content', {})
+        assert resp.parse_content('[{}]'.format)
+
+
 class TestSend:
 
     def test_invalid_client(self):

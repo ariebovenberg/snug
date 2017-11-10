@@ -14,6 +14,7 @@ _dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]
 
 T = t.TypeVar('T')
+T_parsed = t.TypeVar('T_parsed')
 
 
 @dataclass(frozen=True)
@@ -93,6 +94,10 @@ class Response(t.Generic[T]):
 
     def __iter__(self):
         return iter(self.content)
+
+    def parse_content(self, func: t.Callable[[T], T_parsed]) -> (
+            'Response[T_parsed]'):
+        return replace(self, content=func(self.content))
 
 
 @singledispatch
