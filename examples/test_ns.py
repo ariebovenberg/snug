@@ -3,7 +3,6 @@ import requests
 import typing as t
 from functools import partial
 from pathlib import Path
-from operator import methodcaller
 
 import pytest
 import snug
@@ -15,8 +14,7 @@ live = pytest.config.getoption('--live')
 CRED_PATH = Path('~/.snug/ns.json').expanduser()
 auth = json.loads(CRED_PATH.read_bytes())
 
-resolve = partial(ns.resolve, client=requests.Session(),
-                  auth=methodcaller('add_basic_auth', *auth))
+resolve = partial(ns.resolve, client=requests.Session(), auth=auth)
 
 all_stations = ns.stations
 departures = ns.departures(station='amsterdam')
