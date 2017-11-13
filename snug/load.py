@@ -8,17 +8,17 @@ Todo
 import abc
 import collections
 import typing as t
+import xml.etree.ElementTree
 from datetime import datetime
 from functools import singledispatch, partial
 from itertools import starmap
-from operator import attrgetter
+from operator import attrgetter, itemgetter
 
 import dateutil.parser
-import lxml.etree
 from dataclasses import dataclass, field
 from toolz import valmap, compose, identity
 
-from .utils import onlyone
+from .utils import NO_DEFAULT
 
 __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
            'PrimitiveRegistry', 'GenericRegistry', 'AutoDataclassRegistry',
@@ -216,15 +216,32 @@ def _json_getitem(obj, key, multiple, optional):
     return obj.get(key) if optional else obj[key]
 
 
-@getitem.register(lxml.etree._Element)
+@getitem.register(xml.etree.ElementTree.Element)
 def _lxml_getitem(obj, key, multiple, optional):
-    values = obj.xpath(key)
-    if not values and not multiple:
-        if optional:
-            return None
+    istext = False
+    if key.endswith('text()'):
+        istext = True
+        key = key[:-7]
+
+    if multiple:
+        value = obj.findall(key)
+        if istext:
+            return list(map(attrgetter('text'), value))
         else:
-            raise LookupError(key)
-    return values if multiple else onlyone(values)
+            return value
+    else:
+        value = obj.find(key)
+        if value is None:
+            if optional:
+                return None
+            else:
+                raise LookupError(key)
+        if istext:
+            return value.text
+        else:
+            return value
+
+    return value
 
 
 def _is_optional_type(cls):

@@ -1,4 +1,4 @@
-import typing as t
+from operator import itemgetter
 
 import pytest
 
@@ -70,3 +70,15 @@ def test_isnone():
     assert utils.notnone(object())
     assert utils.notnone(True)
     assert utils.notnone(False)
+
+
+def test_lookup_default():
+    getter = utils.lookup_defaults(itemgetter('foo'), 'bla')
+    assert getter({}) == 'bla'
+    assert getter({'foo': 4}) == 4
+
+
+def test_skipnone():
+    myfunc = utils.skipnone(str.strip)
+    assert myfunc('  blabla   \n') == 'blabla'
+    assert myfunc(None) is None

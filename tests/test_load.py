@@ -1,8 +1,9 @@
 import typing as t
+
 from datetime import datetime
 
 import dateutil.parser
-import lxml.etree
+import xml.etree.ElementTree as ET
 import pytest
 from dataclasses import dataclass
 from dateutil.tz import tzutc
@@ -102,10 +103,10 @@ class TestGetitem:
                             multiple=False, optional=True) is None
 
     def test_xml_elem(self):
-        xml = lxml.etree.fromstring('''
+        xml = ET.fromstring('''
         <MyRoot>
           <MyParent>
-            <Child1>foo</Child1>
+            <Child1 bla="qux">foo</Child1>
             <Child1>bar</Child1>
           </MyParent>
         </MyRoot>

@@ -1,5 +1,8 @@
 """Miscellaneous tools and shortcuts"""
+from functools import wraps
+
 from dataclasses import asdict
+from toolz import excepts
 
 
 def onlyone(iterable):
@@ -31,3 +34,20 @@ class StrRepr():
 
     def __repr__(self):
         return '<{0.__class__.__name__}: {0}>'.format(self)
+
+
+class NO_DEFAULT:
+    """sentinel for no default"""
+
+
+def lookup_defaults(lookup, default):
+    return excepts(LookupError, lookup, lambda _: default)
+
+
+def skipnone(func):
+    """wrap a function so that it returns None when getting None as input"""
+    @wraps(func)
+    def wrapper(arg):
+        return None if arg is None else func(arg)
+
+    return wrapper
