@@ -6,11 +6,9 @@ Todo
 * auto namedtuple registry
 """
 import abc
-import collections
 import typing as t
-import xml.etree.ElementTree
 from datetime import datetime
-from functools import singledispatch, partial
+from functools import partial
 from itertools import starmap
 from operator import attrgetter, itemgetter
 
@@ -18,12 +16,12 @@ import dateutil.parser
 from dataclasses import dataclass, field
 from toolz import valmap, compose, identity
 
-from .utils import NO_DEFAULT
+from .utils import lookup_defaults
 
 __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
            'PrimitiveRegistry', 'GenericRegistry', 'AutoDataclassRegistry',
            'create_dataclass_loader', 'list_loader', 'set_loader',
-           'get_optional_loader', 'simple_registry', 'getitem']
+           'get_optional_loader', 'simple_registry']
 
 T = t.TypeVar('T')
 NoneType = type(None)
@@ -121,18 +119,19 @@ class UnsupportedType(LookupError):
     """indicates the registry does not have a loader for the given type"""
 
 
-def create_dataclass_loader(cls, registry, sourcemap=None):
+def create_dataclass_loader(cls, registry, sourcemap=None,
+                            getter=itemgetter):
     """create a loader for a dataclass type"""
     fields = valmap(attrgetter('type'), cls.__dataclass_fields__)
     sourcemap = {**dict(zip(fields, fields)), **(sourcemap or {})}
     sources = map(sourcemap.__getitem__, fields)
-    typeinfos = map(_deconstruct_type, fields.values())
+    optionals = map(_is_optional_type, fields.values())
 
     # coverage examption here because branch coverage
     # cannot tell if the generator is fully consumed by zip().
     itemgetters = (  # pragma: no cover
-        partial(getitem, key=source, multiple=multiple, optional=optional)
-        for source, (multiple, optional) in zip(sources, typeinfos)
+        lookup_defaults(getter(source), None) if optional else getter(source)
+        for source, optional in zip(sources, optionals)
     )
     loaders = map(registry, fields.values())
     getters = list(starmap(compose, zip(loaders, itemgetters)))
@@ -205,45 +204,6 @@ simple_registry = PrimitiveRegistry({
 }) | get_optional_loader | AutoDataclassRegistry()
 
 
-@singledispatch
-def getitem(obj, key: str, multiple: bool, optional: bool):
-    """get a value from a data structure"""
-    raise TypeError(obj)
-
-
-@getitem.register(collections.Mapping)
-def _json_getitem(obj, key, multiple, optional):
-    return obj.get(key) if optional else obj[key]
-
-
-@getitem.register(xml.etree.ElementTree.Element)
-def _lxml_getitem(obj, key, multiple, optional):
-    istext = False
-    if key.endswith('text()'):
-        istext = True
-        key = key[:-7]
-
-    if multiple:
-        value = obj.findall(key)
-        if istext:
-            return list(map(attrgetter('text'), value))
-        else:
-            return value
-    else:
-        value = obj.find(key)
-        if value is None:
-            if optional:
-                return None
-            else:
-                raise LookupError(key)
-        if istext:
-            return value.text
-        else:
-            return value
-
-    return value
-
-
 def _is_optional_type(cls):
     """determine whether a class is an Optional[...] type"""
     try:
@@ -252,24 +212,3 @@ def _is_optional_type(cls):
                 and cls.__args__[1] is NoneType)
     except AttributeError:
         return False
-
-
-def _is_collection_type(cls):
-    """determine whether a class is a generic collection type"""
-    try:
-        return issubclass(cls.__origin__, collections.abc.Collection)
-    except AttributeError:
-        return False
-
-
-def _deconstruct_type(typ):
-    """for a given type, return a tuple (type, multiple, optional)"""
-    optional = _is_optional_type(typ)
-    if optional:
-        typ = typ.__args__[0]
-
-    multiple = _is_collection_type(typ)
-    if multiple:
-        typ, = typ.__args__
-
-    return multiple, optional

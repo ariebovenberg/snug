@@ -79,52 +79,6 @@ def test_create_dataclass_loader(data, loaded, registry):
     assert dloader(data) == loaded
 
 
-class TestGetitem:
-
-    def test_default(self):
-
-        class MyClass:
-            pass
-
-        with pytest.raises(TypeError, match='MyClass'):
-            load.getitem(MyClass(), 'foo', multiple=False, optional=False)
-
-    def test_mapping(self):
-        my_mapping = {'foo': 4}
-
-        assert load.getitem(my_mapping, 'foo',
-                            multiple=False, optional=False) == 4
-
-        with pytest.raises(LookupError, match='blabla'):
-            load.getitem(my_mapping, 'blabla',
-                         multiple=False, optional=False)
-
-        assert load.getitem(my_mapping, 'bla',
-                            multiple=False, optional=True) is None
-
-    def test_xml_elem(self):
-        xml = ET.fromstring('''
-        <MyRoot>
-          <MyParent>
-            <Child1 bla="qux">foo</Child1>
-            <Child1>bar</Child1>
-          </MyParent>
-        </MyRoot>
-        ''')
-        assert load.getitem(xml, 'MyParent/Child1[1]/text()',
-                            multiple=False, optional=False) == 'foo'
-        assert load.getitem(
-            xml, 'MyParent/Child1/text()',
-            multiple=True, optional=False) == ['foo', 'bar']
-
-        with pytest.raises(LookupError, match='blabla'):
-            load.getitem(xml, 'MyParent.blabla', multiple=False,
-                         optional=False)
-
-        assert load.getitem(xml, 'MyParent/Child2/text()', multiple=False,
-                            optional=True) is None
-
-
 class TestPrimitiveRegistry:
 
     def test_found(self):
