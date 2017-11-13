@@ -126,7 +126,7 @@ class Query(Querylike[T], metaclass=QueryMeta):
         self.__req__, self.__rtype__ = request, rtype
 
     __req__ = NotImplemented
-    __rtype__: t.Type[T] = object
+    __rtype__ = NotImplemented
 
 
 @dataclass(frozen=True)

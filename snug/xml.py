@@ -24,6 +24,14 @@ def elemgetter(path: str) -> t.Callable[[Element], Element]:
 elemsgetter = partial(methodcaller, 'findall')
 
 
+def textsgetter(path: str, *, strip: bool=False) -> t.Callable[[Element],
+                                                               t.List[str]]:
+    return compose(list,
+                   partial(map, str.strip) if strip else identity,
+                   partial(map, _attrgetter('text')),
+                   methodcaller('findall', path))
+
+
 def textgetter(path: str, *,
                default: T=NO_DEFAULT,
                strip: bool=False) -> t.Callable[[Element], t.Union[str, T]]:

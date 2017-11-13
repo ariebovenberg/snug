@@ -103,3 +103,18 @@ class TestAttribGetter:
 
         getter2 = xml.attribgetter('MyParent/Child1', 'bla', default=None)
         assert getter2(XMLDATA) == 'qux'
+
+
+class TestTextsGetter:
+
+    def test_simple(self):
+        getter = xml.textsgetter('MyParent/Child1')
+        assert getter(XMLDATA) == ['foo', ' bar  ']
+
+    def test_path_not_found(self):
+        getter = xml.textsgetter('MyParent/Child2')
+        assert getter(XMLDATA) == []
+
+    def test_strip(self):
+        getter = xml.textsgetter('MyParent/Child1', strip=True)
+        assert getter(XMLDATA) == ['foo', 'bar']
