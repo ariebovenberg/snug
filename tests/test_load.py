@@ -1,13 +1,13 @@
 import typing as t
+from operator import itemgetter
 
 from datetime import datetime
 
 import dateutil.parser
-import xml.etree.ElementTree as ET
 import pytest
 from dataclasses import dataclass
 from dateutil.tz import tzutc
-from toolz import compose, identity
+from toolz import compose, identity, valmap
 
 from snug import load
 
@@ -69,13 +69,14 @@ def test_set_loader():
     )
 ])
 def test_create_dataclass_loader(data, loaded, registry):
-    dloader = load.create_dataclass_loader(User, registry, {
+    dloader = load.create_dataclass_loader(User, registry, valmap(itemgetter, {
         'id':          'id',
         'name':        'username',
         'likes_pizza': 'pizza',
         'height':      'height',
-        'nicknames':   'nicknames'
-    })
+        'nicknames':   'nicknames',
+        'hobbies':     'hobbies',
+    }))
     assert dloader(data) == loaded
 
 
@@ -211,8 +212,9 @@ class TestDataclassRegistry:
 
         registry |= load.DataclassRegistry({
             Post: {
-                'title': 'Title',
-                'posted_at': 'date',
+                'title':     itemgetter('Title'),
+                'posted_at': itemgetter('date'),
+                'author_id': itemgetter('author_id'),
             }
         })
 

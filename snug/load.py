@@ -119,19 +119,17 @@ class UnsupportedType(LookupError):
     """indicates the registry does not have a loader for the given type"""
 
 
-def create_dataclass_loader(cls, registry, sourcemap=None,
-                            getter=itemgetter):
+def create_dataclass_loader(cls, registry, field_getters):
     """create a loader for a dataclass type"""
     fields = valmap(attrgetter('type'), cls.__dataclass_fields__)
-    sourcemap = {**dict(zip(fields, fields)), **(sourcemap or {})}
-    sources = map(sourcemap.__getitem__, fields)
+    getters = map(field_getters.__getitem__, fields)
     optionals = map(_is_optional_type, fields.values())
 
     # coverage examption here because branch coverage
     # cannot tell if the generator is fully consumed by zip().
     itemgetters = (  # pragma: no cover
-        lookup_defaults(getter(source), None) if optional else getter(source)
-        for source, optional in zip(sources, optionals)
+        lookup_defaults(getter, None) if optional else getter
+        for getter, optional in zip(getters, optionals)
     )
     loaders = map(registry, fields.values())
     getters = list(starmap(compose, zip(loaders, itemgetters)))
@@ -172,7 +170,9 @@ class AutoDataclassRegistry(CombinableRegistry):
 
     def __call__(self, cls, main):
         if hasattr(cls, '__dataclass_fields__'):
-            return create_dataclass_loader(cls, main)
+            return create_dataclass_loader(cls, main, {
+                f: itemgetter(f) for f in cls.__dataclass_fields__
+            })
         else:
             raise UnsupportedType(cls)
 
