@@ -86,15 +86,6 @@ class Response(t.Generic[T]):
     content:     T
     headers:     Headers
 
-    def __getitem__(self, key):
-        return self.content[key]
-
-    def __len__(self):
-        return len(self.content)
-
-    def __iter__(self):
-        return iter(self.content)
-
     def parse_content(self, func: t.Callable[[T], T_parsed]) -> (
             'Response[T_parsed]'):
         return replace(self, content=func(self.content))

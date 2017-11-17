@@ -194,36 +194,37 @@ class TestAutoDataclassRegistry:
             registry(MyClass)
 
 
-class TestDataclassRegistry:
+def test_dataclass_registry(registry):
 
-    def test_ok(self, registry):
+    @dataclass
+    class Post:
+        title:     str
+        posted_at: datetime
+        author_id: int
 
-        @dataclass
-        class Post:
-            title:     str
-            posted_at: datetime
-            author_id: int
+    data = {
+        'Title':     'hello',
+        'date':      '2017-10-18T14:13:05Z',
+        'author_id': 12,
+    }
 
-        data = {
-            'Title':     'hello',
-            'date':      '2017-10-18T14:13:05Z',
-            'author_id': 12,
+    registry |= load.DataclassRegistry({
+        Post: {
+            'title':     itemgetter('Title'),
+            'posted_at': itemgetter('date'),
+            'author_id': itemgetter('author_id'),
         }
+    })
 
-        registry |= load.DataclassRegistry({
-            Post: {
-                'title':     itemgetter('Title'),
-                'posted_at': itemgetter('date'),
-                'author_id': itemgetter('author_id'),
-            }
-        })
+    loader = registry(Post)
 
-        loader = registry(Post)
+    assert loader(data) == Post(
+        'hello',
+        datetime(2017, 10, 18, 14, 13, 5, tzinfo=tzutc()),
+        author_id=12)
 
-        assert loader(data) == Post(
-            'hello',
-            datetime(2017, 10, 18, 14, 13, 5, tzinfo=tzutc()),
-            author_id=12)
+    with pytest.raises(load.UnsupportedType):
+        registry(User)
 
 
 def test_simple_registry():
