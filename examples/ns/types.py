@@ -44,13 +44,14 @@ class Departure(snug.utils.StrRepr):
     platform:         str
     platform_changed: bool
     travel_tip:       t.Optional[str]
-    comments:         t.Optional[str]
+    comments:         t.List[str]
 
     def __str__(self):
         delaytext = f'[{self.delay}]' if self.delay else ''
-        platform = f'{self.platform}{"(!)" if self.platform_changed else ""}'
+        platform = f'{self.platform}{"*" if self.platform_changed else ""}'
+        alert = ' (!)' if self.comments or self.travel_tip else ''
         return (f'{self.time:%H:%M}{delaytext} | {self.destination} '
-                f'| {platform}')
+                f'| {platform}{alert}')
 
 
 @dclass()

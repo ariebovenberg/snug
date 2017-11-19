@@ -1,12 +1,13 @@
 import typing as t
+import xml.etree.ElementTree
 from datetime import datetime
 from functools import partial
 from operator import attrgetter, methodcaller
 
-import snug
-import lxml
 import requests
 from toolz import compose, valfilter
+
+import snug
 from snug.utils import notnone
 
 from .types import Station, Departure, Journey
@@ -15,7 +16,7 @@ from .load import registry
 
 api = snug.Api(
     prepare=methodcaller('add_prefix', 'https://webservices.ns.nl/ns-api-'),
-    parse=compose(lxml.etree.fromstring, attrgetter('content')),
+    parse=compose(xml.etree.ElementTree.fromstring, attrgetter('content')),
     add_auth=snug.Request.add_basic_auth,
 )
 resolve = partial(
