@@ -1,9 +1,7 @@
 import json
-import requests
 import typing as t
 from pathlib import Path
 from functools import partial
-from operator import methodcaller
 
 import pytest
 
@@ -12,11 +10,9 @@ import github as gh
 from snug.utils import replace
 
 CRED_PATH = Path('~/.snug/github.json').expanduser()
-auth = json.loads(CRED_PATH.read_bytes())
+auth = tuple(json.loads(CRED_PATH.read_bytes()))
 
-resolve = partial(gh.resolve,
-                  client=requests.Session(),
-                  auth=methodcaller('add_basic_auth', *auth))
+resolve = partial(gh.resolve, auth=auth)
 
 all_orgs = gh.orgs()
 one_org = gh.org('github')

@@ -4,15 +4,14 @@ import typing as t
 from datetime import datetime
 from operator import methodcaller, attrgetter
 
+import requests
 import snug
-from toolz import flip, partial, valfilter, compose
+from toolz import partial, valfilter, compose
 from dataclasses import dataclass
 from snug.utils import notnone
 
 from .types import Repo, Organization, User, Issue, RepoSummary
-from .load import load
-
-parse_datetime = partial(flip(datetime.strptime), '%Y-%m-%dT%H:%M:%SZ')
+from .load import registry
 
 _repr = reprlib.Repr()
 _repr.maxstring = 45
@@ -26,10 +25,15 @@ api = snug.Api(
     parse=compose(
         json.loads,
         methodcaller('decode', 'utf-8'),
-        attrgetter('content')))
+        attrgetter('content')),
+    add_auth=snug.Request.add_basic_auth,
+)
 
 
-resolve = partial(snug.query.resolve, api=api, load=load)
+resolve = partial(snug.query.resolve,
+                  api=api,
+                  client=requests.Session(),
+                  loaders=registry)
 
 
 @dataclass(frozen=True)
@@ -42,7 +46,7 @@ class repo(snug.Query, rtype=Repo):
     def __req__(self):
         return snug.Request(f'repos/{self.owner}/{self.name}')
 
-    @snug.query.from_func(rtype=t.List[Issue])
+    @snug.Query(t.List[Issue])
     def issues(repo:   'repo',
                labels: t.Optional[str]=None,
                state:  t.Optional[str]=None):
@@ -53,32 +57,32 @@ class repo(snug.Query, rtype=Repo):
                 'state':  state,
             }))
 
-    @snug.query.from_func(rtype=Issue)
+    @snug.Query(Issue)
     def issue(repo: 'repo', number: int):
         return snug.Request(
             f'repos/{repo.owner}/'
             f'{repo.name}/issues/{number}')
 
 
-@snug.query.from_func(rtype=t.List[RepoSummary])
+@snug.Query(t.List[RepoSummary])
 def repos():
     """a selection on repositories"""
     return snug.Request('repositories')
 
 
-@snug.query.from_func(rtype=Organization)
+@snug.Query(Organization)
 def org(login: str):
     """Organization lookup by login"""
     return snug.Request(f'orgs/{login}')
 
 
-@snug.query.from_func(rtype=t.List[Organization])
+@snug.Query(t.List[Organization])
 def orgs():
     """a selection of organizations"""
     return snug.Request('organizations')
 
 
-@snug.query.from_func(rtype=t.List[Issue])
+@snug.Query(t.List[Issue])
 def issues(filter: t.Optional[str]=None,
            state:  t.Optional[Issue.State]=None,
            labels: t.Optional[str]=None,
@@ -102,6 +106,6 @@ class current_user(snug.Query, rtype=User):
     def __req__(self):
         return snug.Request('user')
 
-    @snug.query.from_func(rtype=t.List[Issue])
+    @snug.Query(t.List[Issue])
     def issues(user: 'current_user'):
         return snug.Request('user/issues')
