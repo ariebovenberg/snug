@@ -29,7 +29,6 @@ api = snug.Api(
     add_auth=snug.Request.add_basic_auth,
 )
 
-
 resolve = partial(snug.query.resolve,
                   api=api,
                   client=requests.Session(),

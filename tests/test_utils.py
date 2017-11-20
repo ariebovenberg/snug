@@ -1,3 +1,4 @@
+import datetime
 from operator import itemgetter
 
 import pytest
@@ -82,3 +83,16 @@ def test_skipnone():
     myfunc = utils.skipnone(str.strip)
     assert myfunc('  blabla   \n') == 'blabla'
     assert myfunc(None) is None
+
+
+class TestParseIso8601:
+
+    def test_with_timezone(self):
+        parsed = utils.parse_iso8601('2012-02-27T13:08:00+0100')
+        assert parsed == datetime.datetime(
+            2012, 2, 27, 13, 8,
+            tzinfo=datetime.timezone(datetime.timedelta(hours=1)))
+
+    def test_no_timezone(self):
+        parsed = utils.parse_iso8601('2014-06-10T17:25:29Z')
+        assert parsed == datetime.datetime(2014, 6, 10, 17, 25, 29)

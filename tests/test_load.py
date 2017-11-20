@@ -3,13 +3,11 @@ from operator import itemgetter
 
 from datetime import datetime
 
-import dateutil.parser
 import pytest
 from dataclasses import dataclass
-from dateutil.tz import tzutc
 from toolz import compose, identity, valmap
 
-from snug import load
+from snug import load, utils
 
 
 @dataclass(frozen=True)
@@ -32,7 +30,7 @@ def registry():
         str:        str,
         type(None): identity,
         object:     identity,
-        datetime:   dateutil.parser.parse,
+        datetime:   utils.parse_iso8601,
     }) | load.GenericRegistry({
         t.List:  load.list_loader,
         t.Set:   load.set_loader,
@@ -181,7 +179,7 @@ class TestAutoDataclassRegistry:
         }
         assert loader(data) == Post(
             'hello',
-            datetime(2017, 10, 18, 14, 13, 5, tzinfo=tzutc()))
+            datetime(2017, 10, 18, 14, 13, 5))
 
     def test_not_supported(self, registry):
 
@@ -220,7 +218,7 @@ def test_dataclass_registry(registry):
 
     assert loader(data) == Post(
         'hello',
-        datetime(2017, 10, 18, 14, 13, 5, tzinfo=tzutc()),
+        datetime(2017, 10, 18, 14, 13, 5),
         author_id=12)
 
     with pytest.raises(load.UnsupportedType):

@@ -1,4 +1,5 @@
 """Miscellaneous tools and shortcuts"""
+from datetime import datetime
 from functools import wraps
 
 from dataclasses import asdict
@@ -51,3 +52,16 @@ def skipnone(func):
         return None if arg is None else func(arg)
 
     return wrapper
+
+
+def parse_iso8601(dtstring):
+    """naive parser for ISO8061 datetime strings,
+
+    supports 2 formats:
+    - 2017-11-20T07:16:29+0000
+    - 2017-11-20T07:16:29Z
+
+    """
+    return datetime.strptime(
+        dtstring,
+        '%Y-%m-%dT%H:%M:%SZ' if len(dtstring) == 20 else '%Y-%m-%dT%H:%M:%S%z')

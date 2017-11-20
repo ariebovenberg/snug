@@ -12,11 +12,10 @@ from functools import partial
 from itertools import starmap
 from operator import attrgetter, itemgetter
 
-import dateutil.parser
 from dataclasses import dataclass, field
 from toolz import valmap, compose, identity
 
-from .utils import lookup_defaults
+from .utils import lookup_defaults, parse_iso8601
 
 __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
            'PrimitiveRegistry', 'GenericRegistry', 'AutoDataclassRegistry',
@@ -196,7 +195,7 @@ simple_registry = PrimitiveRegistry({
     str:        str,
     bool:       bool,
     type(None): identity,
-    datetime:   dateutil.parser.parse,
+    datetime:   parse_iso8601,
     object:     identity,
 }) | GenericRegistry({
     t.List:   list_loader,
