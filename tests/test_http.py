@@ -1,8 +1,5 @@
 from unittest import mock
 
-import pytest
-import requests
-
 from snug import http
 
 
@@ -42,39 +39,39 @@ class TestRequest:
             })
 
 
-class TestResponse:
-
-    def test_parse_content(self):
-        resp = http.Response(200, 'my content', {})
-        assert resp.parse_content('[{}]'.format)
-
-
-class TestSend:
-
-    def test_invalid_client(self):
-
-        class MyClass():
-            pass
-
-        with pytest.raises(TypeError, match='MyClass'):
-            http.send(MyClass(), http.Request('my/url/'))
-
-    def test_with_requests_session(self):
-        req = http.Request('my/url/',
-                           headers={'my-header': 'foo'},
-                           params={'param1': 4})
-        client = requests.Session()
-
-        with mock.patch.object(client, 'get', autospec=True) as getter:
-            response = http.send(client, req)
-
-        getter.assert_called_once_with('my/url/',
-                                       headers={'my-header': 'foo'},
-                                       params={'param1': 4})
-        raw_response = getter.return_value
-        assert raw_response.raise_for_status.called
-        assert response == http.Response(
-            raw_response.status_code,
-            content=raw_response.content,
-            headers=raw_response.headers,
+@mock.patch('urllib.request.Request', autospec=True)
+@mock.patch('urllib.request.urlopen', autospec=True)
+def test_urllib_sender(urlopen, urllib_request):
+    sender = http.urllib_sender(timeout=10)
+    req = http.Request('https://www.api.github.com/organizations',
+                       params={'since': 3043},
+                       headers={'Accept': 'application/vnd.github.v3+json'})
+    response = sender(req)
+    assert response == http.Response(
+        status_code=urlopen.return_value.getcode.return_value,
+        content=urlopen.return_value.read.return_value,
+        headers=urlopen.return_value.headers,
         )
+    urlopen.assert_called_once_with(urllib_request.return_value, timeout=10)
+    urllib_request.assert_called_once_with(
+        'https://www.api.github.com/organizations?since=3043',
+        headers={'Accept': 'application/vnd.github.v3+json'}
+    )
+
+
+def test_requests_sender():
+    session = mock.Mock()
+    sender = http.requests_sender(session)
+    req = http.Request('https://www.api.github.com/organizations',
+                       params={'since': 3043},
+                       headers={'Accept': 'application/vnd.github.v3+json'})
+    response = sender(req)
+    assert response == http.Response(
+        status_code=session.get.return_value.status_code,
+        content=session.get.return_value.content,
+        headers=session.get.return_value.headers,
+    )
+    session.get.assert_called_once_with(
+        'https://www.api.github.com/organizations',
+        params={'since': 3043},
+        headers={'Accept': 'application/vnd.github.v3+json'})

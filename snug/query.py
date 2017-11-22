@@ -13,7 +13,6 @@ import typing as t
 from functools import partial
 from operator import methodcaller, attrgetter
 
-import requests
 from dataclasses import dataclass, field, astuple
 from toolz import compose, thread_last, flip
 
@@ -162,7 +161,7 @@ def resolve(query:   Querylike[T],
             api:     Api[T_auth],
             loaders: load.Registry,
             auth:    T_auth,
-            client) -> T:
+            sender:  http.Sender) -> T:
     """resolve a querylike object.
 
     Parameters
@@ -175,15 +174,15 @@ def resolve(query:   Querylike[T],
         The registry of object loaders
     auth
         The authentication object
-    client
-        The HTTP client with which to send the requests
+    sender
+        The request sender
     """
     return thread_last(
         query,
         attrgetter('__req__'),
         api.prepare,
         (flip(api.add_auth), auth),
-        (http.send, client),
+        sender,
         api.parse,
         loaders(query.__rtype__))
 
@@ -199,5 +198,5 @@ simple_resolve = partial(
     api=_simple_json_api,
     loaders=load.simple_registry,
     auth=None,
-    client=requests.Session())
+    sender=http.urllib_sender())
 """a basic resolver"""

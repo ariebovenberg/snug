@@ -54,12 +54,16 @@ def skipnone(func):
     return wrapper
 
 
-def parse_iso8601(dtstring):
+def parse_iso8601(dtstring: str) -> datetime:
     """naive parser for ISO8061 datetime strings,
 
-    supports 2 formats:
-    - 2017-11-20T07:16:29+0000
-    - 2017-11-20T07:16:29Z
+    Parameters
+    ----------
+    dtstring
+        the datetime as string in one of two formats:
+
+        * ``2017-11-20T07:16:29+0000``
+        * ``2017-11-20T07:16:29Z``
 
     """
     return datetime.strptime(

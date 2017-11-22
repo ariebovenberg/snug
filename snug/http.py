@@ -1,14 +1,15 @@
 """basic HTTP tools"""
+import abc
 import typing as t
+import urllib.request
 from base64 import b64encode
-from functools import partial, singledispatch
+from functools import partial
 
-import requests
 from dataclasses import dataclass, field
 
 from .utils import replace
 
-__all__ = ['Request', 'Response', 'send']
+__all__ = ['Request', 'Response', 'Sender', 'urllib_sender', 'requests_sender']
 
 _dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]
@@ -70,7 +71,7 @@ class Request:
 
 
 @dataclass(frozen=True)
-class Response(t.Generic[T]):
+class Response:
     """a simple HTTP response
 
     Parameters
@@ -83,38 +84,50 @@ class Response(t.Generic[T]):
         the headers of the response
     """
     status_code: int
-    content:     T
+    content:     bytes
     headers:     Headers
 
-    def parse_content(self, func: t.Callable[[T], T_parsed]) -> (
-            'Response[T_parsed]'):
-        return replace(self, content=func(self.content))
+
+class Sender(abc.ABC):
+    """Interface for request senders.
+    Any callable which turns a :class:`Request` into a :class:`Response`
+    implements it."""
+
+    @abc.abstractmethod
+    def __call__(self, request: Request) -> Response:
+        raise NotImplementedError()
 
 
-@singledispatch
-def send(client, request: Request) -> Response:
-    """send an HTTP request, returning a Response
-
-    This is a :func:`~functools.singledispatch` function:
-    different types of HTTP clients can be supported by registering them.
+def urllib_sender(**kwargs) -> Sender:
+    """create a :class:`Sender` callable using :mod:`urllib`.
 
     Parameters
     ----------
-    client
-        the HTTP client
-    request
-        the request to send
+    **kwargs
+        parameters passed to :meth:`urllib.request.urlopen`
     """
-    raise TypeError(client)
+    def _urllib_send(req: Request) -> Response:
+        url = f'{req.url}?{urllib.parse.urlencode(req.params)}'
+        raw_request = urllib.request.Request(url, headers=req.headers)
+        raw_response = urllib.request.urlopen(raw_request, **kwargs)
+        return Response(
+            raw_response.getcode(),
+            content=raw_response.read(),
+            headers=raw_response.headers,
+        )
+
+    return _urllib_send
 
 
-@send.register(requests.Session)
-def _send_with_requests_session(client, request):
-    assert request.method == 'GET', 'only GET implemented for now'
-    response = client.get(request.url,
-                          headers=request.headers,
-                          params=request.params)
-    response.raise_for_status()
-    return Response(status_code=response.status_code,
-                    content=response.content,
-                    headers=response.headers)
+def requests_sender(session: 'requests.Session') -> Sender:
+    """create a :class:`Sender` for a :class:`requests.Session`"""
+
+    def _req_send(req: Request) -> Response:
+        response = session.get(req.url, params=req.params, headers=req.headers)
+        return Response(
+            response.status_code,
+            response.content,
+            response.headers,
+        )
+
+    return _req_send

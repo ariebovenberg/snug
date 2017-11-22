@@ -23,17 +23,15 @@ class Comment:
 
 
 @dataclass
-class MockClient:
+class MockSender:
     responses: field(default_factory=dict)
 
-
-@snug.http.send.register(MockClient)
-def _send_with_test_client(client, request):
-    try:
-        return next(resp for req, resp in client.responses
-                    if req == request)
-    except StopIteration:
-        raise LookupError(f'no response for {request}')
+    def __call__(self, request):
+        try:
+            return next(resp for req, resp in self.responses
+                        if req == request)
+        except StopIteration:
+            raise LookupError(f'no response for {request}')
 
 
 def test_querylike():
@@ -195,22 +193,25 @@ def test_resolve():
         add_auth=lambda req, auth: req.add_headers({'Authorization': 'me'}),
     )
 
-    client = MockClient([
+    sender = MockSender([
         (snug.Request('mysite.com/api/posts/4/',
                         headers={'Authorization': 'me'}),
             snug.Response(200, b'{"id": 4, "title": "my post!"}', headers={}))
     ])
 
-    response = snug.resolve(query, api=api, client=client, auth='me',
+    response = snug.resolve(query, api=api, sender=sender, auth='me',
                             loaders=loaders)
     assert isinstance(response, Post)
     assert response == Post(id=4, title='my post!')
 
 
-@mock.patch('snug.http.send', autospec=True,
-            return_value=snug.Response(
-                200, b'{"id": 4, "title": "another post"}', headers={}))
-def test_simple_resolver(http_send):
+@mock.patch('urllib.request.urlopen', autospec=True,
+            return_value=mock.Mock(**{
+                'getcode.return_value': 200,
+                'headers': {},
+                'read.return_value': b'{"id": 4, "title": "another post"}'
+            }))
+def test_simple_resolver(urlopen):
 
     resolve = snug.query.simple_resolve
 
@@ -221,6 +222,4 @@ def test_simple_resolver(http_send):
 
     post_4 = post(id=4)
     response = resolve(post_4)
-    http_send.assert_called_once_with(mock.ANY,
-                                      Request('https://mysite.com/posts/4/'))
     assert response == Post(id=4, title='another post')
