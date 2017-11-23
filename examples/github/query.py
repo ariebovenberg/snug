@@ -4,7 +4,6 @@ import typing as t
 from datetime import datetime
 from operator import methodcaller, attrgetter
 
-import requests
 import snug
 from toolz import partial, valfilter, compose
 from dataclasses import dataclass
@@ -31,7 +30,7 @@ api = snug.Api(
 
 resolve = partial(snug.query.resolve,
                   api=api,
-                  client=requests.Session(),
+                  sender=snug.urllib_sender(),
                   loaders=registry)
 
 
