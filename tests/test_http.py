@@ -1,5 +1,7 @@
 from unittest import mock
 
+import pytest
+
 from snug import http
 
 
@@ -60,6 +62,7 @@ def test_urllib_sender(urlopen, urllib_request):
 
 
 def test_requests_sender():
+    pytest.importorskip("requests")
     session = mock.Mock()
     sender = http.requests_sender(session)
     req = http.Request('https://www.api.github.com/organizations',

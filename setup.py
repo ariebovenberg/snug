@@ -34,6 +34,9 @@ setup(
         'dataclasses>=0.1,<0.2',
         'toolz>=0.8.2,<0.9',
     ],
+    extras_require={
+        'requests': ['requests>=2.18.0,<3'],
+    },
     python_requires='>=3.6',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))
 )

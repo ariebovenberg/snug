@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 from .utils import replace
 
-__all__ = ['Request', 'Response', 'Sender', 'urllib_sender', 'requests_sender']
+__all__ = ['Request', 'Response', 'Sender', 'urllib_sender']
 
 _dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]
@@ -119,15 +119,23 @@ def urllib_sender(**kwargs) -> Sender:
     return _urllib_send
 
 
-def requests_sender(session: 'requests.Session') -> Sender:
-    """create a :class:`Sender` for a :class:`requests.Session`"""
+try:
+    import requests
+except ImportError:  # pragma: no cover
+    pass
+else:
+    def requests_sender(session: requests.Session) -> Sender:
+        """create a :class:`Sender` for a :class:`requests.Session`"""
 
-    def _req_send(req: Request) -> Response:
-        response = session.get(req.url, params=req.params, headers=req.headers)
-        return Response(
-            response.status_code,
-            response.content,
-            response.headers,
-        )
+        def _req_send(req: Request) -> Response:
+            response = session.get(req.url, params=req.params,
+                                   headers=req.headers)
+            return Response(
+                response.status_code,
+                response.content,
+                response.headers,
+            )
 
-    return _req_send
+        return _req_send
+
+    __all__.append('requests_sender')
