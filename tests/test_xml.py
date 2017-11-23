@@ -27,15 +27,6 @@ class TestElemGetter:
         with pytest.raises(LookupError, match='MyParent/BlaBla'):
             getter(XMLDATA)
 
-    @pytest.mark.skip(reason='not implemented')
-    def test_default(self):
-        getter = xml.elemgetter('MyParent/Blabla', default='bla')
-        assert getter(XMLDATA) == 'bla'
-        getter = xml.elemgetter('MyParent/Blabla', default=None)
-        assert getter(XMLDATA) is None
-        getter2 = xml.elemgetter('MyParent', default=None)
-        assert getter2(XMLDATA) is not None
-
 
 class TestElemsGetter:
 
