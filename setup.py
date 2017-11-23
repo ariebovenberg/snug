@@ -31,7 +31,6 @@ setup(
     ],
     keywords=['api', 'wrapper', 'rest'],
     install_requires=[
-        'requests>=2.13.0,<3',
         'dataclasses>=0.1,<0.2',
         'toolz>=0.8.2,<0.9',
     ],
