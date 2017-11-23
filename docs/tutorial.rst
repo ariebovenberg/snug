@@ -62,7 +62,7 @@ Resolving our query now returns the given type:
    >>> repo.description
    'My first repository on GitHub!'
    >>> repo.created_at
-   datetime.datetime(2011, 1, 26, 19, 1, 12, tzinfo=tzutc())
+   datetime.datetime(2011, 1, 26, 19, 1, 12)
 
 
 .. note::
