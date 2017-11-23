@@ -4,7 +4,6 @@ from datetime import datetime
 from functools import partial
 from operator import attrgetter, methodcaller
 
-import requests
 from toolz import compose, valfilter
 
 import snug
@@ -23,7 +22,7 @@ resolve = partial(
     snug.query.resolve,
     api=api,
     loaders=registry,
-    client=requests.Session())
+    sender=snug.urllib_sender())
 
 stations = snug.Query(snug.Request('stations-v2'), rtype=t.List[Station])
 """a list of all stations"""
