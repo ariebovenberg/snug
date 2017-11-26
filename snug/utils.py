@@ -1,40 +1,71 @@
-"""Miscellaneous tools and boilerplate"""
-import itertools
-import functools
-import sys
+"""Miscellaneous tools and shortcuts"""
+from datetime import datetime
+from functools import wraps
+
+from dataclasses import asdict
+from toolz import excepts
 
 
-class ppartial(functools.partial):
-    '''like functools.partial, but allows positional arguments
-    by use of ellipsis (...).
-    Useful for builtin python functions which do not take keyword args
-
-        >>> count_down_from = ppartial(range, ..., 0, -1)
-        >>> list(count_down_from(3))
-        [3, 2, 1]
-    '''
-    def __call__(self, *args, **keywords):
-        iter_args = iter(args)
-        merged_args = (next(iter_args) if a is ... else a
-                       for a in self.args)
-        # keywords may be ``None`` in some python 3.4.x versions
-        merged_keywords = {} if self.keywords is None else self.keywords.copy()
-        merged_keywords.update(keywords)
-        return self.func(*itertools.chain(merged_args, iter_args),
-                         **merged_keywords)
+def onlyone(iterable):
+    """get the only item in an iterable"""
+    value, = iterable
+    return value
 
 
-class EnsurePep487Meta(type):  # pragma: no cover
-    """metaclass to ensure rudimentary support for PEP487 in Py<=3.6"""
-    if sys.version_info < (3, 6):
+def replace(instance, **kwargs):
+    """replace values in a dataclass instance"""
+    return instance.__class__(**{**asdict(instance), **kwargs})
 
-        def __new__(cls, name, bases, classdict, **kwargs):
-            return super().__new__(cls, name, bases, classdict)
 
-        def __init__(cls, name, bases, dct, **kwargs):
-            if bases and hasattr(cls, '__init_subclass__'):
-                cls.__init_subclass__(cls, **kwargs)
+def apply(func, args=(), kwargs=None):
+    """apply args and kwargs to a function"""
+    return func(*args, **kwargs or {})
 
-            for name, item in dct.items():
-                if hasattr(item, '__set_name__'):
-                    item.__set_name__(cls, name)
+
+def notnone(obj):
+    """return whether an object is not None"""
+    return obj is not None
+
+
+class StrRepr():
+    """mixin which adds a ``__repr__`` based on ``__str__``"""
+
+    def __str__(self):
+        return '{0.__class__.__name__} object'.format(self)
+
+    def __repr__(self):
+        return '<{0.__class__.__name__}: {0}>'.format(self)
+
+
+class NO_DEFAULT:
+    """sentinel for no default"""
+
+
+def lookup_defaults(lookup, default):
+    return excepts(LookupError, lookup, lambda _: default)
+
+
+def skipnone(func):
+    """wrap a function so that it returns None when getting None as input"""
+    @wraps(func)
+    def wrapper(arg):
+        return None if arg is None else func(arg)
+
+    return wrapper
+
+
+def parse_iso8601(dtstring: str) -> datetime:
+    """naive parser for ISO8061 datetime strings,
+
+    Parameters
+    ----------
+    dtstring
+        the datetime as string in one of two formats:
+
+        * ``2017-11-20T07:16:29+0000``
+        * ``2017-11-20T07:16:29Z``
+
+    """
+    return datetime.strptime(
+        dtstring,
+        '%Y-%m-%dT%H:%M:%SZ' if len(dtstring) == 20 else '%Y-%m-%dT%H:%M:%S%z')

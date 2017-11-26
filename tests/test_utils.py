@@ -1,29 +1,98 @@
-import functools
+import datetime
+from operator import itemgetter
 
-from snug import utils
+import pytest
+
+import snug
+from dataclasses import dataclass
+
+utils = snug.utils
 
 
-def _example_func(*args, **kwargs):
-    return args, kwargs
+class TestOnlyOne:
+
+    def test_ok(self):
+        assert utils.onlyone([1]) == 1
+
+    def test_too_many(self):
+        with pytest.raises(ValueError, match='expected 1'):
+            utils.onlyone([1, 2])
+
+    def test_too_few(self):
+        with pytest.raises(ValueError, match='expected 1'):
+            utils.onlyone([])
 
 
-class TestPPartial:
+def test_replace():
 
-    def test_is_subclass(self):
-        assert issubclass(utils.ppartial, functools.partial)
+    @dataclass
+    class Comment:
+        title: str
+        body: str
 
-    def test_placeholder(self):
-        func = utils.ppartial(_example_func, ..., ..., 'foo', ...,
-                              bla='bing', another='thing')
+    comment = Comment('my comment', 'blabla')
+    newcomment = utils.replace(comment, body='actual comment')
+    assert newcomment == Comment('my comment', 'actual comment')
 
-        args, kwargs = func(1, 2, 3, another='thing2')
 
-        assert args == (1, 2, 'foo', 3)
-        assert kwargs == {'bla': 'bing', 'another': 'thing2'}
+def test_str_repr():
 
-    def test_no_placeholders(self):
-        func = utils.ppartial(_example_func, 'foo', 5)
-        args, kwargs = func(10)
+    class User(utils.StrRepr):
 
-        assert args == ('foo', 5, 10)
-        assert not kwargs
+        def __str__(self):
+            return 'foo'
+
+    # instance repr
+    user = User()
+    assert repr(user) == '<User: foo>'
+    del User.__str__
+    assert repr(user) == '<User: User object>'
+
+
+class TestApply:
+
+    def test_defaults(self):
+
+        def func():
+            return 'foo'
+
+        assert utils.apply(func) == 'foo'
+
+    def test_simple(self):
+
+        def func(a, b, c):
+            return a + b + c
+
+        assert utils.apply(func, (1, 2), {'c': 5}) == 8
+
+
+def test_isnone():
+    assert not utils.notnone(None)
+    assert utils.notnone(object())
+    assert utils.notnone(True)
+    assert utils.notnone(False)
+
+
+def test_lookup_default():
+    getter = utils.lookup_defaults(itemgetter('foo'), 'bla')
+    assert getter({}) == 'bla'
+    assert getter({'foo': 4}) == 4
+
+
+def test_skipnone():
+    myfunc = utils.skipnone(str.strip)
+    assert myfunc('  blabla   \n') == 'blabla'
+    assert myfunc(None) is None
+
+
+class TestParseIso8601:
+
+    def test_with_timezone(self):
+        parsed = utils.parse_iso8601('2012-02-27T13:08:00+0100')
+        assert parsed == datetime.datetime(
+            2012, 2, 27, 13, 8,
+            tzinfo=datetime.timezone(datetime.timedelta(hours=1)))
+
+    def test_no_timezone(self):
+        parsed = utils.parse_iso8601('2014-06-10T17:25:29Z')
+        assert parsed == datetime.datetime(2014, 6, 10, 17, 25, 29)

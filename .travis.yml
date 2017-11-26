@@ -3,16 +3,16 @@ branches:
     - master
 language: python
 python:
-  - "3.4"
-  - "3.5"
   - "3.6"
-  - "3.7-dev"
 install: 
   - pip install tox-travis
   - pip install coveralls
 matrix:
   include:
     - python: 3.6
-      env: TOXENV=flake8
+    - python: 3.6
+      env: TOXENV=lint
+    - python: 3.6
+      env: TOXENV=docs
 script: tox
 after_success: coveralls

@@ -1,3 +1,0 @@
--r core.txt
-pytest>=3.1.2,<4
-pytest-coverage

@@ -1,21 +1,32 @@
 API reference
 =============
 
-Core
+.. todo::
+   cleanup the formatting
+
+query
+-----
+
+.. automodule:: snug.query
+   :members:
+   :show-inheritance:
+
+
+load
 ----
 
-.. automodule:: snug.core
+.. automodule:: snug.load
    :members:
+   :show-inheritance:
 
-JSON
+
+http
 ----
 
-.. automodule:: snug.json
+.. automodule:: snug.http
    :members:
-   :special-members:
 
-
-Utils
+utils
 -----
 
 .. automodule:: snug.utils

@@ -3,39 +3,40 @@ from setuptools import setup, find_packages
 
 local_path = Path(__file__).parent.joinpath
 
-version_namespace = {}
-exec(local_path('snug/__info__.py').open().read(), version_namespace)
+metadata = {}
+exec(local_path('snug/__about__.py').read_text(), metadata)
 
-readme = local_path('README.rst').open().read()
-history = local_path('HISTORY.rst').open().read()
+readme = local_path('README.rst').read_text()
+history = local_path('HISTORY.rst').read_text()
 
 
 setup(
     name='snug',
-    version=version_namespace['__version__'],
+    version=metadata['__version__'],
     description='Wrap REST APIs to fit nicely into your python code',
     license='MIT',
     long_description=readme + '\n\n' + history,
     url='https://github.com/ariebovenberg/snug',
 
-    author='Arie Bovenberg',
+    author=metadata['__author__'],
     author_email='a.c.bovenberg@gmail.com',
 
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta'
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
 
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],
-    keywords=['api', 'wrapper', 'rest', 'orm'],
+    keywords=['api', 'wrapper', 'rest'],
     install_requires=[
-        'requests>=2.13.0,<3',
-        'typing',
+        'dataclasses>=0.1,<0.2',
+        'toolz>=0.8.2,<0.9',
     ],
-    python_requires='>=3.4',
+    extras_require={
+        'requests': ['requests>=2.18.0,<3'],
+    },
+    python_requires='>=3.6',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))
 )

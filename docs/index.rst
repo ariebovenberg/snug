@@ -10,6 +10,7 @@
    :maxdepth: 2
    :caption: Contents:
 
+   tutorial.rst
    api.rst
 
 .. include:: ../HISTORY.rst

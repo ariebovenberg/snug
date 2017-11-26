@@ -1,4 +1,6 @@
--r test.txt
-sphinx
+-e .
+-r docs.txt
+pytest
+pytest-coverage
 wheel
 twine
