@@ -9,7 +9,8 @@ from dataclasses import dataclass, field
 
 from .utils import replace
 
-__all__ = ['Request', 'Response', 'Sender', 'urllib_sender']
+__all__ = ['Request', 'Response', 'Sender', 'AsyncSender',
+           'urllib_sender']
 
 _dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]
@@ -84,7 +85,7 @@ class Response:
         the headers of the response
     """
     status_code: int
-    content:     bytes
+    content:     bytes = field(repr=False)
     headers:     Headers
 
 
@@ -98,13 +99,24 @@ class Sender(abc.ABC):
         raise NotImplementedError()
 
 
+class AsyncSender(abc.ABC):
+    """Interface for ansyncronous request senders.
+    Any callable which turns a :class:`Request`
+    into an awaitable :class:`Response` implements it.
+    """
+
+    @abc.abstractmethod
+    def __call__(self, request: Request) -> t.Awaitable[Response]:
+        raise NotImplementedError()
+
+
 def urllib_sender(**kwargs) -> Sender:
-    """create a :class:`Sender` callable using :mod:`urllib`.
+    """create a :class:`Sender` using :mod:`urllib`.
 
     Parameters
     ----------
     **kwargs
-        parameters passed to :meth:`urllib.request.urlopen`
+        parameters passed to :func:`urllib.request.urlopen`
     """
     def _urllib_send(req: Request) -> Response:
         url = f'{req.url}?{urllib.parse.urlencode(req.params)}'
@@ -125,7 +137,13 @@ except ImportError:  # pragma: no cover
     pass
 else:
     def requests_sender(session: requests.Session) -> Sender:
-        """create a :class:`Sender` for a :class:`requests.Session`"""
+        """create a :class:`Sender` for a :class:`requests.Session`
+
+        Parameters
+        ----------
+        session
+            a requests session
+        """
 
         def _req_send(req: Request) -> Response:
             response = session.get(req.url, params=req.params,
@@ -139,3 +157,31 @@ else:
         return _req_send
 
     __all__.append('requests_sender')
+
+
+try:
+    import aiohttp
+except ImportError:  # pragma: no cover
+    pass
+else:
+    def aiohttp_sender(session: aiohttp.ClientSession) -> AsyncSender:
+        """create a :class:`AsyncSender`
+        for a :class:`aiohttp.ClientSession`
+
+        Parameters
+        ----------
+        session
+            a aiohttp session
+        """
+
+        async def _aiohttp_sender(req: Request) -> '?':
+            async with session.get(req.url) as response:
+                return Response(
+                    response.status,
+                    content=await response.text(),
+                    headers=response.headers,
+                )
+
+        return _aiohttp_sender
+
+    __all__.append('aiohttp_sender')

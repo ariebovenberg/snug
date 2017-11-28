@@ -1,6 +1,7 @@
--e .
+-e .[requests,aiohttp]
 -r docs.txt
 pytest
 pytest-coverage
 wheel
 twine
+aioresponses
