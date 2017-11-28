@@ -36,6 +36,7 @@ setup(
     ],
     extras_require={
         'requests': ['requests>=2.18.0,<3'],
+        'aiohttp': ['aiohttp>=2.3.3,<3'],
     },
     python_requires='>=3.6',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))

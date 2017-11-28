@@ -78,3 +78,29 @@ def test_requests_sender():
         'https://www.api.github.com/organizations',
         params={'since': 3043},
         headers={'Accept': 'application/vnd.github.v3+json'})
+
+
+try:
+    import aiohttp
+except ImportError:
+    pass
+else:
+    from aioresponses import aioresponses
+
+    @pytest.mark.asyncio
+    async def test_aiohttp_async_sender():
+        req = http.Request('https://test.example.com')
+
+        with aioresponses() as m:
+            m.get('https://test.example.com', body='{"my": "content"}',
+                  status=201,
+                  headers={'Content-Type': 'application/json'})
+
+            async with aiohttp.ClientSession() as session:
+                sender = http.aiohttp_sender(session)
+                response = await sender(req)
+
+            assert response == http.Response(
+                201,
+                content='{"my": "content"}',
+                headers={'Content-Type': 'application/json'})

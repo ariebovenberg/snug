@@ -84,7 +84,7 @@ class Response:
         the headers of the response
     """
     status_code: int
-    content:     bytes
+    content:     bytes = field(repr=False)
     headers:     Headers
 
 
@@ -95,6 +95,14 @@ class Sender(abc.ABC):
 
     @abc.abstractmethod
     def __call__(self, request: Request) -> Response:
+        raise NotImplementedError()
+
+
+class AsyncSender(abc.ABC):
+    """Interface for ansyncronous request senders"""
+
+    @abc.abstractmethod
+    def __call__(self, request: Request) -> t.Awaitable[Response]:
         raise NotImplementedError()
 
 
@@ -139,3 +147,21 @@ else:
         return _req_send
 
     __all__.append('requests_sender')
+
+
+try:
+    import aiohttp
+except ImportError:  # pragma: no cover
+    pass
+else:
+    def aiohttp_sender(session: aiohttp.ClientSession) -> AsyncSender:
+
+        async def _aiohttp_sender(req: Request) -> '?':
+            async with session.get(req.url) as response:
+                return Response(
+                    response.status,
+                    content=await response.text(),
+                    headers=response.headers,
+                )
+
+        return _aiohttp_sender
