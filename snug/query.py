@@ -14,14 +14,14 @@ from functools import partial
 from operator import methodcaller, attrgetter
 
 from dataclasses import dataclass, field, astuple
-from toolz import compose, thread_last, flip
+from toolz import compose, thread_last, flip, identity
 
-from . import http, load
+from . import http, load as loader
 from .utils import apply
 
 _dictfield = partial(field, default_factory=dict)
 
-__all__ = ['Query', 'resolve', 'Api', 'Querylike', 'simple_resolve']
+__all__ = ['Query', 'resolve', 'Api', 'simple_resolve']
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
@@ -45,87 +45,44 @@ class Api(t.Generic[T_auth]):
     add_auth: t.Callable[[http.Request, T_auth], http.Request]
 
 
-class Querylike(t.Generic[T]):
+class Query(t.Generic[T]):
     """interface for query-like objects.
-    Any object with ``__req__`` and ``__rtype__`` implements it"""
+    Any object with ``__req__`` and ``__load__`` implements it"""
 
-    @abc.abstractproperty
+    @abc.abstractmethod
     def __req__(self) -> http.Request:
         raise NotImplementedError()
 
-    @abc.abstractproperty
-    def __rtype__(self) -> t.Type[T]:
-        raise NotImplementedError()
+    @staticmethod
+    def __load__(response) -> T:
+        return response
 
 
-class QueryMeta(t.GenericMeta):
-    """Metaclass for Query"""
+@dataclass(frozen=True)
+class Static(Query[T]):
+    """a non-parametrized, static query"""
+    request: http.Request
+    load: loader.Loader[T] = identity
 
-    def __new__(cls, *args, rtype=object):
-        created = super().__new__(cls, *args)
-        created.__rtype__ = rtype
-        return created
+    def __req__(self):
+        return self.request
 
-    # if the Query is nested, this is reflected in the name
-    def __set_name__(self, kls, name):
-        self.__name__ = f'{kls.__name__}.{self.__name__}'
+    __load__ = property(attrgetter('load'))
 
+
+class NestedMeta(t.GenericMeta):
+    """Metaclass for nested queries"""
     # when nested, act like a method.
     # i.e. pass the parent query instance as first argument
     def __get__(self, instance, cls):
         return self if instance is None else partial(self, instance)
 
 
-class Query(Querylike[T], metaclass=QueryMeta):
-    """A requestable bit of data.
-    Can be instatiated, subclassed, or used as a decorator.
-
-    Examples
-    --------
-
-    Instantiation results in a static query.
-
-    .. code-block:: python
-
-        latest_post = Query(Request('posts/latest/'), rtype=Post)
-
-    As a decorator, wraps a request-making function in a query subclass.
-
-    .. code-block:: python
-
-        @snug.Query(Post)
-        def post(id: int):
-            \"\"\"lookup a post by id\"\"\"
-            return Request(f'posts/{id}/')
-
-    As a base class, allows more control over query functionality.
-
-    .. code-block:: python
-
-        class post(Query, rtype=Post):
-            def __init__(self, id: int):
-                ...
-            @property
-            def __req__(self):
-                ...
-    """
-    def __new__(cls, *args, **kwargs):
-        if cls is Query and len(args) < 2 and not kwargs:
-            # check if we're being used as a decorator
-            if not args:
-                return from_request_func()
-            elif isinstance(args[0], type):
-                return from_request_func(args[0])
-            elif isinstance(args[0], types.FunctionType):
-                return from_request_func()(args[0])
-
-        return super().__new__(cls)
-
-    def __init__(self, request, rtype=object):
-        self.__req__, self.__rtype__ = request, rtype
-
-    __req__ = NotImplemented
-    __rtype__ = NotImplemented
+class Nested(Query[T], metaclass=NestedMeta):
+    """a nested query"""
+    @abc.abstractmethod
+    def __req__(self):
+        raise NotImplementedError()
 
 
 @dataclass(frozen=True)
@@ -137,7 +94,7 @@ class from_request_func:
     * return a ``Request`` instance
     * be fully annotated, without keyword-only arguments
     """
-    rtype: type = object
+    load: loader.Loader = identity
 
     def __call__(self, func: types.FunctionType):
         args, _, _, defaults, _, _, annotations = inspect.getfullargspec(func)
@@ -145,21 +102,21 @@ class from_request_func:
             types.new_class(
                 func.__name__,
                 bases=(Query, ),
-                kwds={'rtype': self.rtype},
                 exec_body=methodcaller('update', {
                     '__annotations__': annotations,
                     '__doc__':         func.__doc__,
                     '__module__':      func.__module__,
                     '__req__':         property(compose(partial(apply, func),
                                                         astuple)),
+                    '__load__':        staticmethod(self.load),
                     **dict(zip(reversed(args), reversed(defaults or ())))
                 })
             ), frozen=True)
 
 
-def resolve(query:   Querylike[T],
+def resolve(query:   Query[T],
             api:     Api[T_auth],
-            loaders: load.Registry,
+            # loaders: load.Registry,
             auth:    T_auth,
             sender:  http.Sender) -> T:
     """resolve a querylike object.
@@ -170,21 +127,18 @@ def resolve(query:   Querylike[T],
         the querylike object to evaluate
     api
         the API to handle the request
-    loaders
-        The registry of object loaders
     auth
         The authentication object
     sender
         The request sender
     """
     return thread_last(
-        query,
-        attrgetter('__req__'),
+        query.__req__,
         api.prepare,
         (flip(api.add_auth), auth),
         sender,
         api.parse,
-        loaders(query.__rtype__))
+        query.__load__)
 
 
 _simple_json_api = Api(
@@ -196,7 +150,7 @@ _simple_json_api = Api(
 simple_resolve = partial(
     resolve,
     api=_simple_json_api,
-    loaders=load.simple_registry,
+    # loaders=load.simple_registry,
     auth=None,
     sender=http.urllib_sender())
 """a basic resolver"""
