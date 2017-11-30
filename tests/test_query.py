@@ -51,12 +51,6 @@ class TestStatic:
             Post(5, 'goodbye'),
         ]
 
-    def test_defaults(self):
-        recent_posts = snug.query.Static(snug.Request('posts/recent/'))
-        assert recent_posts.__req__() == snug.Request('posts/recent/')
-        data = object()
-        assert recent_posts.__load__(data) == data
-
 
 class TestQuery:
 
@@ -96,45 +90,6 @@ class TestQuery:
 
         data = [{'id': 5, 'title': 'hi'}]
         assert posts.__load__(data) == data
-
-    @pytest.mark.skip(reason='not implemented')
-    def test_as_decorator_with_type(self):
-
-        def load_post(data):
-            return Post(**data)
-
-        @snug.Query(load_post)
-        def post(id: int):
-            return snug.Request(f'posts/{id}/')
-
-        assert issubclass(post, snug.Query)
-        assert post(5).__req__ == snug.Request('posts/5/')
-        assert post.__load__({'id': 6, 'title': 'hi'}) == Post(
-            id=6, title='hi')
-
-    @pytest.mark.skip(reason='not implemented')
-    def test_as_decorator_no_type(self):
-
-        @snug.Query()
-        def post(id: int):
-            return snug.Request(f'posts/{id}/')
-
-        assert issubclass(post, snug.Query)
-        assert post(5).__req__ == snug.Request('posts/5/')
-        data = object()
-        assert post.__load__(data) == data
-
-    @pytest.mark.skip(reason='not implemented')
-    def test_as_decorator_no_call(self):
-
-        @snug.Query
-        def post(id: int):
-            return snug.Request(f'posts/{id}/')
-
-        assert issubclass(post, snug.Query)
-        assert post(5).__req__ == snug.Request('posts/5/')
-        mydata = object()
-        assert post.__load__(mydata) == mydata
 
 
 def test_nested():

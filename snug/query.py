@@ -21,7 +21,7 @@ from .utils import apply
 
 _dictfield = partial(field, default_factory=dict)
 
-__all__ = ['Query', 'resolve', 'Api', 'simple_resolve']
+__all__ = ['Query', 'Static', 'Nested', 'resolve', 'Api', 'simple_resolve']
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
@@ -60,9 +60,17 @@ class Query(t.Generic[T]):
 
 @dataclass(frozen=True)
 class Static(Query[T]):
-    """a non-parametrized, static query"""
+    """a non-parametrized, static query
+
+    Parameters
+    ----------
     request: http.Request
-    load: loader.Loader[T] = identity
+        the http request
+    load: loader.Loader[T]
+        response loader
+    """
+    request: http.Request
+    load: loader.Loader[T]
 
     def __req__(self):
         return self.request
