@@ -31,7 +31,7 @@ setup(
     ],
     keywords=['api', 'wrapper', 'rest'],
     install_requires=[
-        'dataclasses>=0.1,<0.2',
+        'dataclasses>=0.2,<0.3',
         'toolz>=0.8.2,<0.9',
     ],
     extras_require={
