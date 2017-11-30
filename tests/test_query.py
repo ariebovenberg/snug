@@ -34,22 +34,20 @@ class MockSender:
             raise LookupError(f'no response for {request}')
 
 
-class TestStatic:
+def test_static():
+    recent_posts = snug.query.Static(
+        request=snug.Request('posts/recent/'),
+        load=lambda d: [Post(**o) for o in d])
 
-    def test_init(self):
-        recent_posts = snug.query.Static(
-            request=snug.Request('posts/recent/'),
-            load=lambda d: [Post(**o) for o in d])
-
-        assert isinstance(recent_posts, snug.Query)
-        assert recent_posts.__req__() == snug.Request('posts/recent/')
-        assert recent_posts.__load__([
-            {'id': 4, 'title': 'hello'},
-            {'id': 5, 'title': 'goodbye'},
-        ]) == [
-            Post(4, 'hello'),
-            Post(5, 'goodbye'),
-        ]
+    assert isinstance(recent_posts, snug.Query)
+    assert recent_posts.__req__() == snug.Request('posts/recent/')
+    assert recent_posts.__load__([
+        {'id': 4, 'title': 'hello'},
+        {'id': 5, 'title': 'goodbye'},
+    ]) == [
+        Post(4, 'hello'),
+        Post(5, 'goodbye'),
+    ]
 
 
 class TestQuery:
@@ -121,7 +119,7 @@ def test_nested():
     assert post_comments == post.comments(post=post34, sort=True)
 
 
-class TestFromRequestFunc:
+class TestForReq:
 
     def test_simple(self):
 
@@ -131,7 +129,7 @@ class TestFromRequestFunc:
         class Foo:
             pass
 
-        @snug.query.from_request_func(load=_load_posts)
+        @snug.query.func(load=_load_posts)
         def posts(count: int, search: str='', archived: bool=False):
             """my docstring..."""
             return snug.Request(
@@ -162,7 +160,7 @@ class TestFromRequestFunc:
 
     def test_no_defaults(self):
 
-        @snug.query.from_request_func(load=lambda d: Post(**d))
+        @snug.query.func(load=lambda d: Post(**d))
         def post(id: int):
             """a post by its ID"""
             return snug.Request(f'posts/{id}/')
@@ -173,7 +171,7 @@ class TestFromRequestFunc:
 
 def test_resolve():
 
-    @snug.query.from_request_func(load=lambda d: Post(**d))
+    @snug.query.func(load=lambda d: Post(**d))
     def post(id: int):
         """a post by its ID"""
         return snug.Request(f'posts/{id}/')
@@ -210,7 +208,7 @@ def test_simple_resolver(urlopen):
 
     resolve = snug.query.simple_resolve
 
-    @snug.query.from_request_func(load=lambda d: Post(**d))
+    @snug.query.func(load=lambda d: Post(**d))
     def post(id: int):
         """a post by its ID"""
         return snug.Request(f'mysite.com/posts/{id}/')

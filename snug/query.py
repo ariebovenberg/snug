@@ -21,7 +21,8 @@ from .utils import apply
 
 _dictfield = partial(field, default_factory=dict)
 
-__all__ = ['Query', 'Static', 'Nested', 'resolve', 'Api', 'simple_resolve']
+__all__ = ['Query', 'Static', 'Nested', 'resolve', 'Api', 'simple_resolve',
+           'func']
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
@@ -66,7 +67,7 @@ class Static(Query[T]):
     ----------
     request: http.Request
         the http request
-    load: loader.Loader[T]
+    load: load.Loader[T]
         response loader
     """
     request: http.Request
@@ -87,14 +88,14 @@ class NestedMeta(t.GenericMeta):
 
 
 class Nested(Query[T], metaclass=NestedMeta):
-    """a nested query"""
+    """base class for nested queries"""
     @abc.abstractmethod
     def __req__(self):
         raise NotImplementedError()
 
 
 @dataclass(frozen=True)
-class from_request_func:
+class func:
     """create a query from a function. Use as a decorator.
 
     The function must:
