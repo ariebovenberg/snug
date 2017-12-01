@@ -57,7 +57,6 @@ class TestQuery:
         class posts(snug.Query[Post]):
             count: int
 
-            @property
             def __req__(self):
                 return Request('posts/', params={'max': self.count})
 
@@ -68,7 +67,7 @@ class TestQuery:
         query = posts(count=2)
         assert isinstance(query, snug.Query)
         assert query.count == 2
-        assert query.__req__ == snug.Request('posts/', params={'max': 2})
+        assert query.__req__() == snug.Request('posts/', params={'max': 2})
         assert query.__load__([
             {'id': 4, 'title': 'hello'},
             {'id': 5, 'title': 'goodbye'},
@@ -81,7 +80,6 @@ class TestQuery:
 
         class posts(snug.Query):
 
-            @property
             def __req__(self):
                 return Request('posts/')
 
@@ -152,7 +150,7 @@ class TestForReq:
             Post(4, 'hello'),
             Post(5, 'goodbye'),
         ]
-        assert my_posts.__req__ == snug.Request(
+        assert my_posts.__req__() == snug.Request(
             'posts/', params={'max': 10,
                               'search': 'important',
                               'archived': False})
@@ -165,7 +163,7 @@ class TestForReq:
             return snug.Request(f'posts/{id}/')
 
         my_post = post(id=5)
-        assert my_post.__req__ == snug.Request('posts/5/')
+        assert my_post.__req__() == snug.Request('posts/5/')
 
 
 def test_resolve():

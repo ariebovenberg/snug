@@ -4,6 +4,8 @@ Todo
 ----
 * serializing query params
 * pagination
+* wrapping
+* query as generator?
 """
 import abc
 import inspect
@@ -116,8 +118,7 @@ class func:
                     '__annotations__': annotations,
                     '__doc__':         func.__doc__,
                     '__module__':      func.__module__,
-                    '__req__':         property(compose(partial(apply, func),
-                                                        astuple)),
+                    '__req__':         lambda q: func(*astuple(q)),
                     '__load__':        staticmethod(self.load),
                     **dict(zip(reversed(args), reversed(defaults or ())))
                 })
@@ -142,7 +143,7 @@ def resolve(query:   Query[T],
         The request sender
     """
     return thread_last(
-        query.__req__,
+        query.__req__(),
         api.prepare,
         (flip(api.add_auth), auth),
         sender,
