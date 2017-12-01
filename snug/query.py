@@ -83,7 +83,7 @@ class Static(Query[T]):
 class NestedMeta(t.GenericMeta):
     """Metaclass for nested queries"""
     # when nested, act like a method.
-    # i.e. pass the parent query instance as first argument
+    # i.e. pass the parent instance as first argument
     def __get__(self, instance, cls):
         return self if instance is None else partial(self, instance)
 
