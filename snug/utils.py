@@ -5,12 +5,6 @@ from functools import wraps
 from toolz import excepts
 
 
-def onlyone(iterable):
-    """get the only item in an iterable"""
-    value, = iterable
-    return value
-
-
 def apply(func, args=(), kwargs=None):
     """apply args and kwargs to a function"""
     return func(*args, **kwargs or {})
