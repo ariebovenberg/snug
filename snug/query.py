@@ -12,7 +12,7 @@ import inspect
 import json
 import types
 import typing as t
-from functools import partial
+from functools import partial, partialmethod
 from operator import methodcaller, attrgetter
 
 from dataclasses import dataclass, field, astuple
@@ -118,7 +118,8 @@ class func:
                     '__annotations__': annotations,
                     '__doc__':         func.__doc__,
                     '__module__':      func.__module__,
-                    '__req__':         lambda q: func(*astuple(q)),
+                    '__req__':         partialmethod(compose(
+                        partial(apply, func), astuple)),
                     '__load__':        staticmethod(self.load),
                     **dict(zip(reversed(args), reversed(defaults or ())))
                 })
