@@ -16,9 +16,10 @@ Headers = t.Mapping[str, str]
 
 T = t.TypeVar('T')
 T_parsed = t.TypeVar('T_parsed')
+dclass = partial(dataclass, frozen=True)
 
 
-@dataclass(frozen=True)
+@dclass
 class Request:
     """a simple HTTP request"""
     url:     str
@@ -70,7 +71,7 @@ class Request:
             'Authorization': f'Basic {encoded.decode("ascii")}'})
 
 
-@dataclass(frozen=True)
+@dclass
 class Response:
     """a simple HTTP response
 

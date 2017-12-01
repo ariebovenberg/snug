@@ -26,9 +26,10 @@ __all__ = ['Query', 'Static', 'Nested', 'resolve', 'Api', 'simple_resolve',
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
+dclass = partial(dataclass, frozen=True)
 
 
-@dataclass(frozen=True)
+@dclass
 class Api(t.Generic[T_auth]):
     """request and response protocols for an API
 
@@ -59,9 +60,9 @@ class Query(t.Generic[T]):
         return response
 
 
-@dataclass(frozen=True)
+@dclass
 class Static(Query[T]):
-    """a non-parametrized, static query
+    """a static query
 
     Parameters
     ----------
@@ -71,7 +72,7 @@ class Static(Query[T]):
         response loader
     """
     request: http.Request
-    load: loader.Loader[T]
+    load: loader.Loader[T] = identity
 
     def __req__(self):
         return self.request
@@ -94,7 +95,7 @@ class Nested(Query[T], metaclass=NestedMeta):
         raise NotImplementedError()
 
 
-@dataclass(frozen=True)
+@dclass
 class func:
     """create a query from a function. Use as a decorator.
 
@@ -125,7 +126,6 @@ class func:
 
 def resolve(query:   Query[T],
             api:     Api[T_auth],
-            # loaders: load.Registry,
             auth:    T_auth,
             sender:  http.Sender) -> T:
     """resolve a querylike object.
@@ -159,7 +159,6 @@ _simple_json_api = Api(
 simple_resolve = partial(
     resolve,
     api=_simple_json_api,
-    # loaders=load.simple_registry,
     auth=None,
     sender=http.urllib_sender())
 """a basic resolver"""
