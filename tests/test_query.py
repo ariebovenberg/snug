@@ -2,7 +2,6 @@ import json
 from operator import methodcaller, attrgetter
 from unittest import mock
 
-import pytest
 from dataclasses import dataclass, field
 from toolz import compose
 

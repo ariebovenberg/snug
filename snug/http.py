@@ -5,9 +5,7 @@ import urllib.request
 from base64 import b64encode
 from functools import partial
 
-from dataclasses import dataclass, field
-
-from .utils import replace
+from dataclasses import dataclass, field, replace
 
 __all__ = ['Request', 'Response', 'Sender', 'urllib_sender']
 

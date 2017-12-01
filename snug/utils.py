@@ -2,7 +2,6 @@
 from datetime import datetime
 from functools import wraps
 
-from dataclasses import asdict
 from toolz import excepts
 
 
@@ -10,11 +9,6 @@ def onlyone(iterable):
     """get the only item in an iterable"""
     value, = iterable
     return value
-
-
-def replace(instance, **kwargs):
-    """replace values in a dataclass instance"""
-    return instance.__class__(**{**asdict(instance), **kwargs})
 
 
 def apply(func, args=(), kwargs=None):

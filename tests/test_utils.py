@@ -23,18 +23,6 @@ class TestOnlyOne:
             utils.onlyone([])
 
 
-def test_replace():
-
-    @dataclass
-    class Comment:
-        title: str
-        body: str
-
-    comment = Comment('my comment', 'blabla')
-    newcomment = utils.replace(comment, body='actual comment')
-    assert newcomment == Comment('my comment', 'actual comment')
-
-
 def test_str_repr():
 
     class User(utils.StrRepr):
