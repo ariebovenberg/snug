@@ -57,3 +57,13 @@ def parse_iso8601(dtstring: str) -> datetime:
     return datetime.strptime(
         dtstring,
         '%Y-%m-%dT%H:%M:%SZ' if len(dtstring) == 20 else '%Y-%m-%dT%H:%M:%S%z')
+
+
+def genresult(gen, value):
+    """retrieve the return value from a generator"""
+    try:
+        gen.send(value)
+    except StopIteration as e:
+        return e.value
+    else:
+        raise TypeError('generator did not return as expected')

@@ -1,6 +1,8 @@
 import datetime
 from operator import itemgetter
 
+import pytest
+
 import snug
 
 utils = snug.utils
@@ -67,3 +69,29 @@ class TestParseIso8601:
     def test_no_timezone(self):
         parsed = utils.parse_iso8601('2014-06-10T17:25:29Z')
         assert parsed == datetime.datetime(2014, 6, 10, 17, 25, 29)
+
+
+class TestGenreturn:
+
+    def test_ok(self):
+
+        def mygen(n):
+            while n != 0:
+                n = yield n + 1
+            return 'foo'
+
+        gen = mygen(4)
+        assert next(gen) == 5
+        assert utils.genresult(gen, 0) == 'foo'
+
+    def test_no_return(self):
+
+        def mygen(n):
+            while n != 0:
+                n = yield n + 1
+            return 'foo'
+
+        gen = mygen(4)
+        assert next(gen) == 5
+        with pytest.raises(TypeError, match='did not return'):
+            utils.genresult(gen, 1)
