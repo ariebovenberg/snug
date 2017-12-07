@@ -85,8 +85,8 @@ class Response:
         the headers of the response
     """
     status_code: int
-    content:     bytes = field(repr=False)
-    headers:     Headers
+    content:     bytes = field(default=b'', repr=False)
+    headers:     Headers = field(default_factory=dict)
 
 
 class Sender(abc.ABC):
@@ -174,7 +174,7 @@ else:
             a aiohttp session
         """
 
-        async def _aiohttp_sender(req: Request) -> '?':
+        async def _aiohttp_sender(req: Request) -> Response:
             async with session.get(req.url) as response:
                 return Response(
                     response.status,

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from toolz import thread_last
 
 from .utils import genresult
+from . import http
 
 dclass = partial(dataclass, frozen=True)
 
@@ -17,6 +18,30 @@ class Wrapper(abc.ABC):
     @abc.abstractmethod
     def __wrap__(self, request) -> t.Generator:
         raise NotImplementedError()
+
+
+@dclass
+class Sender(http.Sender):
+    """a wrapped sender"""
+    inner:   http.Sender
+    wrapper: Wrapper
+
+    def __call__(self, request):
+        wrap = self.wrapper.__wrap__(request)
+        response = self.inner(next(wrap))
+        return genresult(wrap, response)
+
+
+@dclass
+class AsyncSender(http.AsyncSender):
+    """a wrapped asynchronous sender"""
+    inner:   http.AsyncSender
+    wrapper: Wrapper
+
+    async def __call__(self, request):
+        wrap = self.wrapper.__wrap__(request)
+        response = await self.inner(next(wrap))
+        return genresult(wrap, response)
 
 
 class Base(Wrapper):
@@ -44,12 +69,7 @@ class Static(Wrapper):
 
 @dclass
 class Chain(Wrapper):
-    """a chained wrapper
-
-    Note
-    ----
-    * wrappers are applied in given order
-    """
+    """a chained wrapper, applying wrappers in order"""
     wrappers: t.Sequence[Wrapper] = ()
 
     def __wrap__(self, request):
