@@ -1,12 +1,13 @@
 import json
+import typing as t
 from operator import methodcaller, attrgetter
 from unittest import mock
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from toolz import compose
 
 import snug
-from snug import Request
+from snug.utils import genresult
 
 
 @dataclass
@@ -39,8 +40,10 @@ def test_static():
         load=lambda d: [Post(**o) for o in d])
 
     assert isinstance(recent_posts, snug.Query)
-    assert recent_posts.__req__() == snug.Request('posts/recent/')
-    assert recent_posts.__load__([
+
+    resolver = recent_posts.__resolve__()
+    assert next(resolver) == snug.Request('posts/recent/')
+    assert genresult(resolver, [
         {'id': 4, 'title': 'hello'},
         {'id': 5, 'title': 'goodbye'},
     ]) == [
@@ -53,38 +56,30 @@ class TestQuery:
 
     def test_subclassing(self):
 
-        @dataclass(frozen=True)
-        class posts(snug.Query[Post]):
+        @dataclass
+        class posts(snug.Query[t.List[Post]]):
             count: int
 
-            def __req__(self):
-                return Request('posts/', params={'max': self.count})
-
-            @staticmethod
-            def __load__(resp):
-                return [Post(**d) for d in resp]
+            def __resolve__(self):
+                return [
+                    Post(**d)
+                    for d in (yield snug.Request('posts/',
+                                                 params={'max': self.count}))
+                ]
 
         query = posts(count=2)
         assert isinstance(query, snug.Query)
         assert query.count == 2
-        assert query.__req__() == snug.Request('posts/', params={'max': 2})
-        assert query.__load__([
+
+        resolver = query.__resolve__()
+        assert next(resolver) == snug.Request('posts/', params={'max': 2})
+        assert genresult(resolver, [
             {'id': 4, 'title': 'hello'},
             {'id': 5, 'title': 'goodbye'},
         ]) == [
             Post(4, 'hello'),
             Post(5, 'goodbye'),
         ]
-
-    def test_subclassing_defaults(self):
-
-        class posts(snug.Query):
-
-            def __req__(self):
-                return Request('posts/')
-
-        data = [{'id': 5, 'title': 'hi'}]
-        assert posts.__load__(data) == data
 
 
 def test_nested():
@@ -94,7 +89,7 @@ def test_nested():
         """a post by its ID"""
         id: int
 
-        def __req__(self):
+        def __resolve__(self):
             raise NotImplementedError
 
         @dataclass(frozen=True)
@@ -104,7 +99,7 @@ def test_nested():
             sort:  bool
             count: int = 15
 
-            def __req__(self):
+            def __resolve__(self):
                 raise NotImplementedError()
 
     assert issubclass(post.comments, snug.Query)
@@ -116,17 +111,76 @@ def test_nested():
     assert post_comments == post.comments(post=post34, sort=True)
 
 
-class TestForReq:
+def test_wrapped():
+
+    @dataclass
+    class JsonApi(snug.query.Wrapper):
+        host: str
+
+        def __wrap__(self, request):
+            response = yield request.add_prefix(self.host)
+            return json.loads(response)
+
+    api = JsonApi('mysite.com/')
+
+    @dataclass
+    class post(snug.Query):
+        id: int
+
+        def __resolve__(self):
+            return Post(**(yield snug.Request(f'posts/{self.id}/')))
+
+    wrapped = snug.query.Wrapped(post(4), wrapper=api)
+
+    resolver = wrapped.__resolve__()
+    request = next(resolver)
+    assert request == snug.Request('mysite.com/posts/4/')
+    response = genresult(resolver, '{"id": 4, "title": "hi"}')
+    assert response == Post(id=4, title='hi')
+
+
+def test_gen():
+
+    @snug.query.gen
+    def posts(count: int, search: str='', archived: bool=False):
+        """my docstring..."""
+        response = yield snug.Request(
+            'posts/',
+            params={'max': count, 'search': search, 'archived': archived})
+        return [Post(**obj) for obj in response]
+
+    assert issubclass(posts, snug.Query)
+    assert posts.__name__ == 'posts'
+    assert posts.__doc__ == 'my docstring...'
+    assert posts.__module__ == 'test_query'
+    assert len(posts.__dataclass_fields__) == 3
+
+    my_posts = posts(count=10, search='important')
+    assert isinstance(my_posts, snug.Query)
+    assert my_posts.count == 10
+    assert my_posts.search == 'important'
+
+    resolver = my_posts.__resolve__()
+    request = next(resolver)
+    assert request == snug.Request(
+        'posts/', params={'max': 10,
+                          'search': 'important',
+                          'archived': False})
+    response = genresult(resolver, [
+        {'id': 4, 'title': 'hello'},
+        {'id': 5, 'title': 'goodbye'},
+    ])
+    assert response == [
+        Post(4, 'hello'),
+        Post(5, 'goodbye'),
+    ]
+
+
+class TestFunc:
 
     def test_simple(self):
 
-        def _load_posts(data):
-            return [Post(**o) for o in data]
-
-        class Foo:
-            pass
-
-        @snug.query.func(load=_load_posts)
+        @snug.query.request
         def posts(count: int, search: str='', archived: bool=False):
             """my docstring..."""
             return snug.Request(
@@ -135,7 +189,7 @@ class TestForReq:
 
         assert posts.__name__ == 'posts'
         assert posts.__doc__ == 'my docstring...'
-        assert posts.__module__ == Foo.__module__
+        assert posts.__module__ == 'test_query'
         assert issubclass(posts, snug.Query)
         assert len(posts.__dataclass_fields__) == 3
 
@@ -143,35 +197,39 @@ class TestForReq:
         assert isinstance(my_posts, snug.Query)
         assert my_posts.count == 10
         assert my_posts.search == 'important'
-        assert my_posts.__load__([
+
+        resolver = my_posts.__resolve__()
+        assert next(resolver) == snug.Request(
+            'posts/', params={
+                'max': 10,
+                'search': 'important',
+                'archived': False
+            })
+        assert genresult(resolver, [
             {'id': 4, 'title': 'hello'},
             {'id': 5, 'title': 'goodbye'},
         ]) == [
-            Post(4, 'hello'),
-            Post(5, 'goodbye'),
+            {'id': 4, 'title': 'hello'},
+            {'id': 5, 'title': 'goodbye'},
         ]
-        assert my_posts.__req__() == snug.Request(
-            'posts/', params={'max': 10,
-                              'search': 'important',
-                              'archived': False})
 
     def test_no_defaults(self):
 
-        @snug.query.func(load=lambda d: Post(**d))
+        @snug.query.request
         def post(id: int):
             """a post by its ID"""
             return snug.Request(f'posts/{id}/')
 
         my_post = post(id=5)
-        assert my_post.__req__() == snug.Request('posts/5/')
+        assert next(my_post.__resolve__()) == snug.Request('posts/5/')
 
 
 def test_resolve():
 
-    @snug.query.func(load=lambda d: Post(**d))
+    @snug.query.gen
     def post(id: int):
         """a post by its ID"""
-        return snug.Request(f'posts/{id}/')
+        return Post(**(yield snug.Request(f'posts/{id}/')))
 
     query = post(id=4)
 
@@ -205,10 +263,10 @@ def test_simple_resolver(urlopen):
 
     resolve = snug.query.simple_resolve
 
-    @snug.query.func(load=lambda d: Post(**d))
+    @snug.query.gen
     def post(id: int):
         """a post by its ID"""
-        return snug.Request(f'mysite.com/posts/{id}/')
+        return Post(**(yield snug.Request(f'mysite.com/posts/{id}/')))
 
     post_4 = post(id=4)
     response = resolve(post_4)

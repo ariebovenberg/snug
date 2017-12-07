@@ -24,6 +24,7 @@ class Request:
     params:  t.Mapping[str, str] = _dictfield()
     headers: Headers = _dictfield()
     method:  str = 'GET'
+    content: bytes = b''
 
     def add_headers(self, headers: Headers) -> 'Request':
         """new request with added headers
