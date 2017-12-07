@@ -3,7 +3,7 @@ import typing as t
 from operator import methodcaller, attrgetter
 from unittest import mock
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from toolz import compose
 
 import snug

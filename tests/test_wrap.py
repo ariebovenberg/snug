@@ -21,6 +21,17 @@ def test_static_wrapper():
     assert response == snug.Response(200, headers={}, content={'foo': 4})
 
 
+def test_base_defaults():
+
+    class MyAPI(snug.wrap.Base):
+        pass
+
+    wrap = MyAPI().__wrap__(snug.Request('my/url'))
+    assert next(wrap) == snug.Request('my/url')
+    resp = snug.Response(200, headers={}, content=b'')
+    assert genresult(wrap, resp) == resp
+
+
 class TestChain:
 
     def test_simple(self):
