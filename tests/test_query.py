@@ -1,10 +1,10 @@
+import asyncio
 import json
 import typing as t
-from operator import methodcaller, attrgetter
 from unittest import mock
 
-from dataclasses import dataclass, field
-from toolz import compose
+import pytest
+from dataclasses import dataclass
 
 import snug
 from snug.utils import genresult
@@ -22,16 +22,48 @@ class Comment:
     text: str
 
 
-@dataclass
-class MockSender:
-    responses: field(default_factory=dict)
+@pytest.fixture
+def sender():
+    """a simple HTTP sender for Post resources"""
 
-    def __call__(self, request):
-        try:
-            return next(resp for req, resp in self.responses
-                        if req == request)
-        except StopIteration:
-            raise LookupError(f'no response for {request}')
+    def _sender(request):
+        # resource/id/ -> (resource, id)
+        resource, id_ = request.url.strip('/').split('/')
+        assert resource == 'posts'
+        return snug.Response(200, json.dumps({
+            "id": int(id_),
+            "title": "hello world"
+        }).encode('ascii'))
+
+    return _sender
+
+
+@pytest.fixture
+def async_sender():
+    """a simple HTTP sender for Post resources"""
+
+    async def _sender(request):
+        await asyncio.sleep(0)
+        # resource/id/ -> (resource, id)
+        resource, id_ = request.url.strip('/').split('/')
+        assert resource == 'posts'
+        return snug.Response(200, json.dumps({
+            "id": int(id_),
+            "title": "hello world"
+        }).encode('ascii'))
+
+    return _sender
+
+
+@pytest.fixture
+def post_by_id():
+
+    @snug.query.gen
+    def post(id: int):
+        """query to get a post by it's ID"""
+        return Post(**json.loads((yield snug.Request(f'/posts/{id}/')).data))
+
+    return post
 
 
 def test_static():
@@ -111,31 +143,23 @@ def test_nested():
     assert post_comments == post.comments(post=post34, sort=True)
 
 
-def test_wrapped():
-
-    @dataclass
-    class JsonApi(snug.query.Wrapper):
-        host: str
-
-        def __wrap__(self, request):
-            response = yield request.add_prefix(self.host)
-            return json.loads(response)
-
-    api = JsonApi('mysite.com/')
+def test_wrapped(jsonwrapper):
 
     @dataclass
     class post(snug.Query):
         id: int
 
         def __resolve__(self):
-            return Post(**(yield snug.Request(f'posts/{self.id}/')))
+            return Post(**(yield snug.Request(
+                f'posts/{self.id}/', {'foo': 4})))
 
-    wrapped = snug.query.Wrapped(post(4), wrapper=api)
+    wrapped = snug.query.Wrapped(post(4), wrapper=jsonwrapper)
 
-    resolver = wrapped.__resolve__()
-    request = next(resolver)
-    assert request == snug.Request('mysite.com/posts/4/')
-    response = genresult(resolver, '{"id": 4, "title": "hi"}')
+    resolve = wrapped.__resolve__()
+    request = next(resolve)
+    assert request == snug.Request('posts/4/', '{"foo": 4}')
+    response = genresult(resolve,
+                         snug.Response(200, '{"id": 4, "title": "hi"}'))
     assert response == Post(id=4, title='hi')
 
 
@@ -224,33 +248,61 @@ class TestFunc:
         assert next(my_post.__resolve__()) == snug.Request('posts/5/')
 
 
-def test_resolve():
+def test_resolve(sender, post_by_id):
+    response = snug.resolve(sender, post_by_id(5))
+    assert response == Post(id=5, title='hello world')
+
+
+@pytest.mark.asyncio
+async def test_resolve_async(async_sender, post_by_id):
+    response = await snug.resolve_async(async_sender, post_by_id(4))
+    assert response == Post(id=4, title='hello world')
+
+
+def test_build_resolver(jsonwrapper):
+
+    def sender(request):
+        assert 'Authorization' in request.headers
+        assert request.url == 'posts/99/'
+        return snug.Response(200, b'{"id": 99, "title": "hello"}')
 
     @snug.query.gen
     def post(id: int):
-        """a post by its ID"""
+        """get a post by id"""
         return Post(**(yield snug.Request(f'posts/{id}/')))
 
-    query = post(id=4)
-
-    api = snug.Api(
-        prepare=methodcaller('add_prefix', 'mysite.com/api/'),
-        parse=compose(
-            json.loads,
-            methodcaller('decode'),
-            attrgetter('content')),
-        add_auth=lambda req, auth: req.add_headers({'Authorization': 'me'}),
+    resolver = snug.build_resolver(
+        ('username', 'hunter2'),
+        sender=sender,
+        wrapper=jsonwrapper,
+        authenticator=snug.Request.add_basic_auth,
     )
+    response = resolver(post(99))
+    assert response == Post(id=99, title='hello')
 
-    sender = MockSender([
-        (snug.Request('mysite.com/api/posts/4/',
-                        headers={'Authorization': 'me'}),
-            snug.Response(200, b'{"id": 4, "title": "my post!"}', headers={}))
-    ])
 
-    response = snug.resolve(query, api=api, sender=sender, auth='me')
-    assert isinstance(response, Post)
-    assert response == Post(id=4, title='my post!')
+@pytest.mark.asyncio
+async def test_build_async_resolver(jsonwrapper):
+
+    async def sender(request):
+        assert 'Authorization' in request.headers
+        assert request.url == 'posts/99/'
+        await asyncio.sleep(0)
+        return snug.Response(200, b'{"id": 99, "title": "hello"}')
+
+    @snug.query.gen
+    def post(id: int):
+        """get a post by id"""
+        return Post(**(yield snug.Request(f'posts/{id}/')))
+
+    resolver = snug.build_async_resolver(
+        ('username', 'hunter2'),
+        sender=sender,
+        wrapper=jsonwrapper,
+        authenticator=snug.Request.add_basic_auth,
+    )
+    response = await resolver(post(99))
+    assert response == Post(id=99, title='hello')
 
 
 @mock.patch('urllib.request.urlopen', autospec=True,
@@ -261,12 +313,12 @@ def test_resolve():
             }))
 def test_simple_resolver(urlopen):
 
-    resolve = snug.query.simple_resolve
+    resolve = snug.query.simple_resolver(auth=('foo', 'bar'))
 
     @snug.query.gen
     def post(id: int):
         """a post by its ID"""
-        return Post(**(yield snug.Request(f'mysite.com/posts/{id}/')))
+        return Post(**(yield snug.Request(f'https://localhost/posts/{id}/')))
 
     post_4 = post(id=4)
     response = resolve(post_4)

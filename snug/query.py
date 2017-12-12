@@ -4,8 +4,6 @@ Todo
 ----
 * serializing query params
 * pagination
-* wrapping
-* query as generator?
 """
 import abc
 import inspect
@@ -16,16 +14,24 @@ from functools import partial, partialmethod
 from operator import methodcaller, attrgetter
 
 from dataclasses import dataclass, field, astuple
-from toolz import identity, compose
+from toolz import identity, compose, flip
 
-from . import http, load as loader
-from .wrap import Wrapper
+from . import http, load as loader, wrap
 from .utils import apply, genresult
 
 _dictfield = partial(field, default_factory=dict)
 
-__all__ = ['Query', 'Static', 'Nested', 'resolve', 'Api', 'simple_resolve',
-           'request', 'gen']
+__all__ = [
+    'Query',
+    'Static',
+    'Nested',
+    'resolve',
+    'Api',
+    'request',
+    'gen',
+    'build_resolver',
+    'build_async_resolver',
+]
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
@@ -62,7 +68,7 @@ class Static(Query[T]):
 @dclass
 class Wrapped(Query[T]):
     inner: Query
-    wrapper: Wrapper
+    wrapper: wrap.Wrapper
 
     def __resolve__(self):
         resolver = self.inner.__resolve__()
@@ -103,27 +109,6 @@ def gen(func: types.FunctionType) -> t.Type[Query]:
         ), frozen=True)
 
 
-@dclass
-class Api(Wrapper, t.Generic[T_auth]):
-    """request and response protocols for an API
-
-    Parameters
-    ----------
-    prepare
-        function to prepare requests for sending
-    parse
-        function to load responses with
-    add_auth
-        function to apply authentication to a request
-    """
-    prepare: t.Callable[[http.Request], http.Request]
-    parse:   t.Callable[[http.Response], t.Any]
-    add_auth: t.Callable[[http.Request, T_auth], http.Request]
-
-    def __wrap__(self, request):
-        return self.parse((yield self.prepare(request)))
-
-
 def request(func: types.FunctionType) -> t.Type[Query]:
     """create a query class from a function. Use as a decorator.
 
@@ -151,39 +136,88 @@ def request(func: types.FunctionType) -> t.Type[Query]:
         ), frozen=True)
 
 
-def resolve(query:   Query[T],
-            api:     Api[T_auth],
-            auth:    T_auth,
-            sender:  http.Sender) -> T:
-    """resolve a querylike object.
+class Authenticator(t.Generic[T_auth]):
+    """interface for authenticator callables"""
+
+    @abc.abstractmethod
+    def __call__(self, request: http.Request, auth: T_auth) -> http.Request:
+        raise NotImplementedError()
+
+
+Resolver = t.Callable[[Query[T]], T]
+"""interface for query resolvers"""
+
+AsyncResolver = t.Callable[[Query[T]], t.Awaitable[T]]
+"""interface for asynchronous resolvers"""
+
+
+def resolve(sender: http.Sender, query: Query[T]) -> T:
+    res = query.__resolve__()
+    response = sender(next(res))
+    return genresult(res, response)
+
+
+async def resolve_async(sender: http.AsyncSender,
+                        query: Query[T]) -> t.Awaitable[T]:
+    res = query.__resolve__()
+    response = await sender(next(res))
+    return genresult(res, response)
+
+
+def build_resolver(
+        auth:          T_auth,
+        sender:        http.Sender,
+        authenticator: Authenticator[T_auth],
+        wrapper:       wrap.Wrapper=wrap.Chain()) -> Resolver:
+    """create an authenticated resolver
 
     Parameters
     ----------
-    query
-        the querylike object to evaluate
-    api
-        the API to handle the request
     auth
-        The authentication object
+        authentication information
     sender
-        The request sender
+        the request sender
+    authenticator
+        authenticator function
+    wrapper
+        wrapper to apply to all requests
     """
-    query = Wrapped(query, api)
-    resolver = query.__resolve__()
-    request = api.add_auth(next(resolver), auth)
-    response = sender(request)
-    return genresult(resolver, response)
+    sender = wrap.Sender(sender, wrap.Chain([
+        wrapper,
+        wrap.Preparer(partial(flip(authenticator), auth)),
+    ]))
+    return partial(resolve, sender)
 
 
-_simple_json_api = Api(
-    prepare=methodcaller('add_prefix', 'https://'),
-    parse=compose(json.loads, methodcaller('decode'), attrgetter('content')),
-    add_auth=lambda req, auth: (req if auth is None
-                                else req.add_basic_auth(auth))
+def build_async_resolver(
+        auth:          T_auth,
+        sender:        http.AsyncSender,
+        authenticator: Authenticator[T_auth],
+        wrapper:       wrap.Wrapper=wrap.Chain()) -> AsyncResolver:
+    """create an authenticated, asynchronous, resolver
+
+    Parameters
+    ----------
+    auth
+        authentication information
+    sender
+        the request sender
+    authenticator
+        authenticator function
+    wrapper
+        wrapper to apply to all requests
+    """
+    sender = wrap.AsyncSender(sender, wrap.Chain([
+        wrapper,
+        wrap.Preparer(partial(flip(authenticator), auth)),
+    ]))
+    return partial(resolve_async, sender)
+
+
+simple_resolver = partial(
+    build_resolver,
+    sender=http.urllib_sender(),
+    authenticator=lambda r, auth: (r if auth is None
+                                   else r.add_basic_auth(auth)),
+    wrapper=wrap.jsondata,
 )
-simple_resolve = partial(
-    resolve,
-    api=_simple_json_api,
-    auth=None,
-    sender=http.urllib_sender())
-"""a basic resolver"""

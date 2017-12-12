@@ -13,19 +13,31 @@ __all__ = ['Request', 'Response', 'Sender', 'AsyncSender',
 _dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]
 
-T = t.TypeVar('T')
-T_parsed = t.TypeVar('T_parsed')
 dclass = partial(dataclass, frozen=True)
 
 
 @dclass
 class Request:
-    """a simple HTTP request"""
+    """a simple HTTP request
+
+    Parameters
+    ----------
+    url
+        the requested url
+    data
+        the request content
+    params
+        the query parameters
+    headers
+        mapping of headers
+    method
+        the http method
+    """
     url:     str
+    data:    t.Optional[bytes] = None
     params:  t.Mapping[str, str] = _dictfield()
     headers: Headers = _dictfield()
     method:  str = 'GET'
-    content: bytes = b''
 
     def add_headers(self, headers: Headers) -> 'Request':
         """new request with added headers
@@ -79,13 +91,13 @@ class Response:
     ----------
     status_code
         the HTTP status code
-    content
+    data
         the response content
     headers
         the headers of the response
     """
     status_code: int
-    content:     bytes = field(default=b'', repr=False)
+    data:        t.Optional[bytes] = None
     headers:     Headers = field(default_factory=dict)
 
 
@@ -124,7 +136,7 @@ def urllib_sender(**kwargs) -> Sender:
         raw_response = urllib.request.urlopen(raw_request, **kwargs)
         return Response(
             raw_response.getcode(),
-            content=raw_response.read(),
+            data=raw_response.read(),
             headers=raw_response.headers,
         )
 
@@ -178,7 +190,7 @@ else:
             async with session.get(req.url) as response:
                 return Response(
                     response.status,
-                    content=await response.text(),
+                    data=await response.text(),
                     headers=response.headers,
                 )
 

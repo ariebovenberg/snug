@@ -1,9 +1,10 @@
 """middleware abstractions"""
 import abc
+import json
 import typing as t
 from functools import partial
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from toolz import thread_last
 
 from .utils import genresult
@@ -59,7 +60,16 @@ class Base(Wrapper):
 
 
 @dclass
-class Static(Wrapper):
+class Preparer(Wrapper):
+    """A wrapper which only does preparing of a request"""
+    prepare: t.Callable[[http.Request], http.Request]
+
+    def __wrap__(self, request):
+        return (yield self.prepare(request))
+
+
+@dclass
+class Fixed(Wrapper):
     """a static wrapper from a generator"""
     gen: t.Callable[[t.Any], t.Generator]
 
@@ -83,7 +93,16 @@ class Chain(Wrapper):
 
         return thread_last(
             response,
-            *((genresult, wrapper) for wrapper in wraps))
+            *((genresult, wrapper) for wrapper in reversed(wraps)))
 
     def __or__(self, other: Wrapper):
         return Chain(list(self.wrappers) + [other])
+
+
+@Fixed
+def jsondata(request):
+    """a simple wrapper for requests with JSON content"""
+    prepared = (replace(request, data=json.dumps(request.data).encode('ascii'))
+                if request.data else request)
+    response = yield prepared
+    return json.loads(response.data) if response.data else None
