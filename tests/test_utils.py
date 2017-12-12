@@ -171,3 +171,18 @@ class TestFuncToFields:
             9,
             ''
         ]
+
+
+def test_flip():
+
+    def myfunc(*args):
+        return args
+
+    flipped = utils.flip(myfunc)
+    assert flipped(2, 3) == (3, 2)
+    assert flipped(*'AB') == ('B', 'A')
+
+    assert flipped == utils.flip(myfunc)
+
+    with pytest.raises(TypeError, match='arguments'):
+        flipped(1, 2, 3)

@@ -4,7 +4,7 @@ import types
 import typing as t
 from datetime import datetime
 from functools import wraps
-from dataclasses import Field, field
+from dataclasses import Field, field, dataclass
 
 from toolz import excepts
 
@@ -99,3 +99,12 @@ def func_to_fields(func: types.FunctionType) -> t.List[Field]:
          field(default=defaults[name]) if name in defaults else field())
         for name in spec.args
     ]
+
+
+@dataclass(frozen=True)
+class flip:
+    """create a function with flipped arguments"""
+    func: t.Callable[[t.Any, t.Any], t.Any]
+
+    def __call__(self, a, b):
+        return self.func(b, a)

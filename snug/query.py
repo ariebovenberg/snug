@@ -6,7 +6,6 @@ Todo
 * pagination
 """
 import abc
-import inspect
 import types
 import typing as t
 from functools import partial, partialmethod
