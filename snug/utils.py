@@ -1,6 +1,10 @@
 """Miscellaneous tools and shortcuts"""
+import inspect
+import types
+import typing as t
 from datetime import datetime
 from functools import wraps
+from dataclasses import Field, field
 
 from toolz import excepts
 
@@ -67,3 +71,31 @@ def genresult(gen, value):
         return e.value
     else:
         raise TypeError('generator did not return as expected')
+
+
+def func_to_fields(func: types.FunctionType) -> t.List[Field]:
+    """get dataclass fields from a function signature
+
+    Parameters
+    ----------
+    func
+        a python function
+
+    Notes
+    -----
+    * keyword-only, varargs, and varkeywords are not supported
+    """
+    spec = inspect.getfullargspec(func)
+    defaults = dict(zip(reversed(spec.args), reversed(spec.defaults or ())))
+    if spec.kwonlyargs:
+        raise TypeError('keyword-only args not supported')
+    elif spec.varargs:
+        raise TypeError('varargs not supported')
+    elif spec.varkw:
+        raise TypeError('varkw not supported')
+    return [
+        (name,
+         spec.annotations.get(name, t.Any),
+         field(default=defaults[name]) if name in defaults else field())
+        for name in spec.args
+    ]

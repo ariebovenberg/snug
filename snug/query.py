@@ -7,17 +7,15 @@ Todo
 """
 import abc
 import inspect
-import json
 import types
 import typing as t
 from functools import partial, partialmethod
-from operator import methodcaller, attrgetter
 
-from dataclasses import dataclass, field, astuple
+from dataclasses import dataclass, field, astuple, make_dataclass
 from toolz import identity, compose, flip
 
 from . import http, load as loader, wrap
-from .utils import apply, genresult
+from .utils import apply, genresult, func_to_fields
 
 _dictfield = partial(field, default_factory=dict)
 
@@ -26,8 +24,7 @@ __all__ = [
     'Static',
     'Nested',
     'resolve',
-    'Api',
-    'request',
+    'from_requester',
     'gen',
     'build_resolver',
     'build_async_resolver',
@@ -65,6 +62,19 @@ class Static(Query[T]):
         return self.load((yield self.request))
 
 
+class Base(Query[T]):
+
+    @abc.abstractmethod
+    def _request(self):
+        raise NotImplementedError
+
+    def _parse(self, response):
+        return response
+
+    def __resolve__(self):
+        return self._parse((yield self._request()))
+
+
 @dclass
 class Wrapped(Query[T]):
     inner: Query
@@ -93,20 +103,26 @@ class Nested(Query[T], metaclass=NestedMeta):
 
 
 def gen(func: types.FunctionType) -> t.Type[Query]:
-    args, _, _, defaults, _, _, annotations = inspect.getfullargspec(func)
-    return dataclass(
-        types.new_class(
-            func.__name__,
-            bases=(Query, ),
-            exec_body=methodcaller('update', {
-                '__annotations__': annotations,
-                '__doc__':         func.__doc__,
-                '__module__':      func.__module__,
-                '__resolve__':         partialmethod(compose(
-                    partial(apply, func), astuple)),
-                **dict(zip(reversed(args), reversed(defaults or ())))
-            })
-        ), frozen=True)
+    """create a Query subclass from a generator function"""
+    return make_dataclass(
+        func.__name__,
+        func_to_fields(func),
+        bases=(Query, ),
+        namespace={
+            '__doc__': func.__doc__,
+            '__module__': func.__module__,
+            '__resolve__': partialmethod(compose(
+                partial(apply, func), astuple)),
+        }
+    )
+
+
+@dclass
+class from_requester:
+    load: loader.Loader[T]
+
+    def __call__(self, func: types.FunctionType) -> t.Type[Query[T]]:
+        pass
 
 
 def request(func: types.FunctionType) -> t.Type[Query]:
@@ -117,23 +133,16 @@ def request(func: types.FunctionType) -> t.Type[Query]:
     * return a ``Request`` instance
     * be fully annotated, without keyword-only arguments
     """
-    args, _, _, defaults, _, _, annotations = inspect.getfullargspec(func)
-
-    def mygen(self):
-        return (yield func(*astuple(self)))
-
-    return dataclass(
-        types.new_class(
-            func.__name__,
-            bases=(Query, ),
-            exec_body=methodcaller('update', {
-                '__annotations__': annotations,
-                '__doc__':         func.__doc__,
-                '__module__':      func.__module__,
-                '__resolve__':     mygen,
-                **dict(zip(reversed(args), reversed(defaults or ())))
-            })
-        ), frozen=True)
+    return make_dataclass(
+        func.__name__,
+        func_to_fields(func),
+        bases=(Base, ),
+        namespace={
+            '__doc__':         func.__doc__,
+            '__module__':      func.__module__,
+            '_request': partialmethod(compose(
+                partial(apply, func), astuple)),
+        })
 
 
 class Authenticator(t.Generic[T_auth]):

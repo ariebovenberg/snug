@@ -200,7 +200,7 @@ def test_gen():
     ]
 
 
-class TestFunc:
+class TestRequester:
 
     def test_simple(self):
 
@@ -236,16 +236,6 @@ class TestFunc:
             {'id': 4, 'title': 'hello'},
             {'id': 5, 'title': 'goodbye'},
         ]
-
-    def test_no_defaults(self):
-
-        @snug.query.request
-        def post(id: int):
-            """a post by its ID"""
-            return snug.Request(f'posts/{id}/')
-
-        my_post = post(id=5)
-        assert next(my_post.__resolve__()) == snug.Request('posts/5/')
 
 
 def test_resolve(sender, post_by_id):

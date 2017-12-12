@@ -1,5 +1,8 @@
+import typing as t
 import datetime
 from operator import itemgetter
+from unittest import mock
+from dataclasses import field
 
 import pytest
 
@@ -95,3 +98,76 @@ class TestGenreturn:
         assert next(gen) == 5
         with pytest.raises(TypeError, match='did not return'):
             utils.genresult(gen, 1)
+
+
+class TestFuncToFields:
+
+    def test_no_fields(self):
+
+        def myfunc():
+            pass
+
+        assert utils.func_to_fields(myfunc) == []
+
+    def test_simple_args(self):
+
+        def myfunc(foo: int, bar: float):
+            pass
+
+        assert utils.func_to_fields(myfunc) == [
+            ('foo', int, mock.ANY),
+            ('bar', float, mock.ANY),
+        ]
+
+    def test_missing_annotation(self):
+
+        def myfunc(foo: int, bar):
+            pass
+
+        assert utils.func_to_fields(myfunc) == [
+            ('foo', int, mock.ANY),
+            ('bar', t.Any, mock.ANY),
+        ]
+
+    def test_keyword_only(self):
+
+        def myfunc(foo: int, *, bar: float):
+            pass
+
+        with pytest.raises(TypeError, match='keyword.only'):
+            utils.func_to_fields(myfunc)
+
+    def test_varargs(self):
+
+        def myfunc(foo: int, *bar: float):
+            pass
+
+        with pytest.raises(TypeError, match='varargs'):
+            utils.func_to_fields(myfunc)
+
+    def test_varkw(self):
+
+        def myfunc(foo: int, **bar: float):
+            pass
+
+        with pytest.raises(TypeError, match='varkw'):
+            utils.func_to_fields(myfunc)
+
+    def test_defaults(self):
+
+        _missing = field().default
+
+        def myfunc(foo: int, bar=9, qux: str=''):
+            pass
+
+        fields = utils.func_to_fields(myfunc)
+        assert fields == [
+            ('foo', int, mock.ANY),
+            ('bar', t.Any, mock.ANY),
+            ('qux', str, mock.ANY),
+        ]
+        assert [f.default for _, _, f in fields] == [
+            _missing,
+            9,
+            ''
+        ]
