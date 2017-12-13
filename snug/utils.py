@@ -153,6 +153,7 @@ def valfilter(predicate: t.Callable, mapping: t.Mapping) -> t.Mapping:
 
 
 def pipe(value, *funcs):
+    """pipe a value through a sequence of functions"""
     for func in funcs:
         value = func(value)
     return value
