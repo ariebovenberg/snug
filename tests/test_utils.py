@@ -213,3 +213,25 @@ class TestCompose:
         assert isinstance(func.funcs, list)
         assert func('30', base=5) == '16'
 
+
+class TestValmap:
+
+    def test_empty(self):
+        assert utils.valmap(int, {}) == {}
+
+    def test_simple(self):
+        assert utils.valmap(int, {'foo': '4', 'bar': 5.3}) == {
+            'foo': 4, 'bar': 5}
+
+
+class TestPipe:
+
+    def test_empty(self):
+        obj = object()
+        assert utils.pipe(obj) is obj
+
+    def test_one_func(self):
+        assert utils.pipe('6', int) == 6
+
+    def test_multiple_funcs(self):
+        assert utils.pipe('6', int, lambda x: x + 1, str) == '7'

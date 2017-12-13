@@ -2,9 +2,9 @@ import asyncio
 import json
 import typing as t
 from unittest import mock
+from dataclasses import dataclass
 
 import pytest
-from dataclasses import dataclass
 
 import snug
 from snug.utils import genresult

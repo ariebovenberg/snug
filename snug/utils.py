@@ -6,7 +6,7 @@ from datetime import datetime
 from functools import wraps
 from dataclasses import Field, field, dataclass
 
-from toolz import excepts
+T = t.TypeVar('T')
 
 
 def apply(func, args=(), kwargs=None):
@@ -33,8 +33,17 @@ class NO_DEFAULT:
     """sentinel for no default"""
 
 
-def lookup_defaults(lookup, default):
-    return excepts(LookupError, lookup, lambda _: default)
+@dataclass(frozen=True)
+class lookup_defaults(t.Callable[[t.Any], T]):
+    """wrap a lookup function with a default if lookup fails"""
+    lookup: t.Callable[[t.Any], T]
+    default: T
+
+    def __call__(self, obj):
+        try:
+            return self.lookup(obj)
+        except LookupError:
+            return self.default
 
 
 def skipnone(func):
@@ -131,3 +140,14 @@ class compose:
         for func in reversed(tail):
             value = func(value)
         return value
+
+
+def valmap(func: t.Callable, mapping: t.Mapping) -> t.Mapping:
+    """map() for values of a mapping"""
+    return {k: func(v) for k, v in mapping.items()}
+
+
+def pipe(value, *funcs):
+    for func in funcs:
+        value = func(value)
+    return value

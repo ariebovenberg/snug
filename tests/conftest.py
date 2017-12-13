@@ -1,7 +1,7 @@
 import json
+from dataclasses import replace
 
 import pytest
-from dataclasses import replace
 
 import snug
 

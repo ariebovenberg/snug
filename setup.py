@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from setuptools import setup, find_packages
 
@@ -32,8 +33,7 @@ setup(
     keywords=['api', 'wrapper', 'rest'],
     install_requires=[
         'dataclasses>=0.2,<0.3',
-        'toolz>=0.8.2,<0.9',
-    ],
+    ] if sys.version_info < (3, 7) else [],
     extras_require={
         'requests': ['requests>=2.18.0,<3'],
         'aiohttp': ['aiohttp>=2.3.3,<3'],

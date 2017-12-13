@@ -5,9 +5,8 @@ import typing as t
 from functools import partial
 
 from dataclasses import dataclass, replace
-from toolz import thread_last
 
-from .utils import genresult
+from .utils import genresult, pipe
 from . import http
 
 dclass = partial(dataclass, frozen=True)
@@ -91,9 +90,9 @@ class Chain(Wrapper):
 
         response = yield request
 
-        return thread_last(
+        return pipe(
             response,
-            *((genresult, wrapper) for wrapper in reversed(wraps)))
+            *(partial(genresult, wrapper) for wrapper in reversed(wraps)))
 
     def __or__(self, other: Wrapper):
         return Chain(list(self.wrappers) + [other])

@@ -1,8 +1,8 @@
 import asyncio
 import json
+from dataclasses import replace, dataclass
 
 import pytest
-from dataclasses import replace, dataclass
 
 import snug
 
