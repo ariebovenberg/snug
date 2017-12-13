@@ -67,7 +67,7 @@ def post_by_id():
 
 
 def test_static():
-    recent_posts = snug.query.Static(
+    recent_posts = snug.query.Fixed(
         request=snug.Request('posts/recent/'),
         load=lambda d: [Post(**o) for o in d])
 

@@ -19,7 +19,7 @@ _dictfield = partial(field, default_factory=dict)
 
 __all__ = [
     'Query',
-    'Static',
+    'Fixed',
     'Nested',
     'resolve',
     'gen',
@@ -42,7 +42,7 @@ class Query(t.Generic[T]):
 
 
 @dclass
-class Static(Query[T]):
+class Fixed(Query[T]):
     """a static query
 
     Parameters
