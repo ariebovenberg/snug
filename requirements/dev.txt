@@ -2,6 +2,7 @@
 -r docs.txt
 pytest
 pytest-coverage
+pytest-asyncio
 wheel
 twine
 aioresponses
