@@ -22,7 +22,7 @@ __all__ = [
     'Fixed',
     'Nested',
     'resolve',
-    'gen',
+    'from_gen',
     'build_resolver',
     'build_async_resolver',
 ]
@@ -99,7 +99,7 @@ class Nested(Query[T], metaclass=NestedMeta):
         raise NotImplementedError()
 
 
-def gen(func: types.FunctionType) -> t.Type[Query]:
+def from_gen(func: types.FunctionType) -> t.Type[Query]:
     """create a Query subclass from a generator function"""
     return make_dataclass(
         func.__name__,

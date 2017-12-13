@@ -58,7 +58,7 @@ def async_sender():
 @pytest.fixture
 def post_by_id():
 
-    @snug.query.gen
+    @snug.query.from_gen
     def post(id: int):
         """query to get a post by it's ID"""
         return Post(**json.loads((yield snug.Request(f'/posts/{id}/')).data))
@@ -165,7 +165,7 @@ def test_wrapped(jsonwrapper):
 
 def test_gen():
 
-    @snug.query.gen
+    @snug.query.from_gen
     def posts(count: int, search: str='', archived: bool=False):
         """my docstring..."""
         response = yield snug.Request(
@@ -256,7 +256,7 @@ def test_build_resolver(jsonwrapper):
         assert request.url == 'posts/99/'
         return snug.Response(200, b'{"id": 99, "title": "hello"}')
 
-    @snug.query.gen
+    @snug.query.from_gen
     def post(id: int):
         """get a post by id"""
         return Post(**(yield snug.Request(f'posts/{id}/')))
@@ -280,7 +280,7 @@ async def test_build_async_resolver(jsonwrapper):
         await asyncio.sleep(0)
         return snug.Response(200, b'{"id": 99, "title": "hello"}')
 
-    @snug.query.gen
+    @snug.query.from_gen
     def post(id: int):
         """get a post by id"""
         return Post(**(yield snug.Request(f'posts/{id}/')))
@@ -305,7 +305,7 @@ def test_simple_resolver(urlopen):
 
     resolve = snug.query.simple_resolver(auth=('foo', 'bar'))
 
-    @snug.query.gen
+    @snug.query.from_gen
     def post(id: int):
         """a post by its ID"""
         return Post(**(yield snug.Request(f'https://localhost/posts/{id}/')))
