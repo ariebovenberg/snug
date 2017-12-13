@@ -22,7 +22,6 @@ __all__ = [
     'Static',
     'Nested',
     'resolve',
-    'from_requester',
     'gen',
     'build_resolver',
     'build_async_resolver',
@@ -113,14 +112,6 @@ def gen(func: types.FunctionType) -> t.Type[Query]:
                 partial(apply, func), astuple)),
         }
     )
-
-
-@dclass
-class from_requester:
-    load: loader.Loader[T]
-
-    def __call__(self, func: types.FunctionType) -> t.Type[Query[T]]:
-        pass
 
 
 def request(func: types.FunctionType) -> t.Type[Query]:
