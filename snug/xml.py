@@ -5,9 +5,7 @@ from operator import (methodcaller, attrgetter as _attrgetter,
                       itemgetter as _itemgetter)
 from xml.etree.ElementTree import Element
 
-from toolz import compose, identity
-
-from .utils import NO_DEFAULT, lookup_defaults
+from .utils import NO_DEFAULT, lookup_defaults, compose, identity
 
 T = t.TypeVar('T')
 

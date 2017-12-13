@@ -13,9 +13,9 @@ from itertools import starmap
 from operator import attrgetter, itemgetter
 
 from dataclasses import dataclass, field
-from toolz import valmap, compose, identity
+from toolz import valmap
 
-from .utils import lookup_defaults, parse_iso8601
+from .utils import lookup_defaults, parse_iso8601, compose, identity
 
 __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
            'PrimitiveRegistry', 'GenericRegistry', 'AutoDataclassRegistry',

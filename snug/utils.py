@@ -101,6 +101,11 @@ def func_to_fields(func: types.FunctionType) -> t.List[Field]:
     ]
 
 
+def identity(obj):
+    """identity function, returns input unmodified"""
+    return obj
+
+
 @dataclass(frozen=True)
 class flip:
     """create a function with flipped arguments"""
@@ -108,3 +113,21 @@ class flip:
 
     def __call__(self, a, b):
         return self.func(b, a)
+
+
+@dataclass(init=False)
+class compose:
+    """compose a function from a chain of functions"""
+    funcs: t.List[t.Callable]
+
+    def __init__(self, *funcs):
+        self.funcs = list(funcs)
+
+    def __call__(self, *args, **kwargs):
+        if not self.funcs:
+            return identity(*args, **kwargs)
+        *tail, head = self.funcs
+        value = head(*args, **kwargs)
+        for func in reversed(tail):
+            value = func(value)
+        return value

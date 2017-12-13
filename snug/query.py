@@ -11,10 +11,9 @@ import typing as t
 from functools import partial, partialmethod
 
 from dataclasses import dataclass, field, astuple, make_dataclass
-from toolz import identity, compose, flip
 
 from . import http, load as loader, wrap
-from .utils import apply, genresult, func_to_fields
+from .utils import apply, genresult, func_to_fields, flip, identity, compose
 
 _dictfield = partial(field, default_factory=dict)
 

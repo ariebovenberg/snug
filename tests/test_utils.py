@@ -186,3 +186,30 @@ def test_flip():
 
     with pytest.raises(TypeError, match='arguments'):
         flipped(1, 2, 3)
+
+
+def test_identity():
+    obj = object()
+    assert utils.identity(obj) is obj
+
+
+class TestCompose:
+
+    def test_empty(self):
+        obj = object()
+        func = utils.compose()
+        assert func(obj) is obj
+        assert isinstance(func.funcs, list)
+        assert func.funcs == []
+
+    def test_one_func_with_multiple_args(self):
+        func = utils.compose(int)
+        assert func('10', base=5) == 5
+        assert isinstance(func.funcs, list)
+        assert func.funcs == [int]
+
+    def test_multiple_funcs(self):
+        func = utils.compose(str, lambda x: x + 1, int)
+        assert isinstance(func.funcs, list)
+        assert func('30', base=5) == '16'
+
