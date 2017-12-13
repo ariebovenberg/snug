@@ -147,6 +147,11 @@ def valmap(func: t.Callable, mapping: t.Mapping) -> t.Mapping:
     return {k: func(v) for k, v in mapping.items()}
 
 
+def valfilter(predicate: t.Callable, mapping: t.Mapping) -> t.Mapping:
+    """filter() for values of a mapping"""
+    return {k: v for k, v in mapping.items() if predicate(v)}
+
+
 def pipe(value, *funcs):
     for func in funcs:
         value = func(value)

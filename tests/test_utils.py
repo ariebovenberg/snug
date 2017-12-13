@@ -235,3 +235,20 @@ class TestPipe:
 
     def test_multiple_funcs(self):
         assert utils.pipe('6', int, lambda x: x + 1, str) == '7'
+
+
+class TestValFilter:
+
+    def test_empty(self):
+        assert utils.valfilter(int, {}) == {}
+
+    def test_simple(self):
+        assert utils.valfilter(lambda x: x % 2, {
+            'foo': 5,
+            'bar': 4,
+            'baz': 3,
+            'qux': 98,
+        }) == {
+            'foo': 5,
+            'baz': 3
+        }
