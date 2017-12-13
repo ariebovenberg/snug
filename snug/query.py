@@ -106,15 +106,16 @@ def from_gen(func: types.FunctionType) -> t.Type[Query]:
         func_to_fields(func),
         bases=(Query, ),
         namespace={
-            '__doc__': func.__doc__,
-            '__module__': func.__module__,
+            '__doc__':     func.__doc__,
+            '__module__':  func.__module__,
             '__resolve__': partialmethod(compose(
                 partial(apply, func), astuple)),
         }
     )
 
 
-def request(func: types.FunctionType) -> t.Type[Query]:
+@dclass
+class from_requester:
     """create a query class from a function. Use as a decorator.
 
     The function must:
@@ -122,16 +123,20 @@ def request(func: types.FunctionType) -> t.Type[Query]:
     * return a ``Request`` instance
     * be fully annotated, without keyword-only arguments
     """
-    return make_dataclass(
-        func.__name__,
-        func_to_fields(func),
-        bases=(Base, ),
-        namespace={
-            '__doc__':         func.__doc__,
-            '__module__':      func.__module__,
-            '_request': partialmethod(compose(
-                partial(apply, func), astuple)),
-        })
+    load: t.Callable
+
+    def __call__(self, func: types.FunctionType) -> t.Type[Query]:
+        return make_dataclass(
+            func.__name__,
+            func_to_fields(func),
+            bases=(Base, ),
+            namespace={
+                '__doc__':    func.__doc__,
+                '__module__': func.__module__,
+                '_request':   partialmethod(compose(
+                    partial(apply, func), astuple)),
+                '_parse':     staticmethod(self.load)
+            })
 
 
 class Authenticator(t.Generic[T_auth]):

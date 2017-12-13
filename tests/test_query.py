@@ -200,11 +200,11 @@ def test_gen():
     ]
 
 
-class TestRequester:
+class TestFromRequester:
 
     def test_simple(self):
 
-        @snug.query.request
+        @snug.query.from_requester(load=lambda l: [Post(**o) for o in l])
         def posts(count: int, search: str='', archived: bool=False):
             """my docstring..."""
             return snug.Request(
@@ -214,7 +214,7 @@ class TestRequester:
         assert posts.__name__ == 'posts'
         assert posts.__doc__ == 'my docstring...'
         assert posts.__module__ == 'test_query'
-        assert issubclass(posts, snug.Query)
+        assert issubclass(posts, snug.query.Base)
         assert len(posts.__dataclass_fields__) == 3
 
         my_posts = posts(count=10, search='important')
@@ -222,19 +222,18 @@ class TestRequester:
         assert my_posts.count == 10
         assert my_posts.search == 'important'
 
-        resolver = my_posts.__resolve__()
-        assert next(resolver) == snug.Request(
+        assert my_posts._request() == snug.Request(
             'posts/', params={
                 'max': 10,
                 'search': 'important',
                 'archived': False
             })
-        assert genresult(resolver, [
+        assert my_posts._parse([
             {'id': 4, 'title': 'hello'},
             {'id': 5, 'title': 'goodbye'},
         ]) == [
-            {'id': 4, 'title': 'hello'},
-            {'id': 5, 'title': 'goodbye'},
+            Post(id=4, title='hello'),
+            Post(id=5, title='goodbye'),
         ]
 
 
