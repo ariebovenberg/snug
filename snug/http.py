@@ -187,7 +187,10 @@ else:
         """
 
         async def _aiohttp_sender(req: Request) -> Response:
-            async with session.get(req.url) as response:
+            async with session.get(req.url,
+                                   params=req.params,
+                                   data=req.data,
+                                   headers=req.headers) as response:
                 return Response(
                     response.status,
                     data=await response.text(),

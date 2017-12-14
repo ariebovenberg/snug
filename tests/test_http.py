@@ -82,12 +82,15 @@ def test_requests_sender():
 
 @pytest.mark.asyncio
 async def test_aiohttp_async_sender():
-    req = http.Request('https://test.example.com')
+    req = http.Request('https://test.com',
+                       data=b'{"foo": 4}',
+                       params={'bla': 99},
+                       headers={'Authorization': 'Basic ABC'})
     aiohttp = pytest.importorskip('aiohttp')
     from aioresponses import aioresponses
 
     with aioresponses() as m:
-        m.get('https://test.example.com', body='{"my": "content"}',
+        m.get('https://test.com', body='{"my": "content"}',
               status=201,
               headers={'Content-Type': 'application/json'})
 
@@ -99,3 +102,8 @@ async def test_aiohttp_async_sender():
             201,
             data='{"my": "content"}',
             headers={'Content-Type': 'application/json'})
+
+        call, = m.requests[('GET', 'https://test.com')]
+        assert call.kwargs['headers'] == {'Authorization': 'Basic ABC'}
+        assert call.kwargs['params'] == {'bla': 99}
+        assert call.kwargs['data'] == b'{"foo": 4}'
