@@ -6,3 +6,4 @@ pytest-asyncio
 wheel
 twine
 aioresponses
+isort
