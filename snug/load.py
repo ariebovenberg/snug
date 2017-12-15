@@ -7,14 +7,13 @@ Todo
 """
 import abc
 import typing as t
+from dataclasses import dataclass, field
 from datetime import datetime
 from functools import partial
 from itertools import starmap
 from operator import attrgetter, itemgetter
 
-from dataclasses import dataclass, field
-
-from .utils import lookup_defaults, parse_iso8601, compose, identity, valmap
+from .utils import compose, identity, lookup_defaults, parse_iso8601, valmap
 
 __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
            'PrimitiveRegistry', 'GenericRegistry', 'AutoDataclassRegistry',

@@ -8,12 +8,12 @@ Todo
 import abc
 import types
 import typing as t
+from dataclasses import astuple, dataclass, field, make_dataclass
 from functools import partial, partialmethod
 
-from dataclasses import dataclass, field, astuple, make_dataclass
-
-from . import http, load as loader, wrap
-from .utils import apply, genresult, func_to_fields, flip, identity, compose
+from . import load as loader
+from . import http, wrap
+from .utils import apply, compose, flip, func_to_fields, genresult, identity
 
 _dictfield = partial(field, default_factory=dict)
 

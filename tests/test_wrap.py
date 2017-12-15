@@ -1,6 +1,6 @@
 import asyncio
 import json
-from dataclasses import replace, dataclass
+from dataclasses import dataclass, replace
 
 import pytest
 

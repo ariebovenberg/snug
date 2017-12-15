@@ -2,12 +2,11 @@
 import abc
 import json
 import typing as t
+from dataclasses import dataclass, replace
 from functools import partial
 
-from dataclasses import dataclass, replace
-
-from .utils import genresult, pipe
 from . import http
+from .utils import genresult, pipe
 
 dclass = partial(dataclass, frozen=True)
 

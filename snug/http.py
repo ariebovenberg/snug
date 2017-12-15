@@ -3,12 +3,10 @@ import abc
 import typing as t
 import urllib.request
 from base64 import b64encode
+from dataclasses import dataclass, field, replace
 from functools import partial
 
-from dataclasses import dataclass, field, replace
-
-__all__ = ['Request', 'Response', 'Sender', 'AsyncSender',
-           'urllib_sender']
+__all__ = ['Request', 'Response', 'Sender', 'AsyncSender', 'urllib_sender']
 
 _dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]

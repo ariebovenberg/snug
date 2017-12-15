@@ -4,6 +4,7 @@ import pytest
 
 from snug import xml
 
+
 XMLDATA = ET.fromstring('''
 <MyRoot foo="3">
     <MyParent>

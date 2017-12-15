@@ -1,12 +1,12 @@
 import typing as t
-from operator import itemgetter
 from dataclasses import dataclass
 from datetime import datetime
+from operator import itemgetter
 
 import pytest
 
 from snug import load
-from snug.utils import compose, identity, valmap, parse_iso8601
+from snug.utils import compose, identity, parse_iso8601, valmap
 
 
 @dataclass(frozen=True)

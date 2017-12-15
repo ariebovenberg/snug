@@ -1,8 +1,8 @@
-import typing as t
 import datetime
+import typing as t
+from dataclasses import field
 from operator import itemgetter
 from unittest import mock
-from dataclasses import field
 
 import pytest
 

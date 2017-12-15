@@ -2,9 +2,9 @@
 import inspect
 import types
 import typing as t
+from dataclasses import Field, dataclass, field
 from datetime import datetime
 from functools import wraps
-from dataclasses import Field, field, dataclass
 
 T = t.TypeVar('T')
 

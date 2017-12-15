@@ -1,8 +1,8 @@
 import asyncio
 import json
 import typing as t
-from unittest import mock
 from dataclasses import dataclass
+from unittest import mock
 
 import pytest
 

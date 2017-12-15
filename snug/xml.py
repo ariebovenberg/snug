@@ -1,11 +1,12 @@
 """shortcuts for working with XML data"""
 import typing as t
 from functools import partial
-from operator import (methodcaller, attrgetter as _attrgetter,
-                      itemgetter as _itemgetter)
+from operator import attrgetter as _attrgetter
+from operator import itemgetter as _itemgetter
+from operator import methodcaller
 from xml.etree.ElementTree import Element
 
-from .utils import NO_DEFAULT, lookup_defaults, compose, identity
+from .utils import NO_DEFAULT, compose, identity, lookup_defaults
 
 T = t.TypeVar('T')
 
