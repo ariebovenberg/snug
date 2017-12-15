@@ -2,39 +2,47 @@ import typing as t
 import xml.etree.ElementTree
 from datetime import datetime
 from functools import partial
-from operator import attrgetter, methodcaller
 
-from toolz import compose, valfilter
+import aiohttp
 
 import snug
-from snug.utils import notnone
+from snug.utils import notnone, valfilter
 
 from .types import Station, Departure, Journey
-from .load import registry
+from .load import registry as loads
+
+API_PREFIX = 'https://webservices.ns.nl/ns-api-'
 
 
-api = snug.Api(
-    prepare=methodcaller('add_prefix', 'https://webservices.ns.nl/ns-api-'),
-    parse=compose(xml.etree.ElementTree.fromstring, attrgetter('content')),
-    add_auth=snug.Request.add_basic_auth,
-)
-resolve = partial(
-    snug.query.resolve,
-    api=api,
-    loaders=registry,
-    sender=snug.urllib_sender())
+@snug.wrap.Fixed
+def ns_middleware(request):
+    """wrapper for all NS requests"""
+    response = yield request.add_prefix(API_PREFIX)
+    return xml.etree.ElementTree.fromstring(response.data)
 
-stations = snug.Query(snug.Request('stations-v2'), rtype=t.List[Station])
+
+resolver = partial(snug.build_resolver,
+                   authenticator=snug.Request.add_basic_auth,
+                   wrapper=ns_middleware,
+                   sender=snug.urllib_sender())
+
+async_resolver = partial(snug.build_async_resolver,
+                         authenticator=snug.Request.add_basic_auth,
+                         wrapper=ns_middleware)
+
+
+stations = snug.query.Fixed(snug.Request('stations-v2'),
+                            load=loads(t.List[Station]))
 """a list of all stations"""
 
 
-@snug.Query(t.List[Departure])
+@snug.query.from_requester(load=loads(t.List[Departure]))
 def departures(station: str):
     """departures for a station"""
     return snug.Request('avt', params={'station': station})
 
 
-@snug.Query(t.List[Journey])
+@snug.query.from_requester(load=loads(t.List[Journey]))
 def journey_options(origin:      str,
                     destination: str,
                     via:         t.Optional[str]=None,
