@@ -125,7 +125,7 @@ def test_nested():
             raise NotImplementedError
 
         @dataclass(frozen=True)
-        class comments(snug.query.Nested):
+        class comments(snug.query.Nestable, snug.Query):
             """comments for this post"""
             post:  'post'
             sort:  bool

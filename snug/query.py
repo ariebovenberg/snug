@@ -20,7 +20,7 @@ _dictfield = partial(field, default_factory=dict)
 __all__ = [
     'Query',
     'Fixed',
-    'Nested',
+    'Nestable',
     'resolve',
     'from_gen',
     'build_resolver',
@@ -84,7 +84,7 @@ class Wrapped(Query[T]):
         return resolver.send(genresult(wrapper, response))
 
 
-class NestedMeta(t.GenericMeta):
+class NestableMeta(t.GenericMeta):
     """Metaclass for nested queries"""
     # when nested, act like a method.
     # i.e. pass the parent instance as first argument
@@ -92,11 +92,9 @@ class NestedMeta(t.GenericMeta):
         return self if instance is None else partial(self, instance)
 
 
-class Nested(Query[T], metaclass=NestedMeta):
-    """base class for nested queries"""
-    @abc.abstractmethod
-    def __resolve__(self):
-        raise NotImplementedError()
+class Nestable(metaclass=NestableMeta):
+    """mixin for classes which behave like methods when called
+    (i.e. pass the parent as first argument)"""
 
 
 def from_gen(func: types.FunctionType) -> t.Type[Query]:
@@ -123,13 +121,13 @@ class from_requester:
     * return a ``Request`` instance
     * be fully annotated, without keyword-only arguments
     """
-    load: t.Callable
+    load:   t.Callable
 
     def __call__(self, func: types.FunctionType) -> t.Type[Query]:
         return make_dataclass(
             func.__name__,
             func_to_fields(func),
-            bases=(Base, ),
+            bases=(Nestable, Base),
             namespace={
                 '__doc__':    func.__doc__,
                 '__module__': func.__module__,
