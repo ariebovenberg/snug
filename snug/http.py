@@ -191,7 +191,7 @@ else:
                                    headers=req.headers) as response:
                 return Response(
                     response.status,
-                    data=await response.text(),
+                    data=await response.read(),
                     headers=response.headers,
                 )
 

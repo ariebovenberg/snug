@@ -90,7 +90,7 @@ async def test_aiohttp_async_sender():
     from aioresponses import aioresponses
 
     with aioresponses() as m:
-        m.get('https://test.com', body='{"my": "content"}',
+        m.get('https://test.com', body=b'{"my": "content"}',
               status=201,
               headers={'Content-Type': 'application/json'})
 
@@ -100,7 +100,7 @@ async def test_aiohttp_async_sender():
 
         assert response == http.Response(
             201,
-            data='{"my": "content"}',
+            data=b'{"my": "content"}',
             headers={'Content-Type': 'application/json'})
 
         call, = m.requests[('GET', 'https://test.com')]
