@@ -3,13 +3,11 @@ import xml.etree.ElementTree
 from datetime import datetime
 from functools import partial
 
-import aiohttp
-
 import snug
 from snug.utils import notnone, valfilter
 
-from .types import Station, Departure, Journey
 from .load import registry as loads
+from .types import Departure, Journey, Station
 
 API_PREFIX = 'https://webservices.ns.nl/ns-api-'
 

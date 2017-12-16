@@ -1,12 +1,12 @@
-import aiohttp
 import json
+from dataclasses import replace
 from pathlib import Path
 
+import aiohttp
 import pytest
-import snug
-from dataclasses import replace
 
 import ns
+import snug
 
 live = pytest.config.getoption('--live')
 CRED_PATH = Path('~/.snug/ns.json').expanduser()

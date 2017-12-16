@@ -1,11 +1,11 @@
 import typing as t
 from datetime import datetime
-from toolz.curried import partial, flip, valmap, compose
+from functools import partial
 
 import snug
+from snug.utils import compose, flip, valmap
 
 from . import types
-
 
 xml = snug.xml
 
