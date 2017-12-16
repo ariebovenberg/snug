@@ -1,9 +1,9 @@
 import typing as t
 from datetime import datetime
-from operator import itemgetter
+from functools import partial
 
 import snug
-from toolz import flip, partial
+from snug.utils import flip
 
 from . import types
 

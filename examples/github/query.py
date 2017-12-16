@@ -1,50 +1,54 @@
 import json
 import reprlib
 import typing as t
+from dataclasses import dataclass
 from datetime import datetime
-from operator import methodcaller, attrgetter
+from functools import partial
 
 import snug
-from toolz import partial, valfilter, compose
-from dataclasses import dataclass
-from snug.utils import notnone
+from snug.utils import notnone, valfilter
 
-from .types import Repo, Organization, User, Issue, RepoSummary
-from .load import registry
+from .load import registry as loads
+from .types import Issue, Organization, Repo, RepoSummary, User
 
 _repr = reprlib.Repr()
 _repr.maxstring = 45
 
 
-api = snug.Api(
-    prepare=compose(
-        methodcaller('add_headers',
-                     {'Accept': 'application/vnd.github.v3+json'}),
-        methodcaller('add_prefix', 'https://api.github.com/')),
-    parse=compose(
-        json.loads,
-        methodcaller('decode', 'utf-8'),
-        attrgetter('content')),
-    add_auth=snug.Request.add_basic_auth,
-)
-
-resolve = partial(snug.query.resolve,
-                  api=api,
-                  sender=snug.urllib_sender(),
-                  loaders=registry)
+dclass = partial(dataclass, frozen=True)
 
 
-@dataclass(frozen=True)
-class repo(snug.Query, rtype=Repo):
+@snug.wrap.Fixed
+def github_middleware(request):
+    response = yield request.add_headers({
+        'Accept': 'application/vnd.github.v3+json',
+    }).add_prefix('https://api.github.com/')
+    return json.loads(response.data.decode('utf-8'))
+
+
+resolver = partial(snug.build_resolver,
+                   wrapper=github_middleware,
+                   sender=snug.urllib_sender(),
+                   authenticator=snug.Request.add_basic_auth)
+
+
+async_resolver = partial(snug.build_async_resolver,
+                         wrapper=github_middleware,
+                         authenticator=snug.Request.add_basic_auth)
+
+
+@dclass
+class repo(snug.query.Base):
     """repository lookup by owner & name"""
     owner: str
     name:  str
 
-    @property
-    def __req__(self):
+    def _request(self):
         return snug.Request(f'repos/{self.owner}/{self.name}')
 
-    @snug.Query(t.List[Issue])
+    _parse = staticmethod(loads(Repo))
+
+    @snug.query.from_requester(load=loads(t.List[Issue]), nestable=True)
     def issues(repo:   'repo',
                labels: t.Optional[str]=None,
                state:  t.Optional[str]=None):
@@ -55,32 +59,32 @@ class repo(snug.Query, rtype=Repo):
                 'state':  state,
             }))
 
-    @snug.Query(Issue)
+    @snug.query.from_requester(load=loads(Issue), nestable=True)
     def issue(repo: 'repo', number: int):
         return snug.Request(
             f'repos/{repo.owner}/'
             f'{repo.name}/issues/{number}')
 
 
-@snug.Query(t.List[RepoSummary])
+@snug.query.from_requester(load=loads(t.List[RepoSummary]))
 def repos():
     """a selection on repositories"""
     return snug.Request('repositories')
 
 
-@snug.Query(Organization)
+@snug.query.from_requester(load=loads(Organization))
 def org(login: str):
     """Organization lookup by login"""
     return snug.Request(f'orgs/{login}')
 
 
-@snug.Query(t.List[Organization])
+@snug.query.from_requester(load=loads(t.List[Organization]))
 def orgs():
     """a selection of organizations"""
     return snug.Request('organizations')
 
 
-@snug.Query(t.List[Issue])
+@snug.query.from_requester(load=loads(t.List[Issue]))
 def issues(filter: t.Optional[str]=None,
            state:  t.Optional[Issue.State]=None,
            labels: t.Optional[str]=None,
@@ -97,13 +101,14 @@ def issues(filter: t.Optional[str]=None,
 
 
 @dataclass(frozen=True)
-class current_user(snug.Query, rtype=User):
+class current_user(snug.query.Base):
     """a reference to the current user"""
 
-    @property
-    def __req__(self):
+    def _request(self):
         return snug.Request('user')
 
-    @snug.Query(t.List[Issue])
-    def issues(user: 'current_user'):
+    _parse = staticmethod(loads(User))
+
+    @snug.query.from_requester(load=loads(t.List[Issue]))
+    def issues():
         return snug.Request('user/issues')
