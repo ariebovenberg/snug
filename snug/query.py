@@ -8,12 +8,13 @@ Todo
 import abc
 import types
 import typing as t
-from dataclasses import astuple, dataclass, field, make_dataclass
+from dataclasses import dataclass, field, make_dataclass
 from functools import partial, partialmethod
 
 from . import load as loader
 from . import http, wrap
-from .utils import apply, compose, flip, func_to_fields, genresult, identity
+from .utils import (apply, as_tuple, compose, flip, func_to_fields, genresult,
+                    identity)
 
 _dictfield = partial(field, default_factory=dict)
 
@@ -107,7 +108,7 @@ def from_gen(func: types.FunctionType) -> t.Type[Query]:
             '__doc__':     func.__doc__,
             '__module__':  func.__module__,
             '__resolve__': partialmethod(compose(
-                partial(apply, func), astuple)),
+                partial(apply, func), as_tuple)),
         }
     )
 
@@ -122,17 +123,18 @@ class from_requester:
     * be fully annotated, without keyword-only arguments
     """
     load:   t.Callable
+    nestable: bool = False
 
     def __call__(self, func: types.FunctionType) -> t.Type[Query]:
         return make_dataclass(
             func.__name__,
             func_to_fields(func),
-            bases=(Nestable, Base),
+            bases=(Nestable, Base) if self.nestable else (Base, ),
             namespace={
                 '__doc__':    func.__doc__,
                 '__module__': func.__module__,
                 '_request':   partialmethod(compose(
-                    partial(apply, func), astuple)),
+                    partial(apply, func), as_tuple)),
                 '_parse':     staticmethod(self.load)
             })
 

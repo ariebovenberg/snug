@@ -157,3 +157,8 @@ def pipe(value, *funcs):
     for func in funcs:
         value = func(value)
     return value
+
+
+def as_tuple(dclass):
+    """like dataclasses.astuple(), but without recursing into fields"""
+    return tuple(getattr(dclass, name) for name in dclass.__dataclass_fields__) 

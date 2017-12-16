@@ -84,45 +84,61 @@ def test_static():
     ]
 
 
-class TestQuery:
+def test_query():
 
-    def test_subclassing(self):
-
-        @dataclass
-        class posts(snug.Query[t.List[Post]]):
-            count: int
-
-            def __resolve__(self):
-                return [
-                    Post(**d)
-                    for d in (yield snug.Request('posts/',
-                                                 params={'max': self.count}))
-                ]
-
-        query = posts(count=2)
-        assert isinstance(query, snug.Query)
-        assert query.count == 2
-
-        resolver = query.__resolve__()
-        assert next(resolver) == snug.Request('posts/', params={'max': 2})
-        assert genresult(resolver, [
-            {'id': 4, 'title': 'hello'},
-            {'id': 5, 'title': 'goodbye'},
-        ]) == [
-            Post(4, 'hello'),
-            Post(5, 'goodbye'),
-        ]
-
-
-def test_nested():
-
-    @dataclass(frozen=True)
-    class post(snug.Query):
-        """a post by its ID"""
-        id: int
+    @dataclass
+    class posts(snug.Query[t.List[Post]]):
+        count: int
 
         def __resolve__(self):
-            raise NotImplementedError
+            response = yield snug.Request('posts/',
+                                          params={'max': self.count})
+            return [Post(**d) for d in response]
+
+    query = posts(count=2)
+    assert isinstance(query, snug.Query)
+    assert query.count == 2
+
+    resolver = query.__resolve__()
+    assert next(resolver) == snug.Request('posts/', params={'max': 2})
+    assert genresult(resolver, [
+        {'id': 4, 'title': 'hello'},
+        {'id': 5, 'title': 'goodbye'},
+    ]) == [
+        Post(4, 'hello'),
+        Post(5, 'goodbye'),
+    ]
+
+
+def test_base():
+
+    @dataclass
+    class posts(snug.query.Base):
+        count: int
+
+        def _request(self):
+            return snug.Request('posts/', params={'max': self.count})
+
+    query = posts(count=2)
+    assert isinstance(query, snug.Query)
+    assert query.count == 2
+
+    resolver = query.__resolve__()
+    assert next(resolver) == snug.Request('posts/', params={'max': 2})
+    assert genresult(resolver, [
+        {'id': 4, 'title': 'hello'},
+        {'id': 5, 'title': 'goodbye'},
+    ]) == [
+        {'id': 4, 'title': 'hello'},
+        {'id': 5, 'title': 'goodbye'},
+    ]
+
+
+def test_nestable():
+
+    @dataclass
+    class Post:
+        id: int
 
         @dataclass(frozen=True)
         class comments(snug.query.Nestable, snug.Query):
@@ -134,13 +150,13 @@ def test_nested():
             def __resolve__(self):
                 raise NotImplementedError()
 
-    assert issubclass(post.comments, snug.Query)
+    assert issubclass(Post.comments, snug.Query)
 
-    post34 = post(id=34)
+    post34 = Post(id=34)
     post_comments = post34.comments(sort=True)
 
     assert isinstance(post_comments, snug.Query)
-    assert post_comments == post.comments(post=post34, sort=True)
+    assert post_comments == Post.comments(post=post34, sort=True)
 
 
 def test_wrapped(jsonwrapper):

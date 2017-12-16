@@ -1,6 +1,6 @@
 import datetime
 import typing as t
-from dataclasses import field
+from dataclasses import field, dataclass
 from operator import itemgetter
 from unittest import mock
 
@@ -252,3 +252,36 @@ class TestValFilter:
             'foo': 5,
             'baz': 3
         }
+
+
+class TestAsTuple:
+
+    def test_empty(self):
+
+        @dataclass
+        class D:
+            pass
+
+        assert utils.as_tuple(D()) == ()
+
+    def test_simple(self):
+
+        @dataclass
+        class A:
+            foo: int
+            bar: str = 'hi'
+
+        assert utils.as_tuple(A(4)) == (4, 'hi')
+
+    def test_does_not_recurse(self):
+
+        @dataclass
+        class A:
+            pass
+
+        @dataclass
+        class D:
+            foo: int
+            bar: A
+
+        assert utils.as_tuple(D(4, A())) == (4, A())
