@@ -34,7 +34,7 @@ setup(
     keywords=['api', 'wrapper', 'rest'],
     install_requires=[
         'dataclasses>=0.2,<0.3',
-    ] if sys.version_info < (3, 7) else [],
+    ] if sys.version_info < (3, 7, 0, 'alpha', 3) else [],
     extras_require={
         'requests': ['requests>=2.18.0,<3'],
         'aiohttp': ['aiohttp>=2.3.3,<3'],
