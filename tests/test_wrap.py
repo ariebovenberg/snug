@@ -1,4 +1,5 @@
 import asyncio
+import json
 from dataclasses import dataclass
 
 import pytest
@@ -99,6 +100,18 @@ def test_preparer(response):
     assert prepared == snug.Request('my/url', headers={'Authorization': 'me'})
     # responses are unmodified
     assert response == genresult(wrap, response)
+
+
+def test_parser(response):
+
+    @snug.wrap.Parser
+    def parse_json(response):
+        return json.loads(response.data)
+
+    wrap = parse_json(snug.Request('my/url'))
+    assert next(wrap) == snug.Request('my/url')
+    assert genresult(wrap, snug.Response(200, b'{"foo": 5}')) == {
+        'foo': 5}
 
 
 def test_sender(jsonwrapper):

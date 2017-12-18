@@ -82,6 +82,15 @@ class Preparer(Wrapper[T_req, T_prepared, T_resp, T_resp]):
 
 
 @dclass
+class Parser(Wrapper[T_req, T_req, T_resp, T_parsed]):
+    """a wrapper which only does parsing of the result"""
+    parse: t.Callable[[T_resp], T_parsed]
+
+    def __call__(self, request):
+        return self.parse((yield request))
+
+
+@dclass
 class Chain(Wrapper):
     """a chained wrapper, applying wrappers in order"""
     wrappers: t.Tuple[Wrapper, ...] = ()
