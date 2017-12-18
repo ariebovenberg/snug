@@ -127,7 +127,7 @@ class flip:
 @dataclass(init=False)
 class compose:
     """compose a function from a chain of functions"""
-    funcs: t.List[t.Callable]
+    funcs: t.Tuple[t.Callable, ...]
 
     def __init__(self, *funcs):
         self.funcs = funcs
