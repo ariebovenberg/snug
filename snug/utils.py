@@ -162,3 +162,8 @@ def pipe(value, *funcs):
 def as_tuple(dclass):
     """like dataclasses.astuple(), but without recursing into fields"""
     return tuple(getattr(dclass, name) for name in dclass.__dataclass_fields__)
+
+
+JSONType = t.Union[str, int, float, bool, None,
+                   t.Dict[str, t.Any],
+                   t.List[t.Any]]

@@ -13,9 +13,13 @@ Headers = t.Mapping[str, str]
 
 dclass = partial(dataclass, frozen=True)
 
+T_req = t.TypeVar('T_req')
+T_resp = t.TypeVar('T_resp')
+T = t.TypeVar('T')
+
 
 @dclass
-class Request:
+class Request(t.Generic[T]):
     """a simple HTTP request
 
     Parameters
@@ -32,7 +36,7 @@ class Request:
         the http method
     """
     url:     str
-    data:    t.Optional[bytes] = None
+    data:    T = None
     params:  t.Mapping[str, str] = _dictfield()
     headers: Headers = _dictfield()
     method:  str = 'GET'
@@ -82,7 +86,7 @@ class Request:
 
 
 @dclass
-class Response:
+class Response(t.Generic[T]):
     """a simple HTTP response
 
     Parameters
@@ -95,11 +99,11 @@ class Response:
         the headers of the response
     """
     status_code: int
-    data:        t.Optional[bytes] = None
+    data:        T = None
     headers:     Headers = field(default_factory=dict)
 
 
-class Sender(abc.ABC):
+class Sender(t.Generic[T_req, T_resp]):
     """Interface for request senders.
     Any callable which turns a :class:`Request` into a :class:`Response`
     implements it."""
@@ -109,18 +113,19 @@ class Sender(abc.ABC):
         raise NotImplementedError()
 
 
-class AsyncSender(abc.ABC):
+class AsyncSender(t.Generic[T_req, T_resp]):
     """Interface for ansyncronous request senders.
     Any callable which turns a :class:`Request`
     into an awaitable :class:`Response` implements it.
     """
 
     @abc.abstractmethod
-    def __call__(self, request: Request) -> t.Awaitable[Response]:
+    def __call__(self, request: T_resp) -> t.Awaitable[T_req]:
         raise NotImplementedError()
 
 
-def urllib_sender(**kwargs) -> Sender:
+def urllib_sender(**kwargs) -> Sender[Request[bytes],
+                                      Response[bytes]]:
     """create a :class:`Sender` using :mod:`urllib`.
 
     Parameters
@@ -146,7 +151,8 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    def requests_sender(session: requests.Session) -> Sender:
+    def requests_sender(session: requests.Session) -> Sender[Request[bytes],
+                                                             Response[bytes]]:
         """create a :class:`Sender` for a :class:`requests.Session`
 
         Parameters
@@ -174,7 +180,8 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    def aiohttp_sender(session: aiohttp.ClientSession) -> AsyncSender:
+    def aiohttp_sender(session: aiohttp.ClientSession) -> (
+            AsyncSender[Response[bytes], Request[bytes]]):
         """create a :class:`AsyncSender`
         for a :class:`aiohttp.ClientSession`
 
@@ -184,7 +191,8 @@ else:
             a aiohttp session
         """
 
-        async def _aiohttp_sender(req: Request) -> Response:
+        async def _aiohttp_sender(req: Request[bytes]) -> (
+                t.Awaitable[Response[bytes]]):
             async with session.get(req.url,
                                    params=req.params,
                                    data=req.data,
