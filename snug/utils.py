@@ -130,7 +130,7 @@ class compose:
     funcs: t.List[t.Callable]
 
     def __init__(self, *funcs):
-        self.funcs = list(funcs)
+        self.funcs = funcs
 
     def __call__(self, *args, **kwargs):
         if not self.funcs:
