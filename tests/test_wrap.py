@@ -16,7 +16,7 @@ class TestChain:
         class Authenticator(snug.wrap.Base):
             token: str
 
-            def prepare(self, request):
+            def _prepare(self, request):
                 return request.add_headers({'Authorization': self.token})
 
         def raise_on_server_error(request):
@@ -61,7 +61,7 @@ class TestChain:
             """an example wrapper which provides authentication"""
             token: str
 
-            def prepare(self, request):
+            def _prepare(self, request):
                 return request.add_headers({'Authorization': self.token})
 
         wrapper = snug.wrap.Chain() | jsonwrapper | Authenticator('me')

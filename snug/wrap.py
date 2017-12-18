@@ -46,15 +46,15 @@ class AsyncSender(http.AsyncSender):
 class Base(Wrapper):
     """a simple base class to inherit from"""
 
-    def prepare(self, request):
+    def _prepare(self, request):
         return request
 
-    def parse(self, response):
+    def _parse(self, response):
         return response
 
     def __call__(self, request):
-        response = yield self.prepare(request)
-        return self.parse(response)
+        response = yield self._prepare(request)
+        return self._parse(response)
 
 
 @dclass
