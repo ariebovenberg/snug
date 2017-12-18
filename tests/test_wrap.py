@@ -70,6 +70,17 @@ class TestChain:
         assert wrapper.wrappers == (jsonwrapper, Authenticator('me'))
 
 
+def test_base():
+
+    class MyAPI(snug.wrap.Base):
+        pass
+
+    wrap = MyAPI()(snug.Request('my/url'))
+    assert next(wrap) == snug.Request('my/url')
+    resp = snug.Response(200)
+    assert genresult(wrap, resp) == resp
+
+
 def test_preparer(response):
 
     @snug.wrap.Preparer
