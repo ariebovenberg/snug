@@ -27,6 +27,11 @@ class Wrapper(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
         raise NotImplementedError()
 
 
+def identity(request: T_req) -> t.Generator[T_req, T_resp, T_resp]:
+    """identity wrapper, leaves requests and responses unchanged"""
+    return (yield request)
+
+
 @dclass
 class Sender(http.Sender[T_req, T_parsed]):
     """a wrapped sender"""
