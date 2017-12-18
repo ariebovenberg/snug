@@ -15,7 +15,7 @@ class Wrapper(abc.ABC):
     """ABC for middleware"""
 
     @abc.abstractmethod
-    def __wrap__(self, request) -> t.Generator:
+    def __call__(self, request) -> t.Generator:
         raise NotImplementedError()
 
 
@@ -26,7 +26,7 @@ class Sender(http.Sender):
     wrapper: Wrapper
 
     def __call__(self, request):
-        wrap = self.wrapper.__wrap__(request)
+        wrap = self.wrapper(request)
         response = self.inner(next(wrap))
         return genresult(wrap, response)
 
@@ -38,7 +38,7 @@ class AsyncSender(http.AsyncSender):
     wrapper: Wrapper
 
     async def __call__(self, request):
-        wrap = self.wrapper.__wrap__(request)
+        wrap = self.wrapper(request)
         response = await self.inner(next(wrap))
         return genresult(wrap, response)
 
@@ -52,7 +52,7 @@ class Base(Wrapper):
     def parse(self, response):
         return response
 
-    def __wrap__(self, request):
+    def __call__(self, request):
         response = yield self.prepare(request)
         return self.parse(response)
 
@@ -62,28 +62,19 @@ class Preparer(Wrapper):
     """A wrapper which only does preparing of a request"""
     prepare: t.Callable[[http.Request], http.Request]
 
-    def __wrap__(self, request):
+    def __call__(self, request):
         return (yield self.prepare(request))
-
-
-@dclass
-class Fixed(Wrapper):
-    """a static wrapper from a generator"""
-    gen: t.Callable[[t.Any], t.Generator]
-
-    def __wrap__(self, request):
-        return self.gen(request)
 
 
 @dclass
 class Chain(Wrapper):
     """a chained wrapper, applying wrappers in order"""
-    wrappers: t.Sequence[Wrapper] = ()
+    wrappers: t.Tuple[Wrapper] = ()
 
-    def __wrap__(self, request):
+    def __call__(self, request):
         wraps = []
         for wrapper in self.wrappers:
-            wrap = wrapper.__wrap__(request)
+            wrap = wrapper(request)
             wraps.append(wrap)
             request = next(wrap)
 
@@ -94,10 +85,9 @@ class Chain(Wrapper):
             *(partial(genresult, wrapper) for wrapper in reversed(wraps)))
 
     def __or__(self, other: Wrapper):
-        return Chain(list(self.wrappers) + [other])
+        return Chain(self.wrappers + (other, ))
 
 
-@Fixed
 def jsondata(request):
     """a simple wrapper for requests with JSON content"""
     prepared = (replace(request, data=json.dumps(request.data).encode('ascii'))

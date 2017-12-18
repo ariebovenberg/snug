@@ -1,36 +1,11 @@
 import asyncio
-import json
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 import pytest
 
 import snug
 
 genresult = snug.utils.genresult
-
-
-def test_fixed():
-
-    @snug.wrap.Fixed
-    def jsondata(request):
-        response = yield replace(request, data=json.dumps(request.data))
-        return replace(response, data=json.loads(response.data))
-
-    wrapper = jsondata.__wrap__(snug.Request('my/url/', {'hello': 5}))
-    assert next(wrapper) == snug.Request('my/url/', '{"hello": 5}')
-    response = genresult(wrapper, snug.Response(200, b'{"foo": 4}'))
-    assert response == snug.Response(200, {'foo': 4})
-
-
-def test_base():
-
-    class MyAPI(snug.wrap.Base):
-        pass
-
-    wrap = MyAPI().__wrap__(snug.Request('my/url'))
-    assert next(wrap) == snug.Request('my/url')
-    resp = snug.Response(200)
-    assert genresult(wrap, resp) == resp
 
 
 class TestChain:
@@ -44,7 +19,6 @@ class TestChain:
             def prepare(self, request):
                 return request.add_headers({'Authorization': self.token})
 
-        @snug.wrap.Fixed
         def raise_on_server_error(request):
             response = yield request
             if response.status_code == 500:
@@ -65,7 +39,7 @@ class TestChain:
             raise_on_server_error,
         ])
 
-        wrapped = wrapper.__wrap__(snug.Request('my/url', {'foo': 4}))
+        wrapped = wrapper(snug.Request('my/url', {'foo': 4}))
         assert next(wrapped) == snug.Request(
             'my/url', b'{"foo": 4}', headers={
                 'Authorization': 'me',
@@ -75,7 +49,7 @@ class TestChain:
         assert response == {'bar': 9}
 
     def test_empty(self):
-        wrap = snug.wrap.Chain().__wrap__(snug.Request('my/url'))
+        wrap = snug.wrap.Chain()(snug.Request('my/url'))
         assert next(wrap) == snug.Request('my/url')
         assert genresult(wrap, snug.Response(201, {}, b'')) == snug.Response(
             201, {}, b'')
@@ -93,7 +67,7 @@ class TestChain:
         wrapper = snug.wrap.Chain() | jsonwrapper | Authenticator('me')
 
         assert isinstance(wrapper, snug.wrap.Chain)
-        assert wrapper.wrappers == [jsonwrapper, Authenticator('me')]
+        assert wrapper.wrappers == (jsonwrapper, Authenticator('me'))
 
 
 def test_preparer(response):
@@ -102,7 +76,7 @@ def test_preparer(response):
     def add_auth_header(request):
         return request.add_headers({'Authorization': 'me'})
 
-    wrap = add_auth_header.__wrap__(snug.Request('my/url'))
+    wrap = add_auth_header(snug.Request('my/url'))
     prepared = next(wrap)
     assert prepared == snug.Request('my/url', headers={'Authorization': 'me'})
     # responses are unmodified
@@ -140,13 +114,13 @@ async def test_async_sender(jsonwrapper):
 class TestJsonData:
 
     def test_simple(self):
-        wrap = snug.wrap.jsondata.__wrap__(
+        wrap = snug.wrap.jsondata(
             snug.Request('my/url', {'foo': 6}))
         assert next(wrap) == snug.Request('my/url', b'{"foo": 6}')
         response = genresult(wrap, snug.Response(404, b'{"error": 9}'))
         assert response == {'error': 9}
 
     def test_no_data(self):
-        wrap = snug.wrap.jsondata.__wrap__(snug.Request('my/url'))
+        wrap = snug.wrap.jsondata(snug.Request('my/url'))
         assert next(wrap) == snug.Request('my/url')
         assert genresult(wrap, snug.Response(404)) is None

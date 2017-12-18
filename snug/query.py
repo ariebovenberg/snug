@@ -80,7 +80,7 @@ class Wrapped(Query[T]):
 
     def __resolve__(self):
         resolver = self.inner.__resolve__()
-        wrapper = self.wrapper.__wrap__(next(resolver))
+        wrapper = self.wrapper(next(resolver))
         response = yield next(wrapper)
         return resolver.send(genresult(wrapper, response))
 

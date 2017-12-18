@@ -9,7 +9,6 @@ import snug
 @pytest.fixture
 def jsonwrapper():
 
-    @snug.wrap.Fixed
     def jsondata(request):
         response = yield replace(request, data=json.dumps(request.data))
         return json.loads(response.data)
