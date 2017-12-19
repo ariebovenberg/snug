@@ -2,7 +2,7 @@
 from .http import *  # noqa
 from .query import (Query, resolve, resolve_async,  # noqa
                     build_resolver, build_async_resolver)
-from .wrap import Wrapper  # noqa
+from .pipe import Pipe  # noqa
 
 from . import http, load, query, xml  # noqa
 

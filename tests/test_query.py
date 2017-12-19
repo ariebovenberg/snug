@@ -279,7 +279,7 @@ def test_build_resolver(jsonwrapper):
     resolver = snug.build_resolver(
         ('username', 'hunter2'),
         sender=sender,
-        wrapper=jsonwrapper,
+        pipe=jsonwrapper,
         authenticator=snug.Request.add_basic_auth,
     )
     response = resolver(post(99))
@@ -303,7 +303,7 @@ async def test_build_async_resolver(jsonwrapper):
     resolver = snug.build_async_resolver(
         ('username', 'hunter2'),
         sender=sender,
-        wrapper=jsonwrapper,
+        pipe=jsonwrapper,
         authenticator=snug.Request.add_basic_auth,
     )
     response = await resolver(post(99))
