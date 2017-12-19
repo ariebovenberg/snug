@@ -169,7 +169,7 @@ def test_wrapped(jsonwrapper):
             return Post(**(yield snug.Request(
                 f'posts/{self.id}/', {'foo': 4})))
 
-    wrapped = snug.query.Wrapped(post(4), wrapper=jsonwrapper)
+    wrapped = snug.query.Wrapped(jsonwrapper, post(id=4))
 
     resolve = wrapped.__resolve__()
     request = next(resolve)

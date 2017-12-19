@@ -75,8 +75,9 @@ class Base(Query[T]):
 
 @dclass
 class Wrapped(Query[T]):
-    inner: Query
+    """a query with a wrapper modifying requests/responses"""
     wrapper: wrap.Wrapper
+    inner: Query
 
     def __resolve__(self):
         resolver = self.inner.__resolve__()
