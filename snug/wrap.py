@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from functools import partial
 
 from . import http
-from .utils import genresult, pipe, JSONType
+from .utils import genresult, push, JSONType
 
 dclass = partial(dataclass, frozen=True)
 
@@ -107,7 +107,7 @@ class Chain(Wrapper):
 
         response = yield request
 
-        return pipe(
+        return push(
             response,
             *(partial(genresult, wrapper) for wrapper in reversed(wraps)))
 

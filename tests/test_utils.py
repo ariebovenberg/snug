@@ -224,17 +224,17 @@ class TestValmap:
             'foo': 4, 'bar': 5}
 
 
-class TestPipe:
+class TestPush:
 
     def test_empty(self):
         obj = object()
-        assert utils.pipe(obj) is obj
+        assert utils.push(obj) is obj
 
     def test_one_func(self):
-        assert utils.pipe('6', int) == 6
+        assert utils.push('6', int) == 6
 
     def test_multiple_funcs(self):
-        assert utils.pipe('6', int, lambda x: x + 1, str) == '7'
+        assert utils.push('6', int, lambda x: x + 1, str) == '7'
 
 
 class TestValFilter:
