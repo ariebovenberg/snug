@@ -1,4 +1,5 @@
 """a toolkit for wrapping REST APIs"""
+from .abc import *  # noqa
 from .http import *  # noqa
 from .query import (Query, resolve, resolve_async,  # noqa
                     build_resolver, build_async_resolver)

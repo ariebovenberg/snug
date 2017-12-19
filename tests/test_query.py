@@ -1,6 +1,5 @@
 import asyncio
 import json
-import typing as t
 from dataclasses import dataclass
 from unittest import mock
 
@@ -87,7 +86,7 @@ def test_static():
 def test_query():
 
     @dataclass
-    class posts(snug.Query[t.List[Post]]):
+    class posts(snug.Query):
         count: int
 
         def __resolve__(self):

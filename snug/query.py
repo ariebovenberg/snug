@@ -11,7 +11,7 @@ import typing as t
 from dataclasses import dataclass, field, make_dataclass
 from functools import partial, partialmethod
 
-from . import load as loader
+from .abc import Query
 from . import http, pipe as pipes
 from .utils import (apply, as_tuple, compose, flip, func_to_fields, genresult,
                     identity)
@@ -19,7 +19,6 @@ from .utils import (apply, as_tuple, compose, flip, func_to_fields, genresult,
 _dictfield = partial(field, default_factory=dict)
 
 __all__ = [
-    'Query',
     'Fixed',
     'Nestable',
     'resolve',
@@ -30,43 +29,36 @@ __all__ = [
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
+T_req = t.TypeVar('T_req')
+T_resp = t.TypeVar('T_resp')
 dclass = partial(dataclass, frozen=True)
 
 
-class Query(t.Generic[T]):
-    """interface for query-like objects.
-    Any object with ``__resolve__`` implements it"""
-
-    @abc.abstractmethod
-    def __resolve__(self) -> t.Generator[http.Request, http.Response, T]:
-        raise NotImplementedError()
-
-
 @dclass
-class Fixed(Query[T]):
+class Fixed(Query[T, T_req, T_resp]):
     """a static query
 
     Parameters
     ----------
-    request: http.Request
-        the http request
-    load: load.Loader[T]
+    request
+        the request
+    load
         response loader
     """
-    request: http.Request
-    load: loader.Loader[T] = identity
+    request: T_req
+    load: t.Callable[[T_resp], T] = identity
 
     def __resolve__(self):
         return self.load((yield self.request))
 
 
-class Base(Query[T]):
+class Base(Query[T, T_req, T_resp]):
 
     @abc.abstractmethod
-    def _request(self):
+    def _request(self) -> T_req:
         raise NotImplementedError
 
-    def _parse(self, response):
+    def _parse(self, response: T_resp) -> T:
         return response
 
     def __resolve__(self):
@@ -74,8 +66,8 @@ class Base(Query[T]):
 
 
 @dclass
-class Wrapped(Query[T]):
-    """a query with a wrapper modifying requests/responses"""
+class Wrapped(Query[T, T_req, T_resp]):
+    """a query with a pipe modifying requests/responses"""
     pipe:  pipes.Pipe
     inner: Query
 
@@ -100,7 +92,7 @@ class Nestable(metaclass=NestableMeta):
 
 
 def from_gen(func: types.FunctionType) -> t.Type[Query]:
-    """create a Query subclass from a generator function"""
+    """create a Query class from a generator function"""
     return make_dataclass(
         func.__name__,
         func_to_fields(func),
@@ -148,21 +140,22 @@ class Authenticator(t.Generic[T_auth]):
         raise NotImplementedError()
 
 
-Resolver = t.Callable[[Query[T]], T]
+Resolver = t.Callable[[Query[T, T_req, T_resp]], T]
 """interface for query resolvers"""
 
-AsyncResolver = t.Callable[[Query[T]], t.Awaitable[T]]
+AsyncResolver = t.Callable[[Query[T, T_req, T_resp]], t.Awaitable[T]]
 """interface for asynchronous resolvers"""
 
 
-def resolve(sender: http.Sender, query: Query[T]) -> T:
+def resolve(sender: http.Sender[T_req, T_resp],
+            query: Query[T, T_req, T_resp]) -> T:
     res = query.__resolve__()
     response = sender(next(res))
     return genresult(res, response)
 
 
-async def resolve_async(sender: http.AsyncSender,
-                        query: Query[T]) -> t.Awaitable[T]:
+async def resolve_async(sender: http.AsyncSender[T_req, T_resp],
+                        query: Query[T, T_req, T_resp]) -> t.Awaitable[T]:
     res = query.__resolve__()
     response = await sender(next(res))
     return genresult(res, response)
