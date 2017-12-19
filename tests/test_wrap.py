@@ -14,14 +14,18 @@ class TestChain:
     def test_simple(self):
 
         @dataclass
-        class Authenticator(snug.wrap.Base):
+        class Authenticator(snug.Wrapper):
             token: str
 
-            def _prepare(self, request):
-                return request.add_headers({'Authorization': self.token})
+            def __call__(self, request):
+                response = yield request.add_headers(
+                    {'Authorization': self.token})
+                if response.status_code == 403:
+                    raise ValueError('authentication failed!')
+                return response
 
-        def raise_on_server_error(request):
-            response = yield request
+        @snug.wrap.Parser
+        def raise_on_server_error(response):
             if response.status_code == 500:
                 raise IOError(response.data.decode('ascii'))
             else:
@@ -33,12 +37,12 @@ class TestChain:
             return request.add_headers({
                 'Content-Length': len(request.data)})
 
-        wrapper = snug.wrap.Chain([
+        wrapper = snug.wrap.Chain(
             snug.wrap.jsondata,
             Authenticator('me'),
             set_content_length,
             raise_on_server_error,
-        ])
+        )
 
         wrapped = wrapper(snug.Request('my/url', {'foo': 4}))
         assert next(wrapped) == snug.Request(

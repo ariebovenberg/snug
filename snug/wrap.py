@@ -90,10 +90,13 @@ class Parser(Wrapper[T_req, T_req, T_resp, T_parsed]):
         return self.parse((yield request))
 
 
-@dclass
+@dataclass(init=False)
 class Chain(Wrapper):
     """a chained wrapper, applying wrappers in order"""
-    wrappers: t.Tuple[Wrapper, ...] = ()
+    wrappers: t.Tuple[Wrapper, ...]
+
+    def __init__(self, *wrappers):
+        self.wrappers = wrappers
 
     def __call__(self, request):
         wraps = []
@@ -109,7 +112,7 @@ class Chain(Wrapper):
             *(partial(genresult, wrapper) for wrapper in reversed(wraps)))
 
     def __or__(self, other: Wrapper):
-        return Chain(self.wrappers + (other, ))
+        return Chain(*(self.wrappers + (other, )))
 
 
 def jsondata(request: http.Request[t.Optional[bytes]]) -> t.Generator[

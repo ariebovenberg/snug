@@ -171,7 +171,7 @@ def build_resolver(
         auth:          T_auth,
         sender:        http.Sender,
         authenticator: Authenticator[T_auth],
-        wrapper:       wrap.Wrapper=wrap.Chain()) -> Resolver:
+        wrapper:       wrap.Wrapper=wrap.identity) -> Resolver:
     """create an authenticated resolver
 
     Parameters
@@ -185,10 +185,10 @@ def build_resolver(
     wrapper
         wrapper to apply to all requests
     """
-    sender = wrap.Sender(sender, wrap.Chain([
+    sender = wrap.Sender(sender, wrap.Chain(
         wrapper,
         wrap.Preparer(partial(flip(authenticator), auth)),
-    ]))
+    ))
     return partial(resolve, sender)
 
 
@@ -196,7 +196,7 @@ def build_async_resolver(
         auth:          T_auth,
         sender:        http.AsyncSender,
         authenticator: Authenticator[T_auth],
-        wrapper:       wrap.Wrapper=wrap.Chain()) -> AsyncResolver:
+        wrapper:       wrap.Wrapper=wrap.identity) -> AsyncResolver:
     """create an authenticated, asynchronous, resolver
 
     Parameters
@@ -210,10 +210,10 @@ def build_async_resolver(
     wrapper
         wrapper to apply to all requests
     """
-    sender = wrap.AsyncSender(sender, wrap.Chain([
+    sender = wrap.AsyncSender(sender, wrap.Chain(
         wrapper,
         wrap.Preparer(partial(flip(authenticator), auth)),
-    ]))
+    ))
     return partial(resolve_async, sender)
 
 
