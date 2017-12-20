@@ -8,13 +8,13 @@ Todo
 import abc
 import types
 import typing as t
-from dataclasses import dataclass, field, make_dataclass
+from dataclasses import make_dataclass
 from functools import partial, partialmethod
 
 from .abc import Query, T, T_req, T_resp
 from .pipe import Pipe
 from .utils import (apply, as_tuple, compose, func_to_fields, genresult,
-                    identity)
+                    identity, dclass)
 
 __all__ = [
     'Fixed',
@@ -25,11 +25,8 @@ __all__ = [
     'from_requester',
 ]
 
-_dclass = partial(dataclass, frozen=True)
-_dictfield = partial(field, default_factory=dict)
 
-
-@_dclass
+@dclass
 class Fixed(Query[T, T_req, T_resp]):
     """a static query
 
@@ -61,7 +58,7 @@ class Base(Query[T, T_req, T_resp]):
         return self._parse((yield self._request()))
 
 
-@_dclass
+@dclass
 class Piped(Query[T, T_req, T_resp]):
     """a query with a pipe modifying requests/responses"""
     pipe:  Pipe
@@ -102,7 +99,7 @@ def from_gen(func: types.FunctionType) -> t.Type[Query]:
     )
 
 
-@_dclass
+@dclass
 class from_requester:
     """create a query class from a function. Use as a decorator.
 
