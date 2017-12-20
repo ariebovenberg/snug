@@ -11,8 +11,8 @@ import typing as t
 from dataclasses import dataclass, field, make_dataclass
 from functools import partial, partialmethod
 
-from .abc import Query
-from . import http, pipe as pipes
+from .abc import Query, resolve, Pipe
+from . import http, pipe as pipe_, asyn
 from .utils import (apply, as_tuple, compose, flip, func_to_fields, genresult,
                     identity)
 
@@ -68,7 +68,7 @@ class Base(Query[T, T_req, T_resp]):
 @dclass
 class Wrapped(Query[T, T_req, T_resp]):
     """a query with a pipe modifying requests/responses"""
-    pipe:  pipes.Pipe
+    pipe:  pipe_.Pipe
     inner: Query
 
     def __resolve__(self):
@@ -115,7 +115,7 @@ class from_requester:
     * return a ``Request`` instance
     * be fully annotated, without keyword-only arguments
     """
-    load:   t.Callable
+    load:     t.Callable
     nestable: bool = False
 
     def __call__(self, func: types.FunctionType) -> t.Type[Query]:
@@ -147,25 +147,11 @@ AsyncResolver = t.Callable[[Query[T, T_req, T_resp]], t.Awaitable[T]]
 """interface for asynchronous resolvers"""
 
 
-def resolve(sender: http.Sender[T_req, T_resp],
-            query: Query[T, T_req, T_resp]) -> T:
-    res = query.__resolve__()
-    response = sender(next(res))
-    return genresult(res, response)
-
-
-async def resolve_async(sender: http.AsyncSender[T_req, T_resp],
-                        query: Query[T, T_req, T_resp]) -> t.Awaitable[T]:
-    res = query.__resolve__()
-    response = await sender(next(res))
-    return genresult(res, response)
-
-
 def build_resolver(
         auth:          T_auth,
         sender:        http.Sender,
         authenticator: Authenticator[T_auth],
-        pipe:          pipes.Pipe=pipes.identity) -> Resolver:
+        pipe:          pipe_.Pipe=pipe_.identity) -> Resolver:
     """create an authenticated resolver
 
     Parameters
@@ -179,9 +165,9 @@ def build_resolver(
     pipe
         pipe to apply to all requests
     """
-    sender = pipes.Sender(sender, pipes.Chain(
+    sender = pipe_.Sender(sender, pipe_.Chain(
         pipe,
-        pipes.Preparer(partial(flip(authenticator), auth)),
+        pipe_.Preparer(partial(flip(authenticator), auth)),
     ))
     return partial(resolve, sender)
 
@@ -190,7 +176,7 @@ def build_async_resolver(
         auth:          T_auth,
         sender:        http.AsyncSender,
         authenticator: Authenticator[T_auth],
-        pipe:          pipes.Pipe=pipes.identity) -> AsyncResolver:
+        pipe:          Pipe=pipe_.identity) -> AsyncResolver:
     """create an authenticated, asynchronous, resolver
 
     Parameters
@@ -204,11 +190,11 @@ def build_async_resolver(
     pipe
         pipe to apply to all requests
     """
-    sender = pipes.AsyncSender(sender, pipes.Chain(
+    sender = pipe_.AsyncSender(sender, pipe_.Chain(
         pipe,
-        pipes.Preparer(partial(flip(authenticator), auth)),
+        pipe_.Preparer(partial(flip(authenticator), auth)),
     ))
-    return partial(resolve_async, sender)
+    return partial(asyn.resolve, sender)
 
 
 simple_resolver = partial(
@@ -216,5 +202,5 @@ simple_resolver = partial(
     sender=http.urllib_sender(),
     authenticator=lambda r, auth: (r if auth is None
                                    else r.add_basic_auth(auth)),
-    pipe=pipes.jsondata,
+    pipe=pipe_.jsondata,
 )

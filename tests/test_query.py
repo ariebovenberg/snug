@@ -22,39 +22,6 @@ class Comment:
 
 
 @pytest.fixture
-def sender():
-    """a simple HTTP sender for Post resources"""
-
-    def _sender(request):
-        # resource/id/ -> (resource, id)
-        resource, id_ = request.url.strip('/').split('/')
-        assert resource == 'posts'
-        return snug.Response(200, json.dumps({
-            "id": int(id_),
-            "title": "hello world"
-        }).encode('ascii'))
-
-    return _sender
-
-
-@pytest.fixture
-def async_sender():
-    """a simple HTTP sender for Post resources"""
-
-    async def _sender(request):
-        await asyncio.sleep(0)
-        # resource/id/ -> (resource, id)
-        resource, id_ = request.url.strip('/').split('/')
-        assert resource == 'posts'
-        return snug.Response(200, json.dumps({
-            "id": int(id_),
-            "title": "hello world"
-        }).encode('ascii'))
-
-    return _sender
-
-
-@pytest.fixture
 def post_by_id():
 
     @snug.query.from_gen
@@ -252,17 +219,6 @@ class TestFromRequester:
         ]
 
 
-def test_resolve(sender, post_by_id):
-    response = snug.resolve(sender, post_by_id(5))
-    assert response == Post(id=5, title='hello world')
-
-
-@pytest.mark.asyncio
-async def test_resolve_async(async_sender, post_by_id):
-    response = await snug.resolve_async(async_sender, post_by_id(4))
-    assert response == Post(id=4, title='hello world')
-
-
 def test_build_resolver(jsonwrapper):
 
     def sender(request):
@@ -275,7 +231,7 @@ def test_build_resolver(jsonwrapper):
         """get a post by id"""
         return Post(**(yield snug.Request(f'posts/{id}/')))
 
-    resolver = snug.build_resolver(
+    resolver = snug.query.build_resolver(
         ('username', 'hunter2'),
         sender=sender,
         pipe=jsonwrapper,
@@ -299,7 +255,7 @@ async def test_build_async_resolver(jsonwrapper):
         """get a post by id"""
         return Post(**(yield snug.Request(f'posts/{id}/')))
 
-    resolver = snug.build_async_resolver(
+    resolver = snug.query.build_async_resolver(
         ('username', 'hunter2'),
         sender=sender,
         pipe=jsonwrapper,

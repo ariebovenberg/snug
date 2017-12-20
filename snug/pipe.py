@@ -5,20 +5,19 @@ import typing as t
 from dataclasses import dataclass, replace
 from functools import partial
 
+from .abc import T_req, T_resp
 from . import http
 from .utils import genresult, push, JSONType
 
 dclass = partial(dataclass, frozen=True)
 
-
-T_req = t.TypeVar('T_req')
-T_prepared = t.TypeVar('T_req_out')
-T_resp = t.TypeVar('T_resp')
-T_parsed = t.TypeVar('T_resp_out')
+T_prepared = t.TypeVar('T_prepared')
+T_parsed = t.TypeVar('T_parsed')
 
 
 class Pipe(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
-    """ABC for middleware"""
+    """ABC for middleware objects.
+    generator functions with the same signature implement it."""
 
     @abc.abstractmethod
     def __call__(self, request: T_req) -> t.Generator[T_prepared,
