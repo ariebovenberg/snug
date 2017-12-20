@@ -6,7 +6,7 @@ from .utils import genresult
 
 __all__ = [
     'Query',
-    'Resolver',
+    'Sender',
     'resolve',
 ]
 
@@ -25,15 +25,15 @@ class Query(t.Generic[T, T_req, T_resp]):
         raise NotImplementedError()
 
 
-class Resolver(t.Generic[T_req, T_resp]):
-    """ABC for resolver-like objects.
+class Sender(t.Generic[T_req, T_resp]):
+    """ABC for sender-like objects.
     Any callable with the same signature implements it"""
 
     def __call__(self, request: T_req) -> T_resp:
         raise NotImplementedError()
 
 
-def resolve(resolver: Resolver[T_req, T_resp],
+def resolve(sender: Sender[T_req, T_resp],
             query: Query[T, T_req, T_resp]) -> T:
     """resolve a query
 
@@ -45,5 +45,5 @@ def resolve(resolver: Resolver[T_req, T_resp],
         the query to resolve
     """
     res = query.__resolve__()
-    response = resolver(next(res))
+    response = sender(next(res))
     return genresult(res, response)

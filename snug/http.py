@@ -1,12 +1,14 @@
 """basic HTTP tools"""
-import abc
 import typing as t
 import urllib.request
 from base64 import b64encode
 from dataclasses import dataclass, field, replace
 from functools import partial
 
-__all__ = ['Request', 'Response', 'Sender', 'AsyncSender', 'urllib_sender']
+from .abc import Sender
+from . import asyn
+
+__all__ = ['Request', 'Response', 'urllib_sender']
 
 _dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]
@@ -103,27 +105,6 @@ class Response(t.Generic[T]):
     headers:     Headers = field(default_factory=dict)
 
 
-class Sender(t.Generic[T_req, T_resp]):
-    """Interface for request senders.
-    Any callable which turns a :class:`Request` into a :class:`Response`
-    implements it."""
-
-    @abc.abstractmethod
-    def __call__(self, request: Request) -> Response:
-        raise NotImplementedError()
-
-
-class AsyncSender(t.Generic[T_req, T_resp]):
-    """Interface for ansyncronous request senders.
-    Any callable which turns a :class:`Request`
-    into an awaitable :class:`Response` implements it.
-    """
-
-    @abc.abstractmethod
-    def __call__(self, request: T_resp) -> t.Awaitable[T_req]:
-        raise NotImplementedError()
-
-
 def urllib_sender(**kwargs) -> Sender[Request[bytes],
                                       Response[bytes]]:
     """create a :class:`Sender` using :mod:`urllib`.
@@ -181,7 +162,7 @@ except ImportError:  # pragma: no cover
     pass
 else:
     def aiohttp_sender(session: aiohttp.ClientSession) -> (
-            AsyncSender[Response[bytes], Request[bytes]]):
+            asyn.Sender[Response[bytes], Request[bytes]]):
         """create a :class:`AsyncSender`
         for a :class:`aiohttp.ClientSession`
 

@@ -1,15 +1,13 @@
 """middleware abstractions"""
 import abc
-import json
 import typing as t
-from dataclasses import dataclass, replace
 from functools import partial
+from dataclasses import dataclass
 
 from .abc import T_req, T_resp
-from . import http
-from .utils import genresult, push, JSONType
+from .utils import genresult, push
 
-dclass = partial(dataclass, frozen=True)
+_dclass = partial(dataclass, frozen=True)
 
 T_prepared = t.TypeVar('T_prepared')
 T_parsed = t.TypeVar('T_parsed')
@@ -31,30 +29,6 @@ def identity(request: T_req) -> t.Generator[T_req, T_resp, T_resp]:
     return (yield request)
 
 
-@dclass
-class Sender(http.Sender[T_req, T_parsed]):
-    """a wrapped sender"""
-    inner:   http.Sender[T_prepared, T_resp]
-    pipe: Pipe[T_req, T_prepared, T_resp, T_parsed]
-
-    def __call__(self, request):
-        wrap = self.pipe(request)
-        response = self.inner(next(wrap))
-        return genresult(wrap, response)
-
-
-@dclass
-class AsyncSender(http.AsyncSender[T_req, T_parsed]):
-    """a wrapped asynchronous sender"""
-    inner: http.AsyncSender[T_prepared, T_resp]
-    pipe:  Pipe[T_req, T_prepared, T_resp, T_parsed]
-
-    async def __call__(self, request):
-        wrap = self.pipe(request)
-        response = await self.inner(next(wrap))
-        return genresult(wrap, response)
-
-
 class Base(Pipe[T_req, T_prepared, T_resp, T_parsed]):
     """a simple base class to inherit from"""
 
@@ -71,7 +45,7 @@ class Base(Pipe[T_req, T_prepared, T_resp, T_parsed]):
         return self._parse(response)
 
 
-@dclass
+@_dclass
 class Preparer(Pipe[T_req, T_prepared, T_resp, T_resp]):
     """A pipe which only does preparing of a request"""
     prepare: t.Callable[[T_req], T_prepared]
@@ -80,9 +54,9 @@ class Preparer(Pipe[T_req, T_prepared, T_resp, T_resp]):
         return (yield self.prepare(request))
 
 
-@dclass
+@_dclass
 class Parser(Pipe[T_req, T_req, T_resp, T_parsed]):
-    """a pipe which only does parsing of the result"""
+    """a pipe which only does parsing of the response"""
     parse: t.Callable[[T_resp], T_parsed]
 
     def __call__(self, request):
@@ -112,12 +86,3 @@ class Chain(Pipe):
 
     def __or__(self, other: Pipe):
         return Chain(*(self.stages + (other, )))
-
-
-def jsondata(request: http.Request[t.Optional[bytes]]) -> t.Generator[
-        http.Request[JSONType], http.Response[t.Optional[bytes]], JSONType]:
-    """a simple pipe for requests with JSON content"""
-    prepared = (replace(request, data=json.dumps(request.data).encode('ascii'))
-                if request.data else request)
-    response = yield prepared
-    return json.loads(response.data) if response.data else None

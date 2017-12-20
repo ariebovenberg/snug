@@ -1,4 +1,4 @@
-"""High-level query interface
+"""tools for creating queries
 
 Todo
 ----
@@ -11,30 +11,25 @@ import typing as t
 from dataclasses import dataclass, field, make_dataclass
 from functools import partial, partialmethod
 
-from .abc import Query, resolve, Pipe
-from . import http, pipe as pipe_, asyn
-from .utils import (apply, as_tuple, compose, flip, func_to_fields, genresult,
+from .abc import Query, T, T_req, T_resp
+from .pipe import Pipe
+from .utils import (apply, as_tuple, compose, func_to_fields, genresult,
                     identity)
-
-_dictfield = partial(field, default_factory=dict)
 
 __all__ = [
     'Fixed',
     'Nestable',
-    'resolve',
+    'Piped',
+    'Base',
     'from_gen',
-    'build_resolver',
-    'build_async_resolver',
+    'from_requester',
 ]
 
-T = t.TypeVar('T')
-T_auth = t.TypeVar('T_auth')
-T_req = t.TypeVar('T_req')
-T_resp = t.TypeVar('T_resp')
-dclass = partial(dataclass, frozen=True)
+_dclass = partial(dataclass, frozen=True)
+_dictfield = partial(field, default_factory=dict)
 
 
-@dclass
+@_dclass
 class Fixed(Query[T, T_req, T_resp]):
     """a static query
 
@@ -53,6 +48,7 @@ class Fixed(Query[T, T_req, T_resp]):
 
 
 class Base(Query[T, T_req, T_resp]):
+    """base class for query subclasses with useful methods to override"""
 
     @abc.abstractmethod
     def _request(self) -> T_req:
@@ -65,10 +61,10 @@ class Base(Query[T, T_req, T_resp]):
         return self._parse((yield self._request()))
 
 
-@dclass
-class Wrapped(Query[T, T_req, T_resp]):
+@_dclass
+class Piped(Query[T, T_req, T_resp]):
     """a query with a pipe modifying requests/responses"""
-    pipe:  pipe_.Pipe
+    pipe:  Pipe
     inner: Query
 
     def __resolve__(self):
@@ -106,7 +102,7 @@ def from_gen(func: types.FunctionType) -> t.Type[Query]:
     )
 
 
-@dclass
+@_dclass
 class from_requester:
     """create a query class from a function. Use as a decorator.
 
@@ -130,77 +126,3 @@ class from_requester:
                     partial(apply, func), as_tuple)),
                 '_parse':     staticmethod(self.load)
             })
-
-
-class Authenticator(t.Generic[T_auth]):
-    """interface for authenticator callables"""
-
-    @abc.abstractmethod
-    def __call__(self, request: http.Request, auth: T_auth) -> http.Request:
-        raise NotImplementedError()
-
-
-Resolver = t.Callable[[Query[T, T_req, T_resp]], T]
-"""interface for query resolvers"""
-
-AsyncResolver = t.Callable[[Query[T, T_req, T_resp]], t.Awaitable[T]]
-"""interface for asynchronous resolvers"""
-
-
-def build_resolver(
-        auth:          T_auth,
-        sender:        http.Sender,
-        authenticator: Authenticator[T_auth],
-        pipe:          pipe_.Pipe=pipe_.identity) -> Resolver:
-    """create an authenticated resolver
-
-    Parameters
-    ----------
-    auth
-        authentication information
-    sender
-        the request sender
-    authenticator
-        authenticator function
-    pipe
-        pipe to apply to all requests
-    """
-    sender = pipe_.Sender(sender, pipe_.Chain(
-        pipe,
-        pipe_.Preparer(partial(flip(authenticator), auth)),
-    ))
-    return partial(resolve, sender)
-
-
-def build_async_resolver(
-        auth:          T_auth,
-        sender:        http.AsyncSender,
-        authenticator: Authenticator[T_auth],
-        pipe:          Pipe=pipe_.identity) -> AsyncResolver:
-    """create an authenticated, asynchronous, resolver
-
-    Parameters
-    ----------
-    auth
-        authentication information
-    sender
-        the request sender
-    authenticator
-        authenticator function
-    pipe
-        pipe to apply to all requests
-    """
-    sender = pipe_.AsyncSender(sender, pipe_.Chain(
-        pipe,
-        pipe_.Preparer(partial(flip(authenticator), auth)),
-    ))
-    return partial(asyn.resolve, sender)
-
-
-simple_resolver = partial(
-    build_resolver,
-    sender=http.urllib_sender(),
-    authenticator=lambda r, auth: (r if auth is None
-                                   else r.add_basic_auth(auth)),
-    pipe=pipe_.jsondata,
-)

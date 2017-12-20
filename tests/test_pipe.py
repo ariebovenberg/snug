@@ -38,7 +38,7 @@ class TestChain:
                 'Content-Length': len(request.data)})
 
         pipeline = snug.pipe.Chain(
-            snug.pipe.jsondata,
+            snug.lib.jsonpipe,
             Authenticator('me'),
             set_content_length,
             raise_on_server_error,
@@ -115,46 +115,3 @@ def test_parser(response):
     pipe = parse_json(snug.Request('my/url'))
     assert next(pipe) == snug.Request('my/url')
     assert genresult(pipe, snug.Response(200, b'{"foo": 5}')) == {'foo': 5}
-
-
-def test_sender(jsonwrapper):
-
-    def _sender(request):
-        return snug.Response(
-            404,
-            data='{{"error": "{} not found"}}'.format(request.url)
-            .encode('ascii'))
-
-    sender = snug.pipe.Sender(_sender, pipe=jsonwrapper)
-    response = sender(snug.Request('my/url', {'foo': 4}))
-    assert response == {'error': 'my/url not found'}
-
-
-@pytest.mark.asyncio
-async def test_async_sender(jsonwrapper):
-
-    async def _sender(request):
-        await asyncio.sleep(0)
-        return snug.Response(
-            404,
-            data='{{"error": "{} not found"}}'.format(request.url)
-            .encode('ascii'))
-
-    sender = snug.pipe.AsyncSender(_sender, pipe=jsonwrapper)
-    response = await sender(snug.Request('my/url', {'foo': 4}))
-    assert response == {'error': 'my/url not found'}
-
-
-class TestJsonData:
-
-    def test_simple(self):
-        pipe = snug.pipe.jsondata(
-            snug.Request('my/url', {'foo': 6}))
-        assert next(pipe) == snug.Request('my/url', b'{"foo": 6}')
-        response = genresult(pipe, snug.Response(404, b'{"error": 9}'))
-        assert response == {'error': 9}
-
-    def test_no_data(self):
-        pipe = snug.pipe.jsondata(snug.Request('my/url'))
-        assert next(pipe) == snug.Request('my/url')
-        assert genresult(pipe, snug.Response(404)) is None

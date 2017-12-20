@@ -125,7 +125,7 @@ def test_nestable():
     assert post_comments == Post.comments(post=post34, sort=True)
 
 
-def test_wrapped(jsonwrapper):
+def test_piped(jsonwrapper):
 
     @dataclass
     class post(snug.Query):
@@ -135,9 +135,9 @@ def test_wrapped(jsonwrapper):
             return Post(**(yield snug.Request(
                 f'posts/{self.id}/', {'foo': 4})))
 
-    wrapped = snug.query.Wrapped(jsonwrapper, post(id=4))
+    piped = snug.query.Piped(jsonwrapper, post(id=4))
 
-    resolve = wrapped.__resolve__()
+    resolve = piped.__resolve__()
     request = next(resolve)
     assert request == snug.Request('posts/4/', '{"foo": 4}')
     response = genresult(resolve,
@@ -145,7 +145,7 @@ def test_wrapped(jsonwrapper):
     assert response == Post(id=4, title='hi')
 
 
-def test_gen():
+def test_from_gen():
 
     @snug.query.from_gen
     def posts(count: int, search: str='', archived: bool=False):
@@ -217,69 +217,3 @@ class TestFromRequester:
             Post(id=4, title='hello'),
             Post(id=5, title='goodbye'),
         ]
-
-
-def test_build_resolver(jsonwrapper):
-
-    def sender(request):
-        assert 'Authorization' in request.headers
-        assert request.url == 'posts/99/'
-        return snug.Response(200, b'{"id": 99, "title": "hello"}')
-
-    @snug.query.from_gen
-    def post(id: int):
-        """get a post by id"""
-        return Post(**(yield snug.Request(f'posts/{id}/')))
-
-    resolver = snug.query.build_resolver(
-        ('username', 'hunter2'),
-        sender=sender,
-        pipe=jsonwrapper,
-        authenticator=snug.Request.add_basic_auth,
-    )
-    response = resolver(post(99))
-    assert response == Post(id=99, title='hello')
-
-
-@pytest.mark.asyncio
-async def test_build_async_resolver(jsonwrapper):
-
-    async def sender(request):
-        assert 'Authorization' in request.headers
-        assert request.url == 'posts/99/'
-        await asyncio.sleep(0)
-        return snug.Response(200, b'{"id": 99, "title": "hello"}')
-
-    @snug.query.from_gen
-    def post(id: int):
-        """get a post by id"""
-        return Post(**(yield snug.Request(f'posts/{id}/')))
-
-    resolver = snug.query.build_async_resolver(
-        ('username', 'hunter2'),
-        sender=sender,
-        pipe=jsonwrapper,
-        authenticator=snug.Request.add_basic_auth,
-    )
-    response = await resolver(post(99))
-    assert response == Post(id=99, title='hello')
-
-
-@mock.patch('urllib.request.urlopen', autospec=True,
-            return_value=mock.Mock(**{
-                'getcode.return_value': 200,
-                'headers': {},
-                'read.return_value': b'{"id": 4, "title": "another post"}'
-            }))
-def test_simple_resolver(urlopen):
-
-    resolve = snug.query.simple_resolver(auth=('foo', 'bar'))
-
-    @snug.query.from_gen
-    def post(id: int):
-        """a post by its ID"""
-        return Post(**(yield snug.Request(f'https://localhost/posts/{id}/')))
-
-    post_4 = post(id=4)
-    response = resolve(post_4)
-    assert response == Post(id=4, title='another post')

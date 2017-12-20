@@ -21,7 +21,7 @@ __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
            'get_optional_loader', 'simple_registry']
 
 T = t.TypeVar('T')
-NoneType = type(None)
+_NoneType = type(None)
 _dictfield = partial(field, default_factory=dict)
 
 
@@ -206,6 +206,6 @@ def _is_optional_type(cls):
     try:
         return (cls.__origin__ is t.Union
                 and len(cls.__args__) == 2
-                and cls.__args__[1] is NoneType)
+                and cls.__args__[1] is _NoneType)
     except AttributeError:
         return False

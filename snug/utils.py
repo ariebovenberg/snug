@@ -4,9 +4,12 @@ import types
 import typing as t
 from dataclasses import Field, dataclass, field
 from datetime import datetime
-from functools import wraps
+from functools import wraps, partial
 
 T = t.TypeVar('T')
+
+
+dclass = partial(dataclass, frozen=True)
 
 
 def apply(func, args=(), kwargs=None):
