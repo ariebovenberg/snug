@@ -1,14 +1,14 @@
 """library of miscelaneous helpers"""
 import abc
-import typing as t
 import json
+import typing as t
 from dataclasses import replace
 from functools import partial
 
-from .abc import resolve, Query, Sender, T_req, T_resp
-from . import http, pipe as _pipe, asyn, sender
+from . import pipe as _pipe
+from . import asyn, http, sender
+from .abc import Query, Sender, T_req, T_resp, resolve
 from .utils import JSONType, flip
-
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')

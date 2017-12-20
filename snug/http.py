@@ -5,8 +5,8 @@ from base64 import b64encode
 from dataclasses import dataclass, field, replace
 from functools import partial
 
-from .abc import Sender
 from . import asyn
+from .abc import Sender
 
 __all__ = ['Request', 'Response', 'urllib_sender']
 

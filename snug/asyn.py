@@ -2,8 +2,8 @@
 import typing as t
 
 from .abc import Query, T, T_req, T_resp
-from .pipe import Pipe, T_prepared, T_parsed
-from .utils import genresult, dclass
+from .pipe import Pipe, T_parsed, T_prepared
+from .utils import dclass, genresult
 
 
 class Sender(t.Generic[T_req, T_resp]):

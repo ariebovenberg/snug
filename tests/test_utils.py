@@ -1,6 +1,6 @@
 import datetime
 import typing as t
-from dataclasses import field, dataclass
+from dataclasses import dataclass, field
 from operator import itemgetter
 from unittest import mock
 

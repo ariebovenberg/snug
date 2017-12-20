@@ -1,8 +1,8 @@
 """middleware abstractions"""
 import abc
 import typing as t
-from functools import partial
 from dataclasses import dataclass
+from functools import partial
 
 from .abc import T_req, T_resp
 from .utils import genresult, push

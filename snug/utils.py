@@ -4,7 +4,7 @@ import types
 import typing as t
 from dataclasses import Field, dataclass, field
 from datetime import datetime
-from functools import wraps, partial
+from functools import partial, wraps
 
 T = t.TypeVar('T')
 

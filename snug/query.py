@@ -13,8 +13,8 @@ from functools import partial, partialmethod
 
 from .abc import Query, T, T_req, T_resp
 from .pipe import Pipe
-from .utils import (apply, as_tuple, compose, func_to_fields, genresult,
-                    identity, dclass)
+from .utils import (apply, as_tuple, compose, dclass, func_to_fields,
+                    genresult, identity)
 
 __all__ = [
     'Fixed',
