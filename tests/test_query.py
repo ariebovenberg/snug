@@ -1,36 +1,10 @@
-import json
 from dataclasses import dataclass
-
-import pytest
 
 import snug
 from snug.utils import genresult
 
 
-@dataclass
-class Post:
-    id:    int
-    title: str
-
-
-@dataclass
-class Comment:
-    id:   int
-    text: str
-
-
-@pytest.fixture
-def post_by_id():
-
-    @snug.query.from_gen
-    def post(id: int):
-        """query to get a post by it's ID"""
-        return Post(**json.loads((yield snug.Request(f'/posts/{id}/')).data))
-
-    return post
-
-
-def test_static():
+def test_static(Post):
     recent_posts = snug.query.Fixed(
         request=snug.Request('posts/recent/'),
         load=lambda d: [Post(**o) for o in d])
@@ -48,7 +22,7 @@ def test_static():
     ]
 
 
-def test_query():
+def test_query(Post):
 
     @dataclass
     class posts(snug.Query):
@@ -123,7 +97,7 @@ def test_nestable():
     assert post_comments == Post.comments(post=post34, sort=True)
 
 
-def test_piped(jsonwrapper):
+def test_piped(jsonwrapper, Post):
 
     @dataclass
     class post(snug.Query):
@@ -143,9 +117,9 @@ def test_piped(jsonwrapper):
     assert response == Post(id=4, title='hi')
 
 
-def test_from_gen():
+def test_from_gen(Post):
 
-    @snug.query.from_gen
+    @snug.query.from_gen()
     def posts(count: int, search: str='', archived: bool=False):
         """my docstring..."""
         response = yield snug.Request(
@@ -182,7 +156,7 @@ def test_from_gen():
 
 class TestFromFunc:
 
-    def test_simple(self):
+    def test_simple(self, Post):
 
         @snug.query.from_func(load=lambda l: [Post(**o) for o in l])
         def posts(count: int, search: str='', archived: bool=False):

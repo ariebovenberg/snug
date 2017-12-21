@@ -8,7 +8,7 @@ Todo
 import abc
 import types
 import typing as t
-from dataclasses import make_dataclass
+from dataclasses import make_dataclass, dataclass
 from functools import partial, partialmethod
 
 from .abc import Pipe, Query, T, T_req, T_resp
@@ -83,34 +83,44 @@ class Nestable(metaclass=NestableMeta):
     (i.e. pass the parent as first argument)"""
 
 
-def from_gen(func: types.FunctionType) -> t.Type[Query]:
-    """create a Query class from a generator function"""
-    return make_dataclass(
-        func.__name__,
-        func_to_fields(func),
-        bases=(Query, ),
-        namespace={
-            '__doc__':     func.__doc__,
-            '__module__':  func.__module__,
-            '__resolve__': partialmethod(compose(
-                partial(apply, func), as_tuple)),
-        }
-    )
+class from_gen:
+    """create a Query class from a generator function
+
+    The function must:
+    * be a python function, bound to a module.
+    * be fully annotated, without keyword-only arguments
+    """
+    def __call__(self,
+                 func: t.Callable[..., t.Generator[T_req, T_resp, T]]) -> (
+                     t.Type[Query[T, T_req, T_resp]]):
+        return make_dataclass(
+            func.__name__,
+            func_to_fields(func),
+            bases=(Query, ),
+            namespace={
+                '__doc__':     func.__doc__,
+                '__module__':  func.__module__,
+                '__resolve__': partialmethod(compose(
+                    partial(apply, func), as_tuple)),
+            }
+        )
 
 
-@dclass
 class from_func:
     """create a query class from a function. Use as a decorator.
 
     The function must:
     * be a python function, bound to a module.
-    * return a ``Request`` instance
     * be fully annotated, without keyword-only arguments
     """
-    load:     t.Callable
-    nestable: bool = False
+    # keyword-only arguments to prevent incorrect decorator usage
+    def __init__(self, *, load: t.Callable[[T_resp], T]=identity,
+                 nestable: bool=False):
+        self.load = load
+        self.nestable = nestable
 
-    def __call__(self, func: types.FunctionType) -> t.Type[Query]:
+    def __call__(self, func: t.Callable[..., T_req]) -> t.Type[
+            Query[T, T_req, T_resp]]:
         return make_dataclass(
             func.__name__,
             func_to_fields(func),
