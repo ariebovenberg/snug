@@ -1,8 +1,7 @@
 """functionality for asynchronous behavior"""
 import typing as t
 
-from .abc import Query, T, T_req, T_resp
-from .pipe import Pipe, T_parsed, T_prepared
+from .abc import Pipe, Query, T, T_parsed, T_prepared, T_req, T_resp
 from .utils import dclass, genresult
 
 

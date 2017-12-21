@@ -1,7 +1,5 @@
-import asyncio
 import json
 from dataclasses import dataclass
-from unittest import mock
 
 import pytest
 
@@ -182,11 +180,11 @@ def test_from_gen():
     ]
 
 
-class TestFromRequester:
+class TestFromFunc:
 
     def test_simple(self):
 
-        @snug.query.from_requester(load=lambda l: [Post(**o) for o in l])
+        @snug.query.from_func(load=lambda l: [Post(**o) for o in l])
         def posts(count: int, search: str='', archived: bool=False):
             """my docstring..."""
             return snug.Request(

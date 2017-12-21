@@ -7,6 +7,7 @@ from .utils import genresult
 __all__ = [
     'Query',
     'Sender',
+    'Pipe',
     'resolve',
 ]
 
@@ -14,6 +15,8 @@ __all__ = [
 T = t.TypeVar('T')
 T_req = t.TypeVar('T_req')
 T_resp = t.TypeVar('T_resp')
+T_prepared = t.TypeVar('T_prepared')
+T_parsed = t.TypeVar('T_parsed')
 
 
 class Query(t.Generic[T, T_req, T_resp]):
@@ -30,6 +33,17 @@ class Sender(t.Generic[T_req, T_resp]):
     Any callable with the same signature implements it"""
 
     def __call__(self, request: T_req) -> T_resp:
+        raise NotImplementedError()
+
+
+class Pipe(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
+    """ABC for middleware objects.
+    generator functions with the same signature implement it."""
+
+    @abc.abstractmethod
+    def __call__(self, request: T_req) -> t.Generator[T_prepared,
+                                                      T_resp,
+                                                      T_parsed]:
         raise NotImplementedError()
 
 

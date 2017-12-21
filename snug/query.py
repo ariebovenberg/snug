@@ -11,8 +11,7 @@ import typing as t
 from dataclasses import make_dataclass
 from functools import partial, partialmethod
 
-from .abc import Query, T, T_req, T_resp
-from .pipe import Pipe
+from .abc import Pipe, Query, T, T_req, T_resp
 from .utils import (apply, as_tuple, compose, dclass, func_to_fields,
                     genresult, identity)
 
@@ -22,7 +21,7 @@ __all__ = [
     'Piped',
     'Base',
     'from_gen',
-    'from_requester',
+    'from_func',
 ]
 
 
@@ -100,7 +99,7 @@ def from_gen(func: types.FunctionType) -> t.Type[Query]:
 
 
 @dclass
-class from_requester:
+class from_func:
     """create a query class from a function. Use as a decorator.
 
     The function must:

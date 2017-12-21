@@ -4,24 +4,10 @@ import typing as t
 from dataclasses import dataclass
 from functools import partial
 
-from .abc import T_req, T_resp
+from .abc import Pipe, T_parsed, T_prepared, T_req, T_resp
 from .utils import genresult, push
 
 _dclass = partial(dataclass, frozen=True)
-
-T_prepared = t.TypeVar('T_prepared')
-T_parsed = t.TypeVar('T_parsed')
-
-
-class Pipe(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
-    """ABC for middleware objects.
-    generator functions with the same signature implement it."""
-
-    @abc.abstractmethod
-    def __call__(self, request: T_req) -> t.Generator[T_prepared,
-                                                      T_resp,
-                                                      T_parsed]:
-        raise NotImplementedError()
 
 
 def identity(request: T_req) -> t.Generator[T_req, T_resp, T_resp]:
