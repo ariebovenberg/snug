@@ -6,9 +6,8 @@ Todo
 * pagination
 """
 import abc
-import types
 import typing as t
-from dataclasses import make_dataclass, dataclass
+from dataclasses import make_dataclass
 from functools import partial, partialmethod
 
 from .abc import Pipe, Query, T, T_req, T_resp
