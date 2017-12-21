@@ -1,7 +1,7 @@
 """functionality for asynchronous behavior"""
 import typing as t
 
-from .abc import Pipe, Query, T, T_parsed, T_prepared, T_req, T_resp
+from .core import Pipe, Query, T, T_parsed, T_prepared, T_req, T_resp
 from .utils import dclass, genresult
 
 
@@ -32,8 +32,8 @@ async def resolve(sender: Sender[T_req, T_resp],
 @dclass
 class PipedSender(Sender[T_req, T_parsed]):
     """an async sender wrapped with a pipe"""
-    inner: Sender[T_prepared, T_resp]
     pipe:  Pipe[T_req, T_prepared, T_resp, T_parsed]
+    inner: Sender[T_prepared, T_resp]
 
     async def __call__(self, request):
         wrap = self.pipe(request)

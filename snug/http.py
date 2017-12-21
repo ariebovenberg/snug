@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, replace
 from functools import partial
 
 from . import asyn
-from .abc import Sender
+from .core import Sender
 
 __all__ = ['Request', 'Response', 'urllib_sender']
 

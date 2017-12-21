@@ -1,5 +1,5 @@
 """tools for creating senders"""
-from .abc import Pipe, Sender, T_parsed, T_prepared, T_req, T_resp
+from .core import Pipe, Sender, T_parsed, T_prepared, T_req, T_resp
 from .utils import dclass, genresult
 
 

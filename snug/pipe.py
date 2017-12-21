@@ -3,7 +3,7 @@ import typing as t
 from dataclasses import dataclass
 from functools import partial
 
-from .abc import Pipe, T_parsed, T_prepared, T_req, T_resp
+from .core import Pipe, T_parsed, T_prepared, T_req, T_resp
 from .utils import genresult, push
 
 _dclass = partial(dataclass, frozen=True)

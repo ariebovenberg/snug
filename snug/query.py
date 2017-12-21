@@ -10,7 +10,7 @@ import typing as t
 from dataclasses import make_dataclass
 from functools import partial, partialmethod
 
-from .abc import Pipe, Query, T, T_req, T_resp
+from .core import Pipe, Query, T, T_req, T_resp
 from .utils import (apply, as_tuple, compose, dclass, func_to_fields,
                     genresult, identity)
 
@@ -36,7 +36,7 @@ class Fixed(Query[T, T_req, T_resp]):
         response loader
     """
     request: T_req
-    load: t.Callable[[T_resp], T] = identity
+    load:    t.Callable[[T_resp], T] = identity
 
     def __resolve__(self):
         return self.load((yield self.request))
@@ -47,9 +47,11 @@ class Base(Query[T, T_req, T_resp]):
 
     @abc.abstractmethod
     def _request(self) -> T_req:
+        """override this method to implement a requester"""
         raise NotImplementedError
 
     def _parse(self, response: T_resp) -> T:
+        """override this method to provide custom loading of responses"""
         return response
 
     def __resolve__(self):

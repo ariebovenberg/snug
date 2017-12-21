@@ -7,7 +7,7 @@ from functools import partial
 
 from . import pipe as _pipe
 from . import asyn, http, sender
-from .abc import Query, Sender, T_req, T_resp, resolve
+from .core import Query, Sender, T_req, T_resp, resolve
 from .utils import JSONType, flip
 
 T = t.TypeVar('T')
@@ -81,10 +81,10 @@ def build_async_resolver(
     pipe
         pipe to apply to all requests
     """
-    piped = asyn.PipedSender(send, _pipe.Chain(
+    piped = asyn.PipedSender(_pipe.Chain(
         pipe,
         _pipe.Preparer(partial(flip(authenticator), auth)),
-    ))
+    ), send)
     return partial(asyn.resolve, piped)
 
 

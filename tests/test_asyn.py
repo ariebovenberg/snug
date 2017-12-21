@@ -6,24 +6,31 @@ import snug
 
 
 @pytest.mark.asyncio
-async def test_resolve_async(async_resolver, query, Post):
-    response = await snug.asyn.resolve(async_resolver, query)
-    assert response == [
-        Post(5, 'hello world'),
-        Post(6, 'goodbye'),
-    ]
+async def test_resolve_async():
+
+    async def sender(req):
+        assert req == '/posts/latest/'
+        await asyncio.sleep(0)
+        return b'hello world'
+
+    class MyQuery:
+        def __resolve__(self):
+            return (yield '/posts/latest/').decode('ascii')
+
+    assert await snug.asyn.resolve(sender, MyQuery()) == 'hello world'
 
 
 @pytest.mark.asyncio
-async def test_piped_sender(jsonwrapper):
+async def test_piped_sender():
 
-    async def _sender(request):
+    def ascii_encode(req):
+        return (yield req.encode('ascii')).decode('ascii')
+
+    async def sender(req):
+        assert req == b'/posts/latest/'
         await asyncio.sleep(0)
-        return snug.Response(
-            404,
-            data='{{"error": "{} not found"}}'.format(request.url)
-            .encode('ascii'))
+        return b'hello world'
 
-    sender = snug.asyn.PipedSender(_sender, pipe=jsonwrapper)
-    response = await sender(snug.Request('my/url', {'foo': 4}))
-    assert response == {'error': 'my/url not found'}
+    sender = snug.asyn.PipedSender(ascii_encode, sender)
+    response = await sender('/posts/latest/')
+    assert response == 'hello world'
