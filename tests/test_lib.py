@@ -11,61 +11,61 @@ class TestJsonData:
 
     def test_simple(self):
         pipe = snug.lib.jsonpipe(
-            snug.Request('my/url', {'foo': 6}))
-        assert next(pipe) == snug.Request('my/url', b'{"foo": 6}')
-        response = genresult(pipe, snug.Response(404, b'{"error": 9}'))
+            snug.http.GET('my/url', {'foo': 6}))
+        assert next(pipe) == snug.http.GET('my/url', b'{"foo": 6}')
+        response = genresult(pipe, snug.http.Response(404, b'{"error": 9}'))
         assert response == {'error': 9}
 
     def test_no_data(self):
-        pipe = snug.lib.jsonpipe(snug.Request('my/url'))
-        assert next(pipe) == snug.Request('my/url')
-        assert genresult(pipe, snug.Response(404)) is None
+        pipe = snug.lib.jsonpipe(snug.http.GET('my/url'))
+        assert next(pipe) == snug.http.GET('my/url')
+        assert genresult(pipe, snug.http.Response(404)) is None
 
 
-def test_build_resolver(jsonwrapper, Post):
+def test_build_resolver():
 
-    def sender(request):
-        assert 'Authorization' in request.headers
-        assert request.url == 'posts/99/'
-        return snug.Response(200, b'{"id": 99, "title": "hello"}')
+    def ascii_pipe(req):
+        return (yield req.encode('ascii')).decode('ascii')
 
-    @snug.query.from_gen()
-    def post(id: int):
-        """get a post by id"""
-        return Post(**(yield snug.Request(f'posts/{id}/')))
+    def sender(req):
+        assert req[:11] == b'simon says '
+        return {b'/posts/latest/': b'hello'}[req[11:]]
+
+    class MyQuery:
+        def __resolve__(self):
+            return 'response: ' + (yield '/posts/latest/')
 
     resolver = snug.lib.build_resolver(
-        ('username', 'hunter2'),
+        'simon',
         send=sender,
-        pipe=jsonwrapper,
-        authenticator=snug.Request.add_basic_auth,
+        pipe=ascii_pipe,
+        authenticator=lambda r, n: n.encode('ascii') + b' says ' + r
     )
-    response = resolver(post(99))
-    assert response == Post(id=99, title='hello')
+    assert resolver(MyQuery()) == 'response: hello'
 
 
 @pytest.mark.asyncio
-async def test_build_async_resolver(jsonwrapper, Post):
+async def test_build_async_resolver():
 
-    async def sender(request):
-        assert 'Authorization' in request.headers
-        assert request.url == 'posts/99/'
+    def ascii_pipe(req):
+        return (yield req.encode('ascii')).decode('ascii')
+
+    async def send(req):
+        assert req[:11] == b'simon says '
         await asyncio.sleep(0)
-        return snug.Response(200, b'{"id": 99, "title": "hello"}')
+        return {b'/posts/latest/': b'hello'}[req[11:]]
 
-    @snug.query.from_gen()
-    def post(id: int):
-        """get a post by id"""
-        return Post(**(yield snug.Request(f'posts/{id}/')))
+    class MyQuery:
+        def __resolve__(self):
+            return 'response: ' + (yield '/posts/latest/')
 
     resolver = snug.lib.build_async_resolver(
-        ('username', 'hunter2'),
-        send=sender,
-        pipe=jsonwrapper,
-        authenticator=snug.Request.add_basic_auth,
+        'simon',
+        send=send,
+        pipe=ascii_pipe,
+        authenticator=lambda r, n: n.encode('ascii') + b' says ' + r
     )
-    response = await resolver(post(99))
-    assert response == Post(id=99, title='hello')
+    assert await resolver(MyQuery()) == 'response: hello'
 
 
 @mock.patch('urllib.request.urlopen', autospec=True,

@@ -40,7 +40,7 @@ AsyncResolver = t.Callable[[Query[T, T_req, T_resp]], t.Awaitable[T]]
 
 def build_resolver(
         auth:          T_auth,
-        send:        Sender,
+        send:          Sender,
         authenticator: Authenticator[T_auth],
         pipe:          _pipe.Pipe=_pipe.identity) -> Resolver:
     """create an authenticated resolver

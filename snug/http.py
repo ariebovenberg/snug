@@ -87,6 +87,9 @@ class Request(t.Generic[T]):
             'Authorization': f'Basic {encoded.decode("ascii")}'})
 
 
+GET = partial(Request, method='GET')
+
+
 @dclass
 class Response(t.Generic[T]):
     """a simple HTTP response
