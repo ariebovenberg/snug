@@ -14,7 +14,7 @@ class Sender(t.Generic[T_req, T_resp]):
 
 
 async def resolve(sender: Sender[T_req, T_resp],
-                  query: Query[T, T_req, T_resp]) -> t.Awaitable[T]:
+                  query:  Query[T, T_req, T_resp]) -> t.Awaitable[T]:
     """resolve a query asynchronously
 
     Parameters
