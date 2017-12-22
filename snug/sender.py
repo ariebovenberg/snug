@@ -6,8 +6,8 @@ from .utils import dclass, genresult
 @dclass
 class Piped(Sender[T_req, T_parsed]):
     """a sender wrapped with a pipe"""
-    inner: Sender[T_prepared, T_resp]
     pipe:  Pipe[T_req, T_prepared, T_resp, T_parsed]
+    inner: Sender[T_prepared, T_resp]
 
     def __call__(self, request):
         pipe = self.pipe(request)

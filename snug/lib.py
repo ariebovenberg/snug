@@ -56,16 +56,16 @@ def build_resolver(
     pipe
         pipe to apply to all requests
     """
-    piped = sender.Piped(send, _pipe.Chain(
+    piped = sender.Piped(_pipe.Chain(
         pipe,
         _pipe.Preparer(partial(flip(authenticator), auth)),
-    ))
+    ), send)
     return partial(resolve, piped)
 
 
 def build_async_resolver(
         auth:          T_auth,
-        send:        asyn.Sender,
+        send:          asyn.Sender,
         authenticator: Authenticator[T_auth],
         pipe:          _pipe.Pipe=_pipe.identity) -> AsyncResolver:
     """create an authenticated, asynchronous, resolver

@@ -1,14 +1,13 @@
 import snug
 
 
-def test_piped(jsonwrapper):
+def test_piped():
 
-    def _sender(request):
-        return snug.Response(
-            404,
-            data='{{"error": "{} not found"}}'.format(request.url)
-            .encode('ascii'))
+    def ascii_encode(req):
+        return (yield req.encode('ascii')).decode('ascii')
 
-    sender = snug.sender.Piped(_sender, pipe=jsonwrapper)
-    response = sender(snug.Request('my/url', {'foo': 4}))
-    assert response == {'error': 'my/url not found'}
+    def send(req):
+        return {b'/posts/latest/': b'hello'}[req]
+
+    sender = snug.sender.Piped(ascii_encode, send)
+    assert sender('/posts/latest/') == 'hello'

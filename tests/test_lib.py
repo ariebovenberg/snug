@@ -72,17 +72,15 @@ async def test_build_async_resolver():
             return_value=mock.Mock(**{
                 'getcode.return_value': 200,
                 'headers': {},
-                'read.return_value': b'{"id": 4, "title": "another post"}'
+                'read.return_value': b'{"id": 4, "title": "hello"}'
             }))
-def test_simple_resolver(urlopen, Post):
-
+def test_simple_resolver(urlopen):
     resolve = snug.lib.simple_resolver(auth=('foo', 'bar'))
 
     @snug.query.from_gen()
-    def post(id: int):
+    def post(id: int) -> str:
         """a post by its ID"""
-        return Post(**(yield snug.Request(f'https://localhost/posts/{id}/')))
+        return (yield snug.Request(f'http://foo.com/posts/{id}/'))['title']
 
     post_4 = post(id=4)
-    response = resolve(post_4)
-    assert response == Post(id=4, title='another post')
+    assert resolve(post_4) == 'hello'
