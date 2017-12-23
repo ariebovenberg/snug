@@ -1,4 +1,4 @@
-"""Miscellaneous tools and shortcuts"""
+"""Miscellaneous tools, boilerplate, and shortcuts"""
 import inspect
 import types
 import typing as t

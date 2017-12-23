@@ -2,22 +2,17 @@
 import typing as t
 import urllib.request
 from base64 import b64encode
-from dataclasses import dataclass, field, replace
+from dataclasses import field, replace
 from functools import partial
 
 from . import asyn
-from .core import Sender
+from .core import Sender, T
+from .utils import dclass
 
 __all__ = ['Request', 'Response', 'urllib_sender']
 
 _dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]
-
-dclass = partial(dataclass, frozen=True)
-
-T_req = t.TypeVar('T_req')
-T_resp = t.TypeVar('T_resp')
-T = t.TypeVar('T')
 
 
 @dclass
@@ -109,8 +104,7 @@ class Response(t.Generic[T]):
     headers:     Headers = field(default_factory=dict)
 
 
-def urllib_sender(**kwargs) -> Sender[Request[bytes],
-                                      Response[bytes]]:
+def urllib_sender(**kwargs) -> Sender[Request[bytes], Response[bytes]]:
     """create a :class:`Sender` using :mod:`urllib`.
 
     Parameters
@@ -177,7 +171,6 @@ else:
         session
             a aiohttp session
         """
-
         async def _aiohttp_sender(req: Request[bytes]) -> (
                 t.Awaitable[Response[bytes]]):
             async with session.request(req.method, req.url,
