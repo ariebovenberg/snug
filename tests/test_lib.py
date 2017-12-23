@@ -7,7 +7,7 @@ import snug
 from snug.utils import genresult
 
 
-class TestJsonData:
+class TestJsonPipe:
 
     def test_simple(self):
         pipe = snug.lib.jsonpipe(

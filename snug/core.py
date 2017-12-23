@@ -25,6 +25,7 @@ class Query(t.Generic[T, T_req, T_resp]):
 
     @abc.abstractmethod
     def __resolve__(self) -> t.Generator[T_req, T_resp, T]:
+        """a generator which resolves the query"""
         raise NotImplementedError()
 
 
@@ -33,6 +34,7 @@ class Sender(t.Generic[T_req, T_resp]):
     Any callable with the same signature implements it"""
 
     def __call__(self, request: T_req) -> T_resp:
+        """send a request, returning a response"""
         raise NotImplementedError()
 
 
@@ -44,20 +46,20 @@ class Pipe(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
     def __call__(self, request: T_req) -> t.Generator[T_prepared,
                                                       T_resp,
                                                       T_parsed]:
+        """wrap a request and response"""
         raise NotImplementedError()
 
 
 def resolve(sender: Sender[T_req, T_resp],
-            query: Query[T, T_req, T_resp]) -> T:
+            query:  Query[T, T_req, T_resp]) -> T:
     """resolve a query
 
     Parameters
     ----------
-    resolver
-        the resolver to use
+    sender
+        the sender to use
     query
         the query to resolve
     """
     res = query.__resolve__()
-    response = sender(next(res))
-    return genresult(res, response)
+    return genresult(res, sender(next(res)))
