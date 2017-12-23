@@ -26,6 +26,8 @@ class Request(t.Generic[T]):
 
     Parameters
     ----------
+    method
+        the http method
     url
         the requested url
     data
@@ -34,14 +36,12 @@ class Request(t.Generic[T]):
         the query parameters
     headers
         mapping of headers
-    method
-        the http method
     """
+    method:  str
     url:     str
     data:    T = None
     params:  t.Mapping[str, str] = _dictfield()
     headers: Headers = _dictfield()
-    method:  str = 'GET'
 
     def add_headers(self, headers: Headers) -> 'Request':
         """new request with added headers
@@ -87,7 +87,8 @@ class Request(t.Generic[T]):
             'Authorization': f'Basic {encoded.decode("ascii")}'})
 
 
-GET = partial(Request, method='GET')
+GET = partial(Request, 'GET')
+"""shortcut for a GET request"""
 
 
 @dclass
@@ -119,7 +120,8 @@ def urllib_sender(**kwargs) -> Sender[Request[bytes],
     """
     def _urllib_send(req: Request) -> Response:
         url = f'{req.url}?{urllib.parse.urlencode(req.params)}'
-        raw_request = urllib.request.Request(url, headers=req.headers)
+        raw_request = urllib.request.Request(url, headers=req.headers,
+                                             method=req.method)
         raw_response = urllib.request.urlopen(raw_request, **kwargs)
         return Response(
             raw_response.getcode(),
@@ -146,8 +148,9 @@ else:
         """
 
         def _req_send(req: Request) -> Response:
-            response = session.get(req.url, params=req.params,
-                                   headers=req.headers)
+            response = session.request(req.method, req.url,
+                                       params=req.params,
+                                       headers=req.headers)
             return Response(
                 response.status_code,
                 response.content,
@@ -177,10 +180,10 @@ else:
 
         async def _aiohttp_sender(req: Request[bytes]) -> (
                 t.Awaitable[Response[bytes]]):
-            async with session.get(req.url,
-                                   params=req.params,
-                                   data=req.data,
-                                   headers=req.headers) as response:
+            async with session.request(req.method, req.url,
+                                       params=req.params,
+                                       data=req.data,
+                                       headers=req.headers) as response:
                 return Response(
                     response.status,
                     data=await response.read(),

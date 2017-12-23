@@ -8,33 +8,28 @@ from snug import http
 class TestRequest:
 
     def test_defaults(self):
-        req = http.Request('my/url/')
-        assert req == http.Request(
-            'my/url/',
-            params={},
-            headers={},
-            method='GET'
-        )
+        req = http.Request('GET', 'my/url/')
+        assert req == http.Request('GET', 'my/url/', params={}, headers={})
 
     def test_add_headers(self):
-        req = http.Request('my/url', headers={'foo': 'bla'})
-        assert req.add_headers({'other-header': 3}) == http.Request(
+        req = http.GET('my/url', headers={'foo': 'bla'})
+        assert req.add_headers({'other-header': 3}) == http.GET(
             'my/url', headers={'foo': 'bla', 'other-header': 3})
 
     def test_add_prefix(self):
-        req = http.Request('my/url/')
-        assert req.add_prefix('mysite.com/') == http.Request(
+        req = http.GET('my/url/')
+        assert req.add_prefix('mysite.com/') == http.GET(
             'mysite.com/my/url/')
 
     def test_add_params(self):
-        req = http.Request('my/url/', params={'foo': 'bar'})
-        assert req.add_params({'other': 3}) == http.Request(
+        req = http.GET('my/url/', params={'foo': 'bar'})
+        assert req.add_params({'other': 3}) == http.GET(
             'my/url/', params={'foo': 'bar', 'other': 3})
 
     def test_add_basic_auth(self):
-        req = http.Request('my/url/', headers={'foo': 'bar'})
+        req = http.GET('my/url/', headers={'foo': 'bar'})
         newreq = req.add_basic_auth(('Aladdin', 'OpenSesame'))
-        assert newreq == http.Request(
+        assert newreq == http.GET(
             'my/url/', headers={
                 'foo': 'bar',
                 'Authorization': 'Basic QWxhZGRpbjpPcGVuU2VzYW1l'
@@ -45,7 +40,7 @@ class TestRequest:
 @mock.patch('urllib.request.urlopen', autospec=True)
 def test_urllib_sender(urlopen, urllib_request):
     sender = http.urllib_sender(timeout=10)
-    req = http.Request('https://www.api.github.com/organizations',
+    req = http.Request('HEAD', 'https://www.api.github.com/organizations',
                        params={'since': 3043},
                        headers={'Accept': 'application/vnd.github.v3+json'})
     response = sender(req)
@@ -53,11 +48,12 @@ def test_urllib_sender(urlopen, urllib_request):
         status_code=urlopen.return_value.getcode.return_value,
         data=urlopen.return_value.read.return_value,
         headers=urlopen.return_value.headers,
-        )
+    )
     urlopen.assert_called_once_with(urllib_request.return_value, timeout=10)
     urllib_request.assert_called_once_with(
         'https://www.api.github.com/organizations?since=3043',
-        headers={'Accept': 'application/vnd.github.v3+json'}
+        headers={'Accept': 'application/vnd.github.v3+json'},
+        method='HEAD',
     )
 
 
@@ -65,27 +61,28 @@ def test_requests_sender():
     pytest.importorskip("requests")
     session = mock.Mock()
     sender = http.requests_sender(session)
-    req = http.Request('https://www.api.github.com/organizations',
-                       params={'since': 3043},
-                       headers={'Accept': 'application/vnd.github.v3+json'})
+    req = http.GET('https://www.api.github.com/organizations',
+                   params={'since': 3043},
+                   headers={'Accept': 'application/vnd.github.v3+json'})
     response = sender(req)
     assert response == http.Response(
-        status_code=session.get.return_value.status_code,
-        data=session.get.return_value.content,
-        headers=session.get.return_value.headers,
+        status_code=session.request.return_value.status_code,
+        data=session.request.return_value.content,
+        headers=session.request.return_value.headers,
     )
-    session.get.assert_called_once_with(
+    session.request.assert_called_once_with(
+        'GET',
         'https://www.api.github.com/organizations',
         params={'since': 3043},
         headers={'Accept': 'application/vnd.github.v3+json'})
 
 
 @pytest.mark.asyncio
-async def test_aiohttp_async_sender():
-    req = http.Request('https://test.com',
-                       data=b'{"foo": 4}',
-                       params={'bla': 99},
-                       headers={'Authorization': 'Basic ABC'})
+async def test_aiohttp_sender():
+    req = http.GET('https://test.com',
+                   data=b'{"foo": 4}',
+                   params={'bla': 99},
+                   headers={'Authorization': 'Basic ABC'})
     aiohttp = pytest.importorskip('aiohttp')
     from aioresponses import aioresponses
 

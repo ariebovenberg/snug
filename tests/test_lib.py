@@ -80,7 +80,7 @@ def test_simple_resolver(urlopen):
     @snug.query.from_gen()
     def post(id: int) -> str:
         """a post by its ID"""
-        return (yield snug.Request(f'http://foo.com/posts/{id}/'))['title']
+        return (yield snug.http.GET(f'http://foo.com/posts/{id}/'))['title']
 
     post_4 = post(id=4)
     assert resolve(post_4) == 'hello'
