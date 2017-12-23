@@ -36,7 +36,7 @@ class NO_DEFAULT:
     """sentinel for no default"""
 
 
-@dataclass(frozen=True)
+@dclass
 class lookup_defaults(t.Callable[[t.Any], T]):
     """wrap a lookup function with a default if lookup fails"""
     lookup: t.Callable[[t.Any], T]

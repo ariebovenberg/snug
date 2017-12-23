@@ -72,7 +72,7 @@ async def test_build_async_resolver():
             return_value=mock.Mock(**{
                 'getcode.return_value': 200,
                 'headers': {},
-                'read.return_value': b'{"id": 4, "title": "hello"}'
+                'read.return_value': b'hello'
             }))
 def test_simple_resolver(urlopen):
     resolve = snug.lib.simple_resolver(auth=('foo', 'bar'))
@@ -80,7 +80,8 @@ def test_simple_resolver(urlopen):
     @snug.query.from_gen()
     def post(id: int) -> str:
         """a post by its ID"""
-        return (yield snug.http.GET(f'http://foo.com/posts/{id}/'))['title']
+        response = yield snug.http.GET(f'http://foo.com/posts/{id}/')
+        return response.data.decode()
 
     post_4 = post(id=4)
     assert resolve(post_4) == 'hello'

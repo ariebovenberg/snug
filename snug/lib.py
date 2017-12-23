@@ -92,6 +92,4 @@ simple_resolver = partial(
     build_resolver,
     send=http.urllib_sender(),
     authenticator=lambda r, auth: (r if auth is None
-                                   else r.add_basic_auth(auth)),
-    pipe=jsonpipe,
-)
+                                   else r.add_basic_auth(auth)))
