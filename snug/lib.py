@@ -88,8 +88,4 @@ def build_async_resolver(
     return partial(asyn.resolve, piped)
 
 
-simple_resolver = partial(
-    build_resolver,
-    send=http.urllib_sender(),
-    authenticator=lambda r, auth: (r if auth is None
-                                   else r.add_basic_auth(auth)))
+basic_resolver = partial(resolve, http.urllib_sender())
