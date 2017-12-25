@@ -48,7 +48,8 @@ def test_nestable():
         def __init__(self, id):
             self.id = id
 
-        class comments(snug.query.Nestable, snug.Query):
+        @snug.query.called_as_method
+        class comments(snug.Query):
             """comments for this post"""
             def __init__(self, post, sort):
                 self.post, self.sort = post, sort

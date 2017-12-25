@@ -1,10 +1,4 @@
-"""tools for creating queries
-
-Todo
-----
-* serializing query params
-* pagination
-"""
+"""Tools for creating queries and query classes"""
 import abc
 import typing as t
 from dataclasses import make_dataclass
@@ -16,9 +10,8 @@ from .utils import (apply, as_tuple, compose, dclass, func_to_fields,
 
 __all__ = [
     'Fixed',
-    'Nestable',
-    'Piped',
     'Base',
+    'Piped',
     'cls_from_gen',
     'cls_from_func',
 ]
@@ -26,14 +19,20 @@ __all__ = [
 
 @dclass
 class Fixed(Query[T, T_req, T_resp]):
-    """a static query
+    """A static query. Useful for queries which do not take parameters.
 
     Parameters
     ----------
     request
-        the request
+        the request object
     load
         response loader
+
+    Examples
+    --------
+
+    >>> latest_posts = query.Fixed('/posts/latest')
+    >>> current_user = query.Fixed('/user/', load=load_user)
     """
     request: T_req
     load:    t.Callable[[T_resp], T] = identity
@@ -43,15 +42,32 @@ class Fixed(Query[T, T_req, T_resp]):
 
 
 class Base(Query[T, T_req, T_resp]):
-    """base class for query subclasses with useful methods to override"""
+    """Base class for query subclasses with useful methods to override
+
+    Example
+    -------
+
+    >>> class post(query.Base):
+    ...     def __init__(self, id):
+    ...         self.id = id
+    ...
+    ...     def _request(self):
+    ...         return f'/posts/{self.id}/'
+    """
 
     @abc.abstractmethod
     def _request(self) -> T_req:
-        """override this method to implement a requester"""
+        """override this method to implement a request creator"""
         raise NotImplementedError
 
     def _parse(self, response: T_resp) -> T:
-        """override this method to provide custom loading of responses"""
+        """override this method to provide custom loading of responses
+
+        Parameters
+        ----------
+        response
+            the response to parse
+        """
         return response
 
     def __resolve__(self):
@@ -60,7 +76,21 @@ class Base(Query[T, T_req, T_resp]):
 
 @dclass
 class Piped(Query[T, T_req, T_resp]):
-    """a query with a pipe modifying requests/responses"""
+    """A query with a pipe modifying requests/responses
+
+    Parameters
+    ----------
+    pipe
+        the pipe to apply
+    inner
+        the inner query
+
+    Example
+    -------
+
+    >>> query.Piped(jsondata, inner=query.Fixed('/posts/latest/'))
+
+    """
     pipe:  Pipe
     inner: Query
 
@@ -71,23 +101,31 @@ class Piped(Query[T, T_req, T_resp]):
         return resolver.send(genresult(pipe, response))
 
 
-class NestableMeta(t.GenericMeta):
-    """Metaclass for nested queries"""
-    # when nested, act like a method.
-    # i.e. pass the parent instance as first argument
+@dclass
+class called_as_method:
+    """decorate a callable (e.g. class or function) to be called as a method.
+    I.e. the parent instance is passed as the first argument"""
+    target: t.Callable
+
     def __get__(self, instance, cls):
-        return self if instance is None else partial(self, instance)
-
-
-class Nestable(metaclass=NestableMeta):
-    """mixin for classes which behave like methods when called
-    (i.e. pass the parent as first argument)"""
+        return (self.target if instance is None
+                else partial(self.target, instance))
 
 
 class cls_from_gen:
-    """create a Query class from a generator function
+    """Create a query class from a generator function
 
+    Example
+    -------
+
+    >>> @query.cls_from_gen()
+    ... def post(id: int):
+    ...     return json.loads((yield f'posts/{id}/'))
+
+    Note
+    ----
     The function must:
+
     * be a python function, bound to a module.
     * be fully annotated, without keyword-only arguments
     """
@@ -108,17 +146,30 @@ class cls_from_gen:
 
 
 class cls_from_func:
-    """create a query class from a function. Use as a decorator.
+    """Create a query class from a function. Use as a decorator.
 
+    Parameters
+    ----------
+    load
+        function to parse the response
+
+    Example
+    -------
+
+    >>> @query.cls_from_func(load=load_post)
+    ... def post(id: int):
+    ...     return f'posts/{id}/'
+
+    Note
+    ----
     The function must:
+
     * be a python function, bound to a module.
     * be fully annotated, without keyword-only arguments
     """
     # keyword-only arguments to prevent incorrect decorator usage
-    def __init__(self, *, load: t.Callable[[T_resp], T]=identity,
-                 nestable: bool=False):
+    def __init__(self, *, load: t.Callable[[T_resp], T]=identity):
         self.load = load
-        self.nestable = nestable
 
     def __call__(self, func: t.Callable[..., T_req]) -> t.Type[
             Query[T, T_req, T_resp]]:
