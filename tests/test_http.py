@@ -11,24 +11,24 @@ class TestRequest:
         req = http.Request('GET', 'my/url/')
         assert req == http.Request('GET', 'my/url/', params={}, headers={})
 
-    def test_add_headers(self):
+    def test_with_headers(self):
         req = http.GET('my/url', headers={'foo': 'bla'})
-        assert req.add_headers({'other-header': 3}) == http.GET(
+        assert req.with_headers({'other-header': 3}) == http.GET(
             'my/url', headers={'foo': 'bla', 'other-header': 3})
 
-    def test_add_prefix(self):
+    def test_with_prefix(self):
         req = http.GET('my/url/')
-        assert req.add_prefix('mysite.com/') == http.GET(
+        assert req.with_prefix('mysite.com/') == http.GET(
             'mysite.com/my/url/')
 
-    def test_add_params(self):
+    def test_with_params(self):
         req = http.GET('my/url/', params={'foo': 'bar'})
-        assert req.add_params({'other': 3}) == http.GET(
+        assert req.with_params({'other': 3}) == http.GET(
             'my/url/', params={'foo': 'bar', 'other': 3})
 
-    def test_add_basic_auth(self):
+    def test_with_basic_auth(self):
         req = http.GET('my/url/', headers={'foo': 'bar'})
-        newreq = req.add_basic_auth(('Aladdin', 'OpenSesame'))
+        newreq = req.with_basic_auth(('Aladdin', 'OpenSesame'))
         assert newreq == http.GET(
             'my/url/', headers={
                 'foo': 'bar',

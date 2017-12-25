@@ -38,7 +38,7 @@ class Request(t.Generic[T]):
     params:  t.Mapping[str, str] = _dictfield()
     headers: Headers = _dictfield()
 
-    def add_headers(self, headers: Headers) -> 'Request':
+    def with_headers(self, headers: Headers) -> 'Request':
         """new request with added headers
 
         Parameters
@@ -48,7 +48,7 @@ class Request(t.Generic[T]):
         """
         return replace(self, headers={**self.headers, **headers})
 
-    def add_prefix(self, prefix: str) -> 'Request':
+    def with_prefix(self, prefix: str) -> 'Request':
         """new request with added url prefix
 
         Parameters
@@ -58,7 +58,7 @@ class Request(t.Generic[T]):
         """
         return replace(self, url=prefix + self.url)
 
-    def add_params(self, params: t.Mapping[str, str]) -> 'Request':
+    def with_params(self, params: t.Mapping[str, str]) -> 'Request':
         """new request with added params
 
         Parameters
@@ -68,7 +68,7 @@ class Request(t.Generic[T]):
         """
         return replace(self, params={**self.params, **params})
 
-    def add_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
+    def with_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
         """new request with "basic" authentication
 
         Parameters
@@ -78,7 +78,7 @@ class Request(t.Generic[T]):
         """
         username, password = credentials
         encoded = b64encode(f'{username}:{password}'.encode('ascii'))
-        return self.add_headers({
+        return self.with_headers({
             'Authorization': f'Basic {encoded.decode("ascii")}'})
 
 
