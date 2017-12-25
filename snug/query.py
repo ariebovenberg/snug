@@ -19,8 +19,8 @@ __all__ = [
     'Nestable',
     'Piped',
     'Base',
-    'from_gen',
-    'from_func',
+    'cls_from_gen',
+    'cls_from_func',
 ]
 
 
@@ -84,7 +84,7 @@ class Nestable(metaclass=NestableMeta):
     (i.e. pass the parent as first argument)"""
 
 
-class from_gen:
+class cls_from_gen:
     """create a Query class from a generator function
 
     The function must:
@@ -107,7 +107,7 @@ class from_gen:
         )
 
 
-class from_func:
+class cls_from_func:
     """create a query class from a function. Use as a decorator.
 
     The function must:

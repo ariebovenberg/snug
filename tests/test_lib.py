@@ -75,11 +75,9 @@ async def test_build_async_resolver():
                 'read.return_value': b'hello'
             }))
 def test_basic_resolver(urlopen):
-    @snug.query.from_gen()
-    def post(id: int) -> str:
-        """a post by its ID"""
-        response = yield snug.http.GET(f'http://foo.com/posts/{id}/')
-        return response.data.decode()
 
-    post_4 = post(id=4)
-    assert snug.lib.basic_resolver(post_4) == 'hello'
+    class MyQuery:
+        def __resolve__(self):
+            return (yield snug.http.GET(f'http://foo.com/')).data.decode()
+
+    assert snug.lib.basic_resolver(MyQuery()) == 'hello'

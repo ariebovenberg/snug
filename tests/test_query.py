@@ -82,9 +82,9 @@ def test_piped():
     assert genresult(resolve, b'HELLO') == 'hello'
 
 
-def test_from_gen():
+def test_cls_from_gen():
 
-    @snug.query.from_gen()
+    @snug.query.cls_from_gen()
     def post(id: int):
         """my docstring..."""
         return (yield f'/posts/{id}/').decode('ascii')
@@ -104,24 +104,22 @@ def test_from_gen():
     assert genresult(resolver, b'hello') == 'hello'
 
 
-class TestFromFunc:
+def test_cls_from_func():
 
-    def test_simple(self):
+    @snug.query.cls_from_func(load=bytes.decode)
+    def post(id: int):
+        """my docstring..."""
+        return f'/posts/{id}/'
 
-        @snug.query.from_func(load=bytes.decode)
-        def post(id: int):
-            """my docstring..."""
-            return f'/posts/{id}/'
+    assert post.__name__ == 'post'
+    assert post.__doc__ == 'my docstring...'
+    assert post.__module__ == 'test_query'
+    assert issubclass(post, snug.query.Base)
+    assert len(post.__dataclass_fields__) == 1
 
-        assert post.__name__ == 'post'
-        assert post.__doc__ == 'my docstring...'
-        assert post.__module__ == 'test_query'
-        assert issubclass(post, snug.query.Base)
-        assert len(post.__dataclass_fields__) == 1
+    post53 = post(53)
+    assert isinstance(post53, snug.Query)
+    assert post53.id == 53
 
-        post53 = post(53)
-        assert isinstance(post53, snug.Query)
-        assert post53.id == 53
-
-        assert post53._request() == '/posts/53/'
-        assert post53._parse(b'hello') == 'hello'
+    assert post53._request() == '/posts/53/'
+    assert post53._parse(b'hello') == 'hello'
