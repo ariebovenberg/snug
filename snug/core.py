@@ -7,6 +7,7 @@ __all__ = [
     'Sender',
     'Pipe',
     'execute',
+    'nest',
 ]
 
 
@@ -65,5 +66,26 @@ def execute(sender: Sender[T_req, T_resp],
         response = sender(request)
         try:
             request = resolver.send(response)
+        except StopIteration as e:
+            return e.value
+
+
+def nest(inner: t.Generator[T_req, T_resp, T],
+         pipe:  Pipe[T_req, T_prepared, T_resp, T_parsed]) -> (
+             t.Generator[T_req, T_parsed, T]):
+    """nest a generator
+
+    Parameters
+    ----------
+    inner
+        the inner generator
+    pipe
+        the pipe through which to process requests
+    """
+    request = next(inner)
+    while True:
+        response = yield from pipe(request)
+        try:
+            request = inner.send(response)
         except StopIteration as e:
             return e.value

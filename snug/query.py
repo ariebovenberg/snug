@@ -4,7 +4,7 @@ import typing as t
 from dataclasses import make_dataclass
 from functools import partial, partialmethod
 
-from .core import Pipe, Query, T, T_req, T_resp
+from .core import Pipe, Query, T, T_req, T_resp, nest
 from .utils import (apply, as_tuple, compose, dclass, func_to_fields,
                     genresult, identity)
 
@@ -98,9 +98,7 @@ class Piped(Query[T, T_req, T_resp]):
 
     def __resolve__(self):
         resolver = self.inner.__resolve__()
-        pipe = self.pipe(next(resolver))
-        response = yield next(pipe)
-        return resolver.send(genresult(pipe, response))
+        return nest(resolver, self.pipe)
 
 
 @dclass
@@ -126,10 +124,7 @@ class WrappedGenfunc:
     gen:  t.Generator
 
     def __call__(self, *args, **kwargs):
-        inner = self.gen(*args, **kwargs)
-        pipe = self.pipe(next(inner))
-        response = genresult(pipe, (yield next(pipe)))
-        return genresult(inner, response)
+        return nest(self.gen(*args, **kwargs), self.pipe)
 
 
 @dclass
