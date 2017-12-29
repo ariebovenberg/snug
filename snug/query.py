@@ -5,8 +5,7 @@ from dataclasses import make_dataclass
 from functools import partial, partialmethod
 
 from .core import Pipe, Query, T, T_req, T_resp, nest
-from .utils import (apply, as_tuple, compose, dclass, func_to_fields,
-                    genresult, identity)
+from .utils import apply, as_tuple, compose, dclass, func_to_fields, identity
 
 __all__ = [
     'Fixed',
