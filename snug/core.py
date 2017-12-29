@@ -8,7 +8,7 @@ __all__ = [
     'Query',
     'Sender',
     'Pipe',
-    'resolve',
+    'execute',
 ]
 
 
@@ -50,9 +50,9 @@ class Pipe(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
         raise NotImplementedError()
 
 
-def resolve(sender: Sender[T_req, T_resp],
+def execute(sender: Sender[T_req, T_resp],
             query:  Query[T, T_req, T_resp]) -> T:
-    """resolve a query
+    """execute a query
 
     Parameters
     ----------

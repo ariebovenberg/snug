@@ -13,14 +13,14 @@ class Sender(t.Generic[T_req, T_resp]):
         raise NotImplementedError()
 
 
-async def resolve(sender: Sender[T_req, T_resp],
+async def execute(sender: Sender[T_req, T_resp],
                   query:  Query[T, T_req, T_resp]) -> t.Awaitable[T]:
-    """resolve a query asynchronously
+    """execute a query asynchronously
 
     Parameters
     ----------
-    resolver
-        the resolver to use
+    sender
+        the sender to use
     query
         the query to resolve
     """

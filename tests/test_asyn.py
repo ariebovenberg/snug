@@ -6,7 +6,7 @@ import snug
 
 
 @pytest.mark.asyncio
-async def test_resolve_async():
+async def test_execute_async():
 
     async def sender(req):
         assert req == '/posts/latest/'
@@ -17,7 +17,7 @@ async def test_resolve_async():
         def __resolve__(self):
             return (yield '/posts/latest/').decode('ascii')
 
-    assert await snug.asyn.resolve(sender, MyQuery()) == 'hello world'
+    assert await snug.asyn.execute(sender, MyQuery()) == 'hello world'
 
 
 @pytest.mark.asyncio

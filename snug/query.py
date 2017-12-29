@@ -14,6 +14,8 @@ __all__ = [
     'Piped',
     'cls_from_gen',
     'cls_from_func',
+    'called_as_method',
+    'piped',
 ]
 
 
@@ -102,6 +104,35 @@ class Piped(Query[T, T_req, T_resp]):
 
 
 @dclass
+class piped:
+    """decorator which wraps a class' ``__resolve__`` method through a Pipe
+
+    Note
+    ----
+    the class is modified in place
+    """
+    thru: Pipe
+
+    def __call__(self, cls):
+        assert isinstance(cls, type)
+        cls.__resolve__ = called_as_method(
+            WrappedGenfunc(pipe=self.thru, gen=cls.__resolve__))
+        return cls
+
+
+@dclass
+class WrappedGenfunc:
+    pipe: Pipe
+    gen:  t.Generator
+
+    def __call__(self, *args, **kwargs):
+        inner = self.gen(*args, **kwargs)
+        pipe = self.pipe(next(inner))
+        response = genresult(pipe, (yield next(pipe)))
+        return genresult(inner, response)
+
+
+@dclass
 class called_as_method:
     """decorate a callable (e.g. class or function) to be called as a method.
     I.e. the parent instance is passed as the first argument"""
@@ -176,7 +207,7 @@ class cls_from_func:
         return make_dataclass(
             func.__name__,
             func_to_fields(func),
-            bases=(Nestable, Base) if self.nestable else (Base, ),
+            bases=(Base, ),
             namespace={
                 '__doc__':    func.__doc__,
                 '__module__': func.__module__,

@@ -9,7 +9,7 @@ from . import asyn
 from .core import Sender, T
 from .utils import dclass
 
-__all__ = ['Request', 'Response', 'urllib_sender']
+__all__ = ['Request', 'GET', 'Response', 'urllib_sender']
 
 _dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]
@@ -83,7 +83,7 @@ class Request(t.Generic[T]):
 
 
 GET = partial(Request, 'GET')
-"""shortcut for a GET request"""
+GET.__doc__ = """shortcut for a GET request"""
 
 
 @dclass

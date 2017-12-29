@@ -42,7 +42,7 @@ def test_base():
     assert genresult(resolver, 'hello') == 'hello'
 
 
-def test_nestable():
+def test_called_as_method():
 
     class Post:
         def __init__(self, id):
@@ -78,9 +78,27 @@ def test_piped():
 
     piped = snug.query.Piped(ascii_encode, MyQuery())
 
-    resolve = piped.__resolve__()
-    assert next(resolve) == b'/posts/latest/'
-    assert genresult(resolve, b'HELLO') == 'hello'
+    resolver = piped.__resolve__()
+    assert next(resolver) == b'/posts/latest/'
+    assert genresult(resolver, b'HELLO') == 'hello'
+
+
+def test_piped_decorator():
+
+    def encoded(req):
+        return (yield req.encode()).decode()
+
+    @snug.query.piped(thru=encoded)
+    class post():
+        def __init__(self, id):
+            self.id = id
+
+        def __resolve__(self):
+            return (yield f'/posts/{self.id}/').lower()
+
+    resolver = post(id=4).__resolve__()
+    assert next(resolver) == b'/posts/4/'
+    assert genresult(resolver, b'HELLO') == 'hello'
 
 
 def test_cls_from_gen():

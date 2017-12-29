@@ -7,7 +7,7 @@ from functools import partial
 
 from . import pipe as _pipe
 from . import asyn, http, sender
-from .core import Query, Sender, T_req, T_resp, resolve
+from .core import Query, Sender, T_req, T_resp, execute
 from .utils import JSONType, flip
 
 T = t.TypeVar('T')
@@ -60,7 +60,7 @@ def build_resolver(
         pipe,
         _pipe.Preparer(partial(flip(authenticator), auth)),
     ), send)
-    return partial(resolve, piped)
+    return partial(execute, piped)
 
 
 def build_async_resolver(
@@ -85,7 +85,7 @@ def build_async_resolver(
         pipe,
         _pipe.Preparer(partial(flip(authenticator), auth)),
     ), send)
-    return partial(asyn.resolve, piped)
+    return partial(asyn.execute, piped)
 
 
-basic_resolver = partial(resolve, http.urllib_sender())
+basic_resolver = partial(execute, http.urllib_sender())
