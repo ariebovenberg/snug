@@ -2,8 +2,6 @@
 import abc
 import typing as t
 
-from .utils import genresult
-
 __all__ = [
     'Query',
     'Sender',
