@@ -61,5 +61,11 @@ def execute(sender: Sender[T_req, T_resp],
     query
         the query to resolve
     """
-    res = query.__resolve__()
-    return genresult(res, sender(next(res)))
+    resolver = query.__resolve__()
+    request = next(resolver)
+    while True:
+        response = sender(request)
+        try:
+            request = resolver.send(response)
+        except StopIteration as e:
+            return e.value
