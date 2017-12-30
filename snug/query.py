@@ -4,7 +4,7 @@ import typing as t
 from dataclasses import make_dataclass
 from functools import partial, partialmethod
 
-from .core import Pipe, Query, T, T_req, T_resp, nest
+from .core import Pipe, Query, T, T_req, T_resp, nested
 from .utils import apply, as_tuple, compose, dclass, func_to_fields, identity
 
 __all__ = [
@@ -96,8 +96,7 @@ class Piped(Query[T, T_req, T_resp]):
     inner: Query
 
     def __resolve__(self):
-        resolver = self.inner.__resolve__()
-        return nest(resolver, self.pipe)
+        return nested(self.inner.__resolve__, self.pipe)()
 
 
 @dclass
@@ -113,17 +112,8 @@ class piped:
     def __call__(self, cls):
         assert isinstance(cls, type)
         cls.__resolve__ = called_as_method(
-            WrappedGenfunc(pipe=self.thru, gen=cls.__resolve__))
+            nested(cls.__resolve__, pipe=self.thru))
         return cls
-
-
-@dclass
-class WrappedGenfunc:
-    pipe: Pipe
-    gen:  t.Generator
-
-    def __call__(self, *args, **kwargs):
-        return nest(self.gen(*args, **kwargs), self.pipe)
 
 
 @dclass

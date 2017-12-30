@@ -1,13 +1,14 @@
 """the central abstractions"""
 import abc
 import typing as t
+from dataclasses import dataclass
 
 __all__ = [
     'Query',
     'Sender',
     'Pipe',
     'execute',
-    'nest',
+    'nested',
 ]
 
 
@@ -70,22 +71,26 @@ def execute(sender: Sender[T_req, T_resp],
             return e.value
 
 
-def nest(inner: t.Generator[T_req, T_resp, T],
-         pipe:  Pipe[T_req, T_prepared, T_resp, T_parsed]) -> (
-             t.Generator[T_req, T_parsed, T]):
-    """nest a generator
+@dataclass
+class nested:
+    """a generator function created by nesting two generator functions
 
     Parameters
     ----------
     inner
-        the inner generator
+        the inner generator function.
     pipe
-        the pipe through which to process requests
+        the pipe through which to pass values
     """
-    request = next(inner)
-    while True:
-        response = yield from pipe(request)
-        try:
-            request = inner.send(response)
-        except StopIteration as e:
-            return e.value
+    inner: t.Callable[..., t.Generator[T_req, T_parsed, T]]
+    pipe:  Pipe[T_req, T_prepared, T_resp, T_parsed]
+
+    def __call__(self, *args, **kwargs) -> t.Generator[T_prepared, T_resp, T]:
+        gen = self.inner(*args, **kwargs)
+        request = next(gen)
+        while True:
+            response = yield from self.pipe(request)
+            try:
+                request = gen.send(response)
+            except StopIteration as e:
+                return e.value
