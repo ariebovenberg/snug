@@ -6,7 +6,7 @@ from dataclasses import replace
 from functools import partial
 
 from . import pipe as _pipe
-from . import asyn, http, sender
+from . import asnc, http, sender
 from .core import Query, Sender, T_req, T_resp, execute
 from .utils import JSONType, flip
 
@@ -65,7 +65,7 @@ def build_resolver(
 
 def build_async_resolver(
         auth:          T_auth,
-        send:          asyn.Sender,
+        send:          asnc.Sender,
         authenticator: Authenticator[T_auth],
         pipe:          _pipe.Pipe=_pipe.identity) -> AsyncResolver:
     """create an authenticated, asynchronous, resolver
@@ -81,11 +81,11 @@ def build_async_resolver(
     pipe
         pipe to apply to all requests
     """
-    piped = asyn.PipedSender(_pipe.Chain(
+    piped = asnc.PipedSender(_pipe.Chain(
         pipe,
         _pipe.Preparer(partial(flip(authenticator), auth)),
     ), send)
-    return partial(asyn.execute, piped)
+    return partial(asnc.execute, piped)
 
 
 basic_resolver = partial(execute, http.urllib_sender())

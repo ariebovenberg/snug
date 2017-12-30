@@ -5,7 +5,7 @@ from base64 import b64encode
 from dataclasses import field, replace
 from functools import partial
 
-from . import asyn
+from . import asnc
 from .core import Sender, T
 from .utils import dclass
 
@@ -162,14 +162,14 @@ except ImportError:  # pragma: no cover
     pass
 else:
     def aiohttp_sender(session: aiohttp.ClientSession) -> (
-            asyn.Sender[Response[bytes], Request[bytes]]):
-        """create a :class:`AsyncSender`
-        for a :class:`aiohttp.ClientSession`
+            asnc.Sender[Response[bytes], Request[bytes]]):
+        """create an asynchronous sender
+        for an `aiohttp` client session
 
         Parameters
         ----------
         session
-            a aiohttp session
+            the aiohttp session
         """
         async def _aiohttp_sender(req: Request[bytes]) -> (
                 t.Awaitable[Response[bytes]]):

@@ -17,7 +17,7 @@ async def test_execute_async():
         def __resolve__(self):
             return (yield '/posts/latest/').decode('ascii')
 
-    assert await snug.asyn.execute(sender, MyQuery()) == 'hello world'
+    assert await snug.asnc.execute(sender, MyQuery()) == 'hello world'
 
 
 @pytest.mark.asyncio
@@ -31,6 +31,6 @@ async def test_piped_sender():
         await asyncio.sleep(0)
         return b'hello world'
 
-    sender = snug.asyn.PipedSender(ascii_encode, sender)
+    sender = snug.asnc.PipedSender(ascii_encode, sender)
     response = await sender('/posts/latest/')
     assert response == 'hello world'
