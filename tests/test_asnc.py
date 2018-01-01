@@ -9,15 +9,22 @@ import snug
 async def test_execute_async():
 
     async def sender(req):
-        assert req == '/posts/latest/'
         await asyncio.sleep(0)
-        return b'hello world'
+        if not req.endswith('/'):
+            return 'redirect:' + req + '/'
+        elif req == '/posts/latest/':
+            return 'hello world'
 
     class MyQuery:
         def __resolve__(self):
-            return (yield '/posts/latest/').decode('ascii')
+            response = yield '/posts/latest'
+            while response.startswith('redirect:'):
+                response = yield response[9:]
+            return response.upper()
 
-    assert await snug.asnc.exec(sender, MyQuery()) == 'hello world'
+    query = MyQuery()
+    assert await snug.asnc.exec(sender, query) == 'HELLO WORLD'
+    assert await snug.asnc.exec(sender, query.__resolve__()) == 'HELLO WORLD'
 
 
 @pytest.mark.asyncio

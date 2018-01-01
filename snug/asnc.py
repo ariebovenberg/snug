@@ -1,5 +1,6 @@
 """functionality for asynchronous behavior"""
 import typing as t
+from inspect import isgenerator
 
 from .core import Pipe, Query, T, T_parsed, T_prepared, T_req, T_resp
 from .utils import dclass, genresult
@@ -24,9 +25,14 @@ async def exec(sender: Sender[T_req, T_resp],
     query
         the query to resolve
     """
-    res = query.__resolve__()
-    response = await sender(next(res))
-    return genresult(res, response)
+    query = query if isgenerator(query) else query.__resolve__()
+    request = next(query)
+    while True:
+        response = await sender(request)
+        try:
+            request = query.send(response)
+        except StopIteration as e:
+            return e.value
 
 
 @dclass
