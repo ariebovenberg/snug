@@ -171,7 +171,7 @@ else:
         session
             the aiohttp session
         """
-        async def _aiohttp_sender(req: Request) -> t.Awaitable[Response]:
+        async def _aiohttp_sender(req: Request) -> Response:
             async with session.request(req.method, req.url,
                                        params=req.params,
                                        data=req.data,
