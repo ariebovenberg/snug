@@ -6,7 +6,7 @@ from dataclasses import field, replace
 from functools import partial
 
 from . import asnc
-from .core import Sender, T
+from .core import Sender
 from .utils import dclass
 
 __all__ = ['Request', 'GET', 'Response', 'urllib_sender']
@@ -16,7 +16,7 @@ Headers = t.Mapping[str, str]
 
 
 @dclass
-class Request(t.Generic[T]):
+class Request:
     """a simple HTTP request
 
     Parameters
@@ -34,7 +34,7 @@ class Request(t.Generic[T]):
     """
     method:  str
     url:     str
-    data:    T = None
+    data:    t.Optional[bytes] = None
     params:  t.Mapping[str, str] = _dictfield()
     headers: Headers = _dictfield()
 
@@ -87,7 +87,7 @@ GET.__doc__ = """shortcut for a GET request"""
 
 
 @dclass
-class Response(t.Generic[T]):
+class Response:
     """a simple HTTP response
 
     Parameters
@@ -100,11 +100,11 @@ class Response(t.Generic[T]):
         the headers of the response
     """
     status_code: int
-    data:        T = None
+    data:        t.Optional[bytes] = None
     headers:     Headers = field(default_factory=dict)
 
 
-def urllib_sender(**kwargs) -> Sender[Request[bytes], Response[bytes]]:
+def urllib_sender(**kwargs) -> Sender[Request, Response]:
     """create a :class:`Sender` using :mod:`urllib`.
 
     Parameters
@@ -131,8 +131,8 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    def requests_sender(session: requests.Session) -> Sender[Request[bytes],
-                                                             Response[bytes]]:
+    def requests_sender(session: requests.Session) -> Sender[Request,
+                                                             Response]:
         """create a :class:`Sender` for a :class:`requests.Session`
 
         Parameters
@@ -161,8 +161,8 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    def aiohttp_sender(session: aiohttp.ClientSession) -> (
-            asnc.Sender[Response[bytes], Request[bytes]]):
+    def aiohttp_sender(session: aiohttp.ClientSession) -> asnc.Sender[Response,
+                                                                      Request]:
         """create an asynchronous sender
         for an `aiohttp` client session
 
@@ -171,8 +171,7 @@ else:
         session
             the aiohttp session
         """
-        async def _aiohttp_sender(req: Request[bytes]) -> (
-                t.Awaitable[Response[bytes]]):
+        async def _aiohttp_sender(req: Request) -> t.Awaitable[Response]:
             async with session.request(req.method, req.url,
                                        params=req.params,
                                        data=req.data,

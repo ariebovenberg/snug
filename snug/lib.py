@@ -22,8 +22,9 @@ class Authenticator(t.Generic[T_auth]):
         raise NotImplementedError()
 
 
-def jsonpipe(request: http.Request[t.Optional[bytes]]) -> t.Generator[
-        http.Request[JSONType], http.Response[t.Optional[bytes]], JSONType]:
+def jsonpipe(request: http.Request) -> t.Generator[http.Request,
+                                                   http.Response,
+                                                   JSONType]:
     """a simple pipe for requests with JSON content"""
     prepared = (replace(request, data=json.dumps(request.data).encode('ascii'))
                 if request.data else request)
