@@ -2,12 +2,13 @@
 import abc
 import typing as t
 from dataclasses import dataclass
+from inspect import isgenerator
 
 __all__ = [
     'Query',
     'Sender',
     'Pipe',
-    'execute',
+    'exec',
     'nested',
 ]
 
@@ -50,8 +51,8 @@ class Pipe(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
         raise NotImplementedError()
 
 
-def execute(sender: Sender[T_req, T_resp],
-            query:  Query[T, T_req, T_resp]) -> T:
+def exec(sender: Sender[T_req, T_resp],
+         query:  Query[T, T_req, T_resp]) -> T:
     """execute a query
 
     Parameters
@@ -61,7 +62,7 @@ def execute(sender: Sender[T_req, T_resp],
     query
         the query to resolve
     """
-    resolver = query.__resolve__()
+    resolver = query if isgenerator(query) else query.__resolve__()
     request = next(resolver)
     while True:
         response = sender(request)

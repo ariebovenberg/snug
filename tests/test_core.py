@@ -4,21 +4,37 @@ import snug
 from snug.utils import genresult
 
 
-def test_execute():
-    sender = {
-        '/posts/latest': 'redirect:/posts/latest/',
-        '/posts/latest/': 'redirect:/posts/december/',
-        '/posts/december/': b'hello world'
-    }.__getitem__
+class TestExec:
 
-    class MyQuery:
-        def __resolve__(self):
-            redirect = yield '/posts/latest'
-            redirect = yield redirect.split(':')[1]
-            response = yield redirect.split(':')[1]
-            return response.decode('ascii')
+    def test_resolvable(self):
+        sender = {
+            '/posts/latest': 'redirect:/posts/latest/',
+            '/posts/latest/': 'redirect:/posts/december/',
+            '/posts/december/': b'hello world'
+        }.__getitem__
 
-    assert snug.execute(sender, MyQuery()) == 'hello world'
+        class MyQuery:
+            def __resolve__(self):
+                redirect = yield '/posts/latest'
+                redirect = yield redirect.split(':')[1]
+                response = yield redirect.split(':')[1]
+                return response.decode('ascii')
+
+        assert snug.exec(sender, MyQuery()) == 'hello world'
+
+    def test_generator(self):
+
+        def mygen(id, encoding):
+            post_info = yield f'/posts/{id}/'
+            text = yield post_info['text_url']
+            return text.decode(encoding)
+
+        sender = {
+            '/posts/4/': {'text_url': 'downloads/2fe/'},
+            'downloads/2fe/': b'hello',
+        }.__getitem__
+
+        assert snug.exec(sender, mygen(4, encoding='ascii'))
 
 
 class TestNested:

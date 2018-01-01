@@ -17,7 +17,7 @@ async def test_execute_async():
         def __resolve__(self):
             return (yield '/posts/latest/').decode('ascii')
 
-    assert await snug.asnc.execute(sender, MyQuery()) == 'hello world'
+    assert await snug.asnc.exec(sender, MyQuery()) == 'hello world'
 
 
 @pytest.mark.asyncio
