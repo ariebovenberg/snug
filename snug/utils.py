@@ -49,15 +49,6 @@ class lookup_defaults(t.Callable[[t.Any], T]):
             return self.default
 
 
-def skipnone(func):
-    """wrap a function so that it returns None when getting None as input"""
-    @wraps(func)
-    def wrapper(arg):
-        return None if arg is None else func(arg)
-
-    return wrapper
-
-
 def parse_iso8601(dtstring: str) -> datetime:
     """naive parser for ISO8061 datetime strings,
 
