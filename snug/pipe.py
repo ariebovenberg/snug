@@ -1,9 +1,9 @@
 """middleware abstractions"""
 import typing as t
 from dataclasses import dataclass
-from functools import partial
+from functools import partial, reduce
 
-from .core import Pipe, T_parsed, T_prepared, T_req, T_resp
+from .core import Pipe, T_parsed, T_prepared, T_req, T_resp, nested
 from .utils import genresult, push
 
 _dclass = partial(dataclass, frozen=True)
@@ -57,17 +57,7 @@ class Chain(Pipe):
         self.stages = stages
 
     def __call__(self, request):
-        wraps = []
-        for pipe in self.stages:
-            wrap = pipe(request)
-            wraps.append(wrap)
-            request = next(wrap)
-
-        response = yield request
-
-        return push(
-            response,
-            *(partial(genresult, p) for p in reversed(wraps)))
+        return reduce(nested, self.stages, identity)(request)
 
     def __or__(self, other: Pipe):
         return Chain(*(self.stages + (other, )))
