@@ -4,8 +4,9 @@ import typing as t
 from dataclasses import make_dataclass
 from functools import partial, partialmethod
 
-from .core import Pipe, Query, T, T_req, T_resp, nested
-from .utils import apply, as_tuple, compose, dclass, func_to_fields, identity
+from .core import Pipe, Query, T, T_req, T_resp
+from .utils import (apply, as_tuple, compose, dclass, func_to_fields,
+                    identity, nest)
 
 __all__ = [
     'Fixed',
@@ -14,7 +15,6 @@ __all__ = [
     'cls_from_gen',
     'cls_from_func',
     'called_as_method',
-    'piped',
 ]
 
 
@@ -96,24 +96,7 @@ class Piped(Query[T, T_req, T_resp]):
     inner: Query
 
     def __resolve__(self):
-        return nested(self.inner.__resolve__, self.pipe)()
-
-
-@dclass
-class piped:
-    """decorator which wraps a class' ``__resolve__`` method through a Pipe
-
-    Note
-    ----
-    the class is modified in place
-    """
-    thru: Pipe
-
-    def __call__(self, cls):
-        assert isinstance(cls, type)
-        cls.__resolve__ = called_as_method(
-            nested(cls.__resolve__, pipe=self.thru))
-        return cls
+        return nest(self.inner.__resolve__(), self.pipe)
 
 
 @dclass

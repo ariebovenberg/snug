@@ -2,7 +2,10 @@
 import abc
 import typing as t
 from dataclasses import dataclass
+from functools import partial
 from inspect import isgenerator
+
+from .utils import compose, nest
 
 __all__ = [
     'Query',
@@ -74,24 +77,7 @@ def exec(sender: Sender[T_req, T_resp],
 
 @dataclass
 class nested:
-    """a generator function created by nesting two generator functions
+    thru: Pipe
 
-    Parameters
-    ----------
-    inner
-        the inner generator function.
-    pipe
-        the pipe through which to pass values
-    """
-    inner: t.Callable[..., t.Generator[T_req, T_parsed, T]]
-    pipe:  Pipe[T_req, T_prepared, T_resp, T_parsed]
-
-    def __call__(self, *args, **kwargs) -> t.Generator[T_prepared, T_resp, T]:
-        gen = self.inner(*args, **kwargs)
-        request = next(gen)
-        while True:
-            response = yield from self.pipe(request)
-            try:
-                request = gen.send(response)
-            except StopIteration as e:
-                return e.value
+    def __call__(self, func):
+        return compose(partial(nest, pipe=self.thru), func)

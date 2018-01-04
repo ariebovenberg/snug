@@ -3,12 +3,59 @@ import typing as t
 from dataclasses import dataclass, field
 from operator import itemgetter
 from unittest import mock
+from functools import reduce
 
 import pytest
 
 import snug
 
 utils = snug.utils
+
+
+def try_until_positive(req):
+    """an example Pipe"""
+    response = yield req
+    while response < 0:
+        response = yield 'TRY AGAIN!'
+    return response
+
+
+def try_until_even(req):
+    """an example Pipe"""
+    response = yield req
+    while response % 2:
+        response = yield 'NOT EVEN!'
+    return response
+
+
+def mymax(val):
+    """an example generator function"""
+    while val < 100:
+        sent = yield val
+        if sent > val:
+            val = sent
+    return val
+
+
+class MyMax:
+    """an example generator iterable"""
+
+    def __init__(self, start):
+        self.start = start
+
+    def __iter__(self):
+        val = self.start
+        while val < 100:
+            sent = yield val
+            if sent > val:
+                val = sent
+        return val
+
+
+def emptygen():
+    if False:
+        yield
+    return 'foo'
 
 
 def test_str_repr():
@@ -216,6 +263,93 @@ class TestValmap:
     def test_simple(self):
         assert utils.valmap(int, {'foo': '4', 'bar': 5.3}) == {
             'foo': 4, 'bar': 5}
+
+
+class TestYieldMap:
+
+    def test_empty(self):
+        try:
+            next(utils.yieldmap(str, emptygen()))
+        except StopIteration as e:
+            assert e.value == 'foo'
+
+    def test_simple(self):
+        mapped = utils.yieldmap(str, mymax(4))
+
+        assert next(mapped) == '4'
+        assert mapped.send(7) == '7'
+        assert mapped.send(3) == '7'
+        assert utils.genresult(mapped, 103) == 103
+
+
+class TestSendMap:
+
+    def test_empty(self):
+        try:
+            next(utils.sendmap(int, emptygen()))
+        except StopIteration as e:
+            assert e.value == 'foo'
+
+    def test_simple(self):
+        mapped = utils.sendmap(int, mymax(4))
+
+        assert next(mapped) == 4
+        assert mapped.send('7') == 7
+        assert mapped.send(7.3) == 7
+        assert utils.genresult(mapped, '104') == 104
+
+    def test_any_iterable(self):
+        mapped = utils.sendmap(int, MyMax(4))
+
+        assert next(mapped) == 4
+        assert mapped.send('7') == 7
+        assert mapped.send(7.3) == 7
+        assert utils.genresult(mapped, '104') == 104
+
+
+class TestNest:
+
+    def test_empty(self):
+        try:
+            next(utils.nest(emptygen(), try_until_positive))
+        except StopIteration as e:
+            assert e.value == 'foo'
+
+    def test_simple(self):
+        nested = utils.nest(mymax(4), try_until_positive)
+
+        assert next(nested) == 4
+        assert nested.send(7) == 7
+        assert nested.send(6) == 7
+        assert nested.send(-1) == 'TRY AGAIN!'
+        assert nested.send(-4) == 'TRY AGAIN!'
+        assert nested.send(0) == 7
+        assert utils.genresult(nested, 102) == 102
+
+    def test_any_iterable(self):
+        nested = utils.nest(MyMax(4), try_until_positive)
+
+        assert next(nested) == 4
+        assert nested.send(7) == 7
+        assert nested.send(6) == 7
+        assert nested.send(-1) == 'TRY AGAIN!'
+        assert nested.send(-4) == 'TRY AGAIN!'
+        assert nested.send(0) == 7
+        assert utils.genresult(nested, 102) == 102
+
+    def test_accumulate(self):
+
+        gen = reduce(utils.nest,
+                     [try_until_even,
+                      snug.pipe.identity,
+                      try_until_positive],
+                     mymax(4))
+
+        assert next(gen) == 4
+        assert gen.send(-4) == 'TRY AGAIN!'
+        assert gen.send(3) == 'NOT EVEN!'
+        assert gen.send(90) == 90
+        assert utils.genresult(gen, 110) == 110
 
 
 class TestPush:

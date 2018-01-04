@@ -3,8 +3,8 @@ import typing as t
 from dataclasses import dataclass
 from functools import partial, reduce
 
-from .core import Pipe, T_parsed, T_prepared, T_req, T_resp, nested
-from .utils import genresult, push
+from .core import Pipe, T_parsed, T_prepared, T_req, T_resp
+from .utils import push, nest
 
 _dclass = partial(dataclass, frozen=True)
 
@@ -56,8 +56,8 @@ class Chain(Pipe):
     def __init__(self, *stages):
         self.stages = stages
 
-    def __call__(self, request):
-        return reduce(nested, self.stages, identity)(request)
+    def __call__(self, request) -> t.Generator:
+        return (yield from reduce(nest, self.stages, identity(request)))
 
     def __or__(self, other: Pipe):
         return Chain(*(self.stages + (other, )))

@@ -136,6 +136,34 @@ class compose:
         return value
 
 
+def yieldmap(func: t.Callable, gen: t.Generator) -> t.Generator:
+    gen = iter(gen)
+    assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
+    item = next(gen)
+    while True:
+        item = gen.send((yield func(item)))
+
+
+def sendmap(func: t.Callable, gen: t.Generator) -> t.Generator:
+    gen = iter(gen)
+    assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
+    item = next(gen)
+    while True:
+        item = gen.send(func((yield item)))
+
+
+def nest(gen, pipe):
+    gen = iter(gen)
+    assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
+    item = next(gen)
+    while True:
+        sent = yield from pipe(item)
+        try:
+            item = gen.send(sent)
+        except StopIteration as e:
+            return e.value
+
+
 def valmap(func: t.Callable, mapping: t.Mapping) -> t.Mapping:
     """map() for values of a mapping"""
     return {k: func(v) for k, v in mapping.items()}
