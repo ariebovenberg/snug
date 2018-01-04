@@ -11,6 +11,16 @@ def test_static():
     assert genresult(resolver, b'hello') == 'hello'
 
 
+def test_generator_is_query():
+
+    def mygen():
+        yield
+        return
+
+    gen = mygen()
+    assert isinstance(gen, snug.Query)
+
+
 def test_query():
 
     class post(snug.Query):
@@ -21,9 +31,10 @@ def test_query():
             return (yield f'/posts/{self.id}/').decode('ascii')
 
     query = post(id=2)
-    resolver = iter(query)
-    assert next(resolver) == '/posts/2/'
-    assert genresult(resolver, b'hello') == 'hello'
+    gen = iter(query)
+    assert isinstance(query, snug.Query)
+    assert next(gen) == '/posts/2/'
+    assert genresult(gen, b'hello') == 'hello'
 
 
 def test_base():

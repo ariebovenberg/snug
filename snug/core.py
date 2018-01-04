@@ -2,6 +2,7 @@
 import abc
 import typing as t
 from functools import partial
+from types import GeneratorType
 
 from .utils import compose, nest, dclass, yieldmap, sendmap, returnmap
 
@@ -24,7 +25,7 @@ T_prepared = t.TypeVar('T_prepared')
 T_parsed = t.TypeVar('T_parsed')
 
 
-class Query(t.Generic[T, T_req, T_resp]):
+class Query(t.Generic[T, T_req, T_resp], t.Iterable[T]):
     """ABC for query-like objects.
     Any object where ``__iter__`` returns a generator implements it"""
 
@@ -32,6 +33,9 @@ class Query(t.Generic[T, T_req, T_resp]):
     def __iter__(self) -> t.Generator[T_req, T_resp, T]:
         """a generator which resolves the query"""
         raise NotImplementedError()
+
+
+Query.register(GeneratorType)
 
 
 class Sender(t.Generic[T_req, T_resp]):

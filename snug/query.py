@@ -4,14 +4,13 @@ import typing as t
 from dataclasses import make_dataclass
 from functools import partial, partialmethod
 
-from .core import Pipe, Query, T, T_req, T_resp
+from .core import Query, T, T_req, T_resp
 from .utils import (apply, as_tuple, compose, dclass, func_to_fields,
-                    identity, nest)
+                    identity)
 
 __all__ = [
     'Fixed',
     'Base',
-    'Piped',
     'cls_from_gen',
     'cls_from_func',
     'called_as_method',
