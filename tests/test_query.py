@@ -6,7 +6,7 @@ def test_static():
     latest_post = snug.query.Fixed(request='/posts/latest/', load=bytes.decode)
     assert isinstance(latest_post, snug.Query)
 
-    resolver = latest_post.__resolve__()
+    resolver = iter(latest_post)
     assert next(resolver) == '/posts/latest/'
     assert genresult(resolver, b'hello') == 'hello'
 
@@ -17,11 +17,11 @@ def test_query():
         def __init__(self, id):
             self.id = id
 
-        def __resolve__(self):
+        def __iter__(self):
             return (yield f'/posts/{self.id}/').decode('ascii')
 
     query = post(id=2)
-    resolver = query.__resolve__()
+    resolver = iter(query)
     assert next(resolver) == '/posts/2/'
     assert genresult(resolver, b'hello') == 'hello'
 
@@ -37,7 +37,7 @@ def test_base():
             return f'/posts/{self.id}/'
 
     query = post(id=2)
-    resolver = query.__resolve__()
+    resolver = iter(query)
     assert next(resolver) == '/posts/2/'
     assert genresult(resolver, 'hello') == 'hello'
 
@@ -54,7 +54,7 @@ def test_called_as_method():
             def __init__(self, post, sort):
                 self.post, self.sort = post, sort
 
-            def __resolve__(self):
+            def __iter__(self):
                 raise NotImplementedError()
 
     assert issubclass(Post.comments, snug.Query)
@@ -65,22 +65,6 @@ def test_called_as_method():
     assert isinstance(post_comments, snug.Query)
     assert post_comments.post == post34
     assert post_comments.sort is True
-
-
-def test_piped():
-
-    def ascii_encode(req):
-        return (yield req.encode('ascii')).decode('ascii')
-
-    class MyQuery():
-        def __resolve__(self):
-            return (yield '/posts/latest/').lower()
-
-    piped = snug.query.Piped(ascii_encode, MyQuery())
-
-    resolver = piped.__resolve__()
-    assert next(resolver) == b'/posts/latest/'
-    assert genresult(resolver, b'HELLO') == 'hello'
 
 
 def test_cls_from_gen():
@@ -100,7 +84,7 @@ def test_cls_from_gen():
     assert isinstance(post34, snug.Query)
     assert post34.id == 34
 
-    resolver = post34.__resolve__()
+    resolver = iter(post34)
     assert next(resolver) == '/posts/34/'
     assert genresult(resolver, b'hello') == 'hello'
 

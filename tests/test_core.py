@@ -11,7 +11,7 @@ def try_shouting(req):
 
 class TestExec:
 
-    def test_resolvable(self):
+    def test_query(self):
         sender = {
             '/posts/latest': 'redirect:/posts/latest/',
             '/posts/latest/': 'redirect:/posts/december/',
@@ -19,7 +19,7 @@ class TestExec:
         }.__getitem__
 
         class MyQuery:
-            def __resolve__(self):
+            def __iter__(self):
                 redirect = yield '/posts/latest'
                 redirect = yield redirect.split(':')[1]
                 response = yield redirect.split(':')[1]

@@ -15,16 +15,14 @@ async def test_execute_async():
         elif req == '/posts/latest/':
             return 'hello world'
 
-    class MyQuery:
-        def __resolve__(self):
-            response = yield '/posts/latest'
-            while response.startswith('redirect:'):
-                response = yield response[9:]
-            return response.upper()
+    def myquery():
+        response = yield '/posts/latest'
+        while response.startswith('redirect:'):
+            response = yield response[9:]
+        return response.upper()
 
-    query = MyQuery()
+    query = myquery()
     assert await snug.asnc.exec(sender, query) == 'HELLO WORLD'
-    assert await snug.asnc.exec(sender, query.__resolve__()) == 'HELLO WORLD'
 
 
 @pytest.mark.asyncio

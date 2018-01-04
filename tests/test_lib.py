@@ -31,9 +31,8 @@ def test_build_resolver():
         assert req[:11] == b'simon says '
         return {b'/posts/latest/': b'hello'}[req[11:]]
 
-    class MyQuery:
-        def __resolve__(self):
-            return 'response: ' + (yield '/posts/latest/')
+    def myquery():
+        return 'response: ' + (yield '/posts/latest/')
 
     resolver = snug.lib.build_resolver(
         'simon',
@@ -41,7 +40,7 @@ def test_build_resolver():
         pipe=ascii_pipe,
         authenticator=lambda r, n: n.encode('ascii') + b' says ' + r
     )
-    assert resolver(MyQuery()) == 'response: hello'
+    assert resolver(myquery()) == 'response: hello'
 
 
 @pytest.mark.asyncio
@@ -56,7 +55,7 @@ async def test_build_async_resolver():
         return {b'/posts/latest/': b'hello'}[req[11:]]
 
     class MyQuery:
-        def __resolve__(self):
+        def __iter__(self):
             return 'response: ' + (yield '/posts/latest/')
 
     resolver = snug.lib.build_async_resolver(
@@ -76,8 +75,7 @@ async def test_build_async_resolver():
             }))
 def test_basic_resolver(urlopen):
 
-    class MyQuery:
-        def __resolve__(self):
-            return (yield snug.http.GET(f'http://foo.com/')).data.decode()
+    def myquery():
+        return (yield snug.http.GET(f'http://foo.com/')).data.decode()
 
-    assert snug.lib.basic_resolver(MyQuery()) == 'hello'
+    assert snug.lib.basic_resolver(myquery()) == 'hello'

@@ -3,7 +3,6 @@ import abc
 import typing as t
 from dataclasses import dataclass
 from functools import partial
-from inspect import isgenerator
 
 from .utils import compose, nest
 
@@ -25,10 +24,10 @@ T_parsed = t.TypeVar('T_parsed')
 
 class Query(t.Generic[T, T_req, T_resp]):
     """ABC for query-like objects.
-    Any object with ``__resolve__`` implements it"""
+    Any object where ``__iter__`` returns a generator implements it"""
 
     @abc.abstractmethod
-    def __resolve__(self) -> t.Generator[T_req, T_resp, T]:
+    def __iter__(self) -> t.Generator[T_req, T_resp, T]:
         """a generator which resolves the query"""
         raise NotImplementedError()
 
@@ -65,12 +64,12 @@ def exec(sender: Sender[T_req, T_resp],
     query
         the query to resolve
     """
-    resolver = query if isgenerator(query) else query.__resolve__()
-    request = next(resolver)
+    gen = iter(query)
+    request = next(gen)
     while True:
         response = sender(request)
         try:
-            request = resolver.send(response)
+            request = gen.send(response)
         except StopIteration as e:
             return e.value
 

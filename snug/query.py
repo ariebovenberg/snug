@@ -38,7 +38,7 @@ class Fixed(Query[T, T_req, T_resp]):
     request: T_req
     load:    t.Callable[[T_resp], T] = identity
 
-    def __resolve__(self):
+    def __iter__(self):
         return self.load((yield self.request))
 
 
@@ -71,32 +71,8 @@ class Base(Query[T, T_req, T_resp]):
         """
         return response
 
-    def __resolve__(self):
+    def __iter__(self):
         return self._parse((yield self._request()))
-
-
-@dclass
-class Piped(Query[T, T_req, T_resp]):
-    """A query with a pipe modifying requests/responses
-
-    Parameters
-    ----------
-    pipe
-        the pipe to apply
-    inner
-        the inner query
-
-    Example
-    -------
-
-    >>> query.Piped(jsondata, inner=query.Fixed('/posts/latest/'))
-
-    """
-    pipe:  Pipe
-    inner: Query
-
-    def __resolve__(self):
-        return nest(self.inner.__resolve__(), self.pipe)
 
 
 @dclass
@@ -137,7 +113,7 @@ class cls_from_gen:
             namespace={
                 '__doc__':     func.__doc__,
                 '__module__':  func.__module__,
-                '__resolve__': partialmethod(compose(
+                '__iter__': partialmethod(compose(
                     partial(apply, func), as_tuple)),
             }
         )
