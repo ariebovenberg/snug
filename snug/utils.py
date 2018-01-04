@@ -66,6 +66,7 @@ def parse_iso8601(dtstring: str) -> datetime:
         '%Y-%m-%dT%H:%M:%SZ' if len(dtstring) == 20 else '%Y-%m-%dT%H:%M:%S%z')
 
 
+# TODO: types
 def genresult(gen, value):
     """retrieve the return value from a generator"""
     try:
@@ -118,6 +119,7 @@ class flip:
         return self.func(b, a)
 
 
+# TODO: __signature__
 @dataclass(init=False)
 class compose:
     """compose a function from a chain of functions"""
@@ -136,7 +138,8 @@ class compose:
         return value
 
 
-def yieldmap(func: t.Callable, gen: t.Generator) -> t.Generator:
+# TODO: types, docstring
+def yieldmap(func, gen) -> t.Generator:
     gen = iter(gen)
     assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
     item = next(gen)
@@ -144,7 +147,8 @@ def yieldmap(func: t.Callable, gen: t.Generator) -> t.Generator:
         item = gen.send((yield func(item)))
 
 
-def sendmap(func: t.Callable, gen: t.Generator) -> t.Generator:
+# TODO: types, docstring
+def sendmap(func, gen) -> t.Generator:
     gen = iter(gen)
     assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
     item = next(gen)
@@ -152,6 +156,7 @@ def sendmap(func: t.Callable, gen: t.Generator) -> t.Generator:
         item = gen.send(func((yield item)))
 
 
+# TODO: types, docstring
 def nest(gen, pipe):
     gen = iter(gen)
     assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
@@ -164,11 +169,38 @@ def nest(gen, pipe):
             return e.value
 
 
+# TODO: types, docstring
+def returnmap(func, gen):
+    gen = iter(gen)
+    assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
+    return func((yield from gen))
+
+
+# TODO: types, docstring, signature
+@dclass
+class oneyield:
+    func: t.Callable
+
+    def __call__(self, *args, **kwargs):
+        return (yield self.func(*args, **kwargs))
+
+
+# TODO: types, docstring, signature
+@dclass
+class onerecieve:
+    func: t.Callable
+
+    def __call__(self, obj):
+        return self.func((yield obj))
+
+
+# TODO inner types
 def valmap(func: t.Callable, mapping: t.Mapping) -> t.Mapping:
     """map() for values of a mapping"""
     return {k: func(v) for k, v in mapping.items()}
 
 
+# TODO inner types
 def valfilter(predicate: t.Callable, mapping: t.Mapping) -> t.Mapping:
     """filter() for values of a mapping"""
     return {k: v for k, v in mapping.items() if predicate(v)}

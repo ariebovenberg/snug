@@ -1,4 +1,5 @@
 import datetime
+import inspect
 import typing as t
 from dataclasses import dataclass, field
 from operator import itemgetter
@@ -55,7 +56,7 @@ class MyMax:
 def emptygen():
     if False:
         yield
-    return 'foo'
+    return 99
 
 
 def test_str_repr():
@@ -271,7 +272,7 @@ class TestYieldMap:
         try:
             next(utils.yieldmap(str, emptygen()))
         except StopIteration as e:
-            assert e.value == 'foo'
+            assert e.value == 99
 
     def test_simple(self):
         mapped = utils.yieldmap(str, mymax(4))
@@ -288,7 +289,7 @@ class TestSendMap:
         try:
             next(utils.sendmap(int, emptygen()))
         except StopIteration as e:
-            assert e.value == 'foo'
+            assert e.value == 99
 
     def test_simple(self):
         mapped = utils.sendmap(int, mymax(4))
@@ -307,13 +308,36 @@ class TestSendMap:
         assert utils.genresult(mapped, '104') == 104
 
 
+class TestReturnMap:
+
+    def test_empty(self):
+        try:
+            next(utils.returnmap(str, emptygen()))
+        except StopIteration as e:
+            assert e.value == '99'
+
+    def test_simple(self):
+        mapped = utils.returnmap(str, mymax(4))
+
+        assert next(mapped) == 4
+        assert mapped.send(7) == 7
+        assert utils.genresult(mapped, 104) == '104'
+
+    def test_any_iterable(self):
+        mapped = utils.returnmap(str, MyMax(4))
+
+        assert next(mapped) == 4
+        assert mapped.send(7) == 7
+        assert utils.genresult(mapped, 104) == '104'
+
+
 class TestNest:
 
     def test_empty(self):
         try:
             next(utils.nest(emptygen(), try_until_positive))
         except StopIteration as e:
-            assert e.value == 'foo'
+            assert e.value == 99
 
     def test_simple(self):
         nested = utils.nest(mymax(4), try_until_positive)
@@ -350,6 +374,29 @@ class TestNest:
         assert gen.send(3) == 'NOT EVEN!'
         assert gen.send(90) == 90
         assert utils.genresult(gen, 110) == 110
+
+
+def test_oneyield():
+
+    @utils.oneyield
+    def myfunc(a, b, c):
+        return a + b + c
+
+    gen = myfunc(1, 2, 3)
+    assert inspect.isgenerator(gen)
+    assert next(gen) == 6
+    assert utils.genresult(gen, 9) == 9
+
+
+def test_onerecieve():
+
+    @utils.onerecieve
+    def myfunc(resp):
+        return resp.upper()
+
+    gen = myfunc(9)
+    assert next(gen) == 9
+    assert utils.genresult(gen, 'foo') == 'FOO'
 
 
 class TestPush:

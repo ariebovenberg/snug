@@ -27,7 +27,7 @@ class TestChain:
         assert next(pipe) == 'foo'
         assert genresult(pipe, 'bar') == 'bar'
 
-    def test_union(self):
+    def test_or(self):
 
         def ascii_encoded(req):
             return (yield req.encode('ascii')).decode('ascii')
@@ -45,35 +45,3 @@ def test_identity():
     pipe = snug.pipe.identity('foo')
     assert next(pipe) == 'foo'
     assert genresult(pipe, 'bar') == 'bar'
-
-
-def test_base():
-
-    class MyAPI(snug.pipe.Base):
-        pass
-
-    pipe = MyAPI()('foo')
-    assert next(pipe) == 'foo'
-    assert genresult(pipe, 'bar') == 'bar'
-
-
-def test_preparer():
-
-    @snug.pipe.Preparer
-    def shout(req):
-        return req.upper()
-
-    pipe = shout('foo')
-    assert next(pipe) == 'FOO'
-    assert genresult(pipe, 'bar') == 'bar'
-
-
-def test_parser():
-
-    @snug.pipe.Parser
-    def ascii_decode(resp):
-        return resp.decode('ascii')
-
-    pipe = ascii_decode('foo')
-    assert next(pipe) == 'foo'
-    assert genresult(pipe, b'bar') == 'bar'

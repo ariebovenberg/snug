@@ -1,10 +1,9 @@
 """the central abstractions"""
 import abc
 import typing as t
-from dataclasses import dataclass
 from functools import partial
 
-from .utils import compose, nest
+from .utils import compose, nest, dclass, yieldmap, sendmap, returnmap
 
 __all__ = [
     'Query',
@@ -12,6 +11,9 @@ __all__ = [
     'Pipe',
     'exec',
     'nested',
+    'yieldmapped',
+    'sendmapped',
+    'returnmapped',
 ]
 
 
@@ -74,9 +76,33 @@ def exec(sender: Sender[T_req, T_resp],
             return e.value
 
 
-@dataclass
+@dclass
 class nested:
     thru: Pipe
 
     def __call__(self, func):
         return compose(partial(nest, pipe=self.thru), func)
+
+
+@dclass
+class yieldmapped:
+    func: t.Callable
+
+    def __call__(self, func):
+        return compose(partial(yieldmap, self.func), func)
+
+
+@dclass
+class sendmapped:
+    func: t.Callable
+
+    def __call__(self, func):
+        return compose(partial(sendmap, self.func), func)
+
+
+@dclass
+class returnmapped:
+    func: t.Callable
+
+    def __call__(self, func):
+        return compose(partial(returnmap, self.func), func)

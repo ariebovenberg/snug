@@ -1,12 +1,23 @@
 import snug
 
+from snug.utils import genresult
 
-def try_shouting(req):
+
+def try_until_even(req):
     """an example Pipe"""
     response = yield req
-    if response == 'what?':
-        response = yield req.upper()
-    return response.lower()
+    while response % 2:
+        response = yield 'NOT EVEN!'
+    return response
+
+
+def mymax(val):
+    """an example generator function"""
+    while val < 100:
+        sent = yield val
+        if sent > val:
+            val = sent
+    return val
 
 
 class TestExec:
@@ -43,15 +54,36 @@ class TestExec:
 
 
 def test_nested():
+    decorated = snug.nested(try_until_even)(mymax)
 
-    @snug.nested(try_shouting)
-    def convo(greeting):
-        request = yield greeting
-        while True:
-            request = yield request + ', huh?'
+    gen = decorated(4)
+    assert next(gen) == 4
+    assert gen.send(8) == 8
+    assert gen.send(9) == 'NOT EVEN!'
+    assert gen.send(2) == 8
+    assert genresult(gen, 102) == 102
 
-    gen = convo('howdy')
-    assert next(gen) == 'howdy'
-    assert gen.send('foo') == 'foo, huh?'
-    assert gen.send('what?') == 'FOO, HUH?'
-    assert gen.send('ok') == 'ok, huh?'
+
+def test_yieldmapped():
+    decorated = snug.yieldmapped(str)(mymax)
+
+    gen = decorated(5)
+    assert next(gen) == '5'
+    assert gen.send(2) == '5'
+    assert genresult(gen, 103) == 103
+
+
+def test_sendmapped():
+    decorated = snug.sendmapped(int)(mymax)
+
+    gen = decorated(5)
+    assert next(gen) == 5
+    assert gen.send(5.3) == 5
+    assert genresult(gen, '103') == 103
+
+
+def test_returnmapped():
+    decorated = snug.returnmapped(str)(mymax)
+    gen = decorated(5)
+    assert next(gen) == 5
+    assert genresult(gen, 103) == '103'

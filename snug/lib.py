@@ -8,7 +8,7 @@ from functools import partial
 from . import pipe as _pipe
 from . import asnc, http, sender
 from .core import Query, Sender, T_req, T_resp, exec
-from .utils import JSONType, flip
+from .utils import JSONType, flip, oneyield
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
@@ -59,7 +59,7 @@ def build_resolver(
     """
     piped = sender.Piped(_pipe.Chain(
         pipe,
-        _pipe.Preparer(partial(flip(authenticator), auth)),
+        oneyield(partial(flip(authenticator), auth)),
     ), send)
     return partial(exec, piped)
 
@@ -84,7 +84,7 @@ def build_async_resolver(
     """
     piped = asnc.PipedSender(_pipe.Chain(
         pipe,
-        _pipe.Preparer(partial(flip(authenticator), auth)),
+        oneyield(partial(flip(authenticator), auth)),
     ), send)
     return partial(asnc.exec, piped)
 
