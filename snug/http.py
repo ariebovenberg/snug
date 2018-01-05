@@ -4,9 +4,10 @@ import urllib.request
 from base64 import b64encode
 from dataclasses import field, replace
 from functools import partial
+from operator import methodcaller
 
 from . import asnc
-from .core import Sender
+from .core import Sender, compose, exec, Executor
 from .utils import dclass
 
 __all__ = ['Request', 'GET', 'Response', 'urllib_sender']
@@ -124,6 +125,17 @@ def urllib_sender(**kwargs) -> Sender[Request, Response]:
         )
 
     return _urllib_send
+
+
+simple_exec = partial(exec, sender=urllib_sender())
+"""simple executor (without authentication)"""
+
+
+def authed_exec(auth, sender=urllib_sender()) -> (
+        Executor[Request, Response]):
+    """"""
+    return partial(exec, compose(methodcaller('with_basic_auth', auth),
+                                 sender))
 
 
 try:

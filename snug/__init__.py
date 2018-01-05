@@ -2,6 +2,6 @@
 from .core import *  # noqa
 from .http import *  # noqa
 
-from . import http, load, query, xml, asnc, lib  # noqa
+from . import http, load, query, xml, asnc, pipe  # noqa
 
 from .__about__ import __version__, __author__, __copyright__  # noqa

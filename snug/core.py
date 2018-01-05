@@ -59,16 +59,23 @@ class Pipe(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
         raise NotImplementedError()
 
 
-def exec(sender: Sender[T_req, T_resp],
-         query:  Query[T_req, T_resp, T]) -> T:
+class Executor(t.Generic[T_req, T_resp]):
+
+    @abc.abstractmethod
+    def __call__(self, query: Query[T_req, T_resp, T]) -> T:
+        raise NotImplementedError()
+
+
+def exec(query:  Query[T_req, T_resp, T],
+         sender: Sender[T_req, T_resp]) -> T:
     """execute a query
 
     Parameters
     ----------
-    sender
-        the sender to use
     query
         the query to resolve
+    sender
+        the sender to use
     """
     gen = iter(query)
     request = next(gen)
