@@ -32,10 +32,10 @@ def jsonpipe(request: http.Request) -> t.Generator[http.Request,
     return json.loads(response.data) if response.data else None
 
 
-Resolver = t.Callable[[Query[T, T_req, T_resp]], T]
+Resolver = t.Callable[[Query[T_req, T_resp, T]], T]
 """interface for query resolvers"""
 
-AsyncResolver = t.Callable[[Query[T, T_req, T_resp]], t.Awaitable[T]]
+AsyncResolver = t.Callable[[Query[T_req, T_resp, T]], t.Awaitable[T]]
 """interface for asynchronous resolvers"""
 
 

@@ -128,7 +128,7 @@ def urllib_sender(**kwargs) -> Sender[Request, Response]:
 
 try:
     import requests
-except ImportError:  # pragma: no cover
+except ModuleNotFoundError:  # pragma: no cover
     pass
 else:
     def requests_sender(session: requests.Session) -> Sender[Request,
@@ -158,7 +158,7 @@ else:
 
 try:
     import aiohttp
-except ImportError:  # pragma: no cover
+except ModuleNotFoundError:  # pragma: no cover
     pass
 else:
     def aiohttp_sender(session: aiohttp.ClientSession) -> asnc.Sender[Response,

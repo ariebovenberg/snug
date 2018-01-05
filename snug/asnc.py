@@ -8,13 +8,12 @@ from .utils import dclass, genresult
 class Sender(t.Generic[T_req, T_resp]):
     """ABC for asynchronous resolver-like objects.
     Any callable with the same signature implements it"""
-
-    def __call__(self, request: T_req) -> t.Awaitable[T_resp]:
+    async def __call__(self, request: T_req) -> T_resp:
         raise NotImplementedError()
 
 
 async def exec(sender: Sender[T_req, T_resp],
-               query:  Query[T, T_req, T_resp]) -> t.Awaitable[T]:
+               query:  Query[T_req, T_resp, T]) -> T:
     """execute a query asynchronously
 
     Parameters

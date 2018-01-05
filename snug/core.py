@@ -25,7 +25,7 @@ T_prepared = t.TypeVar('T_prepared')
 T_parsed = t.TypeVar('T_parsed')
 
 
-class Query(t.Generic[T, T_req, T_resp], t.Iterable[T]):
+class Query(t.Generic[T_req, T_resp, T], t.Iterable[T_req]):
     """ABC for query-like objects.
     Any object where ``__iter__`` returns a generator implements it"""
 
@@ -49,7 +49,7 @@ class Sender(t.Generic[T_req, T_resp]):
 
 class Pipe(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
     """ABC for middleware objects.
-    generator functions with the same signature implement it."""
+    generator callables with the same signature implement it."""
 
     @abc.abstractmethod
     def __call__(self, request: T_req) -> t.Generator[T_prepared,
@@ -60,7 +60,7 @@ class Pipe(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
 
 
 def exec(sender: Sender[T_req, T_resp],
-         query:  Query[T, T_req, T_resp]) -> T:
+         query:  Query[T_req, T_resp, T]) -> T:
     """execute a query
 
     Parameters
@@ -80,6 +80,7 @@ def exec(sender: Sender[T_req, T_resp],
             return e.value
 
 
+# TODO: docs, types
 @dclass
 class nested:
     thru: Pipe
@@ -88,6 +89,7 @@ class nested:
         return compose(partial(nest, pipe=self.thru), func)
 
 
+# TODO: docs, types
 @dclass
 class yieldmapped:
     func: t.Callable
@@ -96,6 +98,7 @@ class yieldmapped:
         return compose(partial(yieldmap, self.func), func)
 
 
+# TODO: docs, types
 @dclass
 class sendmapped:
     func: t.Callable
@@ -104,6 +107,7 @@ class sendmapped:
         return compose(partial(sendmap, self.func), func)
 
 
+# TODO: docs, types
 @dclass
 class returnmapped:
     func: t.Callable

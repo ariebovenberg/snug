@@ -10,15 +10,13 @@ from .utils import (apply, as_tuple, compose, dclass, func_to_fields,
 
 __all__ = [
     'Fixed',
-    'Base',
     'cls_from_gen',
-    'cls_from_func',
     'called_as_method',
 ]
 
 
 @dclass
-class Fixed(Query[T, T_req, T_resp]):
+class Fixed(Query[T_req, T_resp, T]):
     """A static query. Useful for queries which do not take parameters.
 
     Parameters
@@ -39,39 +37,6 @@ class Fixed(Query[T, T_req, T_resp]):
 
     def __iter__(self):
         return self.load((yield self.request))
-
-
-class Base(Query[T, T_req, T_resp]):
-    """Base class for query subclasses with useful methods to override
-
-    Example
-    -------
-
-    >>> class post(query.Base):
-    ...     def __init__(self, id):
-    ...         self.id = id
-    ...
-    ...     def _request(self):
-    ...         return f'/posts/{self.id}/'
-    """
-
-    @abc.abstractmethod
-    def _request(self) -> T_req:
-        """override this method to implement a request creator"""
-        raise NotImplementedError
-
-    def _parse(self, response: T_resp) -> T:
-        """override this method to provide custom loading of responses
-
-        Parameters
-        ----------
-        response
-            the response to parse
-        """
-        return response
-
-    def __iter__(self):
-        return self._parse((yield self._request()))
 
 
 @dclass
@@ -116,44 +81,3 @@ class cls_from_gen:
                     partial(apply, func), as_tuple)),
             }
         )
-
-
-class cls_from_func:
-    """Create a query class from a function. Use as a decorator.
-
-    Parameters
-    ----------
-    load
-        function to parse the response
-
-    Example
-    -------
-
-    >>> @query.cls_from_func(load=load_post)
-    ... def post(id: int):
-    ...     return f'posts/{id}/'
-
-    Note
-    ----
-    The function must:
-
-    * be a python function, bound to a module.
-    * be fully annotated, without keyword-only arguments
-    """
-    # keyword-only arguments to prevent incorrect decorator usage
-    def __init__(self, *, load: t.Callable[[T_resp], T]=identity):
-        self.load = load
-
-    def __call__(self, func: t.Callable[..., T_req]) -> t.Type[
-            Query[T, T_req, T_resp]]:
-        return make_dataclass(
-            func.__name__,
-            func_to_fields(func),
-            bases=(Base, ),
-            namespace={
-                '__doc__':    func.__doc__,
-                '__module__': func.__module__,
-                '_request':   partialmethod(compose(
-                    partial(apply, func), as_tuple)),
-                '_parse':     staticmethod(self.load)
-            })

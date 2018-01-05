@@ -37,22 +37,6 @@ def test_query():
     assert genresult(gen, b'hello') == 'hello'
 
 
-def test_base():
-
-    class post(snug.query.Base):
-
-        def __init__(self, id):
-            self.id = id
-
-        def _request(self):
-            return f'/posts/{self.id}/'
-
-    query = post(id=2)
-    resolver = iter(query)
-    assert next(resolver) == '/posts/2/'
-    assert genresult(resolver, 'hello') == 'hello'
-
-
 def test_called_as_method():
 
     class Post:
@@ -98,24 +82,3 @@ def test_cls_from_gen():
     resolver = iter(post34)
     assert next(resolver) == '/posts/34/'
     assert genresult(resolver, b'hello') == 'hello'
-
-
-def test_cls_from_func():
-
-    @snug.query.cls_from_func(load=bytes.decode)
-    def post(id: int):
-        """my docstring..."""
-        return f'/posts/{id}/'
-
-    assert post.__name__ == 'post'
-    assert post.__doc__ == 'my docstring...'
-    assert post.__module__ == 'test_query'
-    assert issubclass(post, snug.query.Base)
-    assert len(post.__dataclass_fields__) == 1
-
-    post53 = post(53)
-    assert isinstance(post53, snug.Query)
-    assert post53.id == 53
-
-    assert post53._request() == '/posts/53/'
-    assert post53._parse(b'hello') == 'hello'
