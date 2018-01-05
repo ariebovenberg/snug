@@ -1,5 +1,4 @@
 """Tools for creating queries and query classes"""
-import abc
 import typing as t
 from dataclasses import make_dataclass
 from functools import partial, partialmethod

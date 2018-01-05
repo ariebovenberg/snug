@@ -105,7 +105,7 @@ class Response:
 
 
 def urllib_sender(**kwargs) -> Sender[Request, Response]:
-    """create a :class:`Sender` using :mod:`urllib`.
+    """create a :class:`~snug.Sender` using :mod:`urllib`.
 
     Parameters
     ----------
@@ -133,7 +133,7 @@ except ModuleNotFoundError:  # pragma: no cover
 else:
     def requests_sender(session: requests.Session) -> Sender[Request,
                                                              Response]:
-        """create a :class:`Sender` for a :class:`requests.Session`
+        """create a :class:`~snug.Sender` for a :class:`requests.Session`
 
         Parameters
         ----------
