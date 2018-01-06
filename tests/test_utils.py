@@ -429,6 +429,25 @@ class TestValFilter:
         }
 
 
+def test_called_as_method():
+
+    class Parent:
+        @utils.called_as_method
+        class Child:
+            def __init__(self, parent, foo):
+                self.parent, self.foo = parent, foo
+
+    parent = Parent()
+
+    child = parent.Child(4)
+    assert child.parent is parent
+    assert child.foo == 4
+
+    child = Parent.Child(parent, 4)
+    assert child.parent is parent
+    assert child.foo == 4
+
+
 class TestAsTuple:
 
     def test_empty(self):

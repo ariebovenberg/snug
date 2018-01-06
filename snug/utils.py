@@ -138,6 +138,17 @@ class compose:
         return value
 
 
+@dclass
+class called_as_method:
+    """decorate a callable (e.g. class or function) to be called as a method.
+    I.e. the parent instance is passed as the first argument"""
+    target: t.Callable
+
+    def __get__(self, instance, cls):
+        return (self.target if instance is None
+                else partial(self.target, instance))
+
+
 # TODO: types, docstring
 def yieldmap(func, gen) -> t.Generator:
     gen = iter(gen)

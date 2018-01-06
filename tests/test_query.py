@@ -2,15 +2,6 @@ import snug
 from snug.utils import genresult
 
 
-def test_static():
-    latest_post = snug.query.Fixed(request='/posts/latest/', load=bytes.decode)
-    assert isinstance(latest_post, snug.Query)
-
-    resolver = iter(latest_post)
-    assert next(resolver) == '/posts/latest/'
-    assert genresult(resolver, b'hello') == 'hello'
-
-
 def test_generator_is_query():
 
     def mygen():
@@ -35,31 +26,6 @@ def test_query():
     assert isinstance(query, snug.Query)
     assert next(gen) == '/posts/2/'
     assert genresult(gen, b'hello') == 'hello'
-
-
-def test_called_as_method():
-
-    class Post:
-        def __init__(self, id):
-            self.id = id
-
-        @snug.query.called_as_method
-        class comments(snug.Query):
-            """comments for this post"""
-            def __init__(self, post, sort):
-                self.post, self.sort = post, sort
-
-            def __iter__(self):
-                raise NotImplementedError()
-
-    assert issubclass(Post.comments, snug.Query)
-
-    post34 = Post(id=34)
-    post_comments = post34.comments(sort=True)
-
-    assert isinstance(post_comments, snug.Query)
-    assert post_comments.post == post34
-    assert post_comments.sort is True
 
 
 def test_cls_from_gen():
