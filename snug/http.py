@@ -85,6 +85,10 @@ class Request:
 
 GET = partial(Request, 'GET')
 GET.__doc__ = """shortcut for a GET request"""
+PUT = partial(Request, 'PUT')
+PUT.__doc__ = """shortcut for a PUT request"""
+POST = partial(Request, 'POST')
+POST.__doc__ = """shortcut for a POST request"""
 
 
 @dclass
@@ -127,8 +131,16 @@ def urllib_sender(**kwargs) -> Sender[Request, Response]:
     return _urllib_send
 
 
-simple_exec = partial(exec, sender=urllib_sender())
-"""simple executor (without authentication)"""
+def simple_exec(sender: Sender[Request, Response]=urllib_sender()) -> (
+        Executor[Request, Response]):
+    """create a simple executor
+
+    Parameters
+    ----------
+    sender
+        the request sender
+    """
+    return partial(exec, sender)
 
 
 def authed_exec(auth: t.Tuple[str, str],
