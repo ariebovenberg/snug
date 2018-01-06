@@ -61,6 +61,11 @@ class Pipe(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
         """wrap a request and response"""
         raise NotImplementedError()
 
+    @staticmethod
+    def identity(request: T_req) -> t.Generator[T_req, T_resp, T_resp]:
+        """identity pipe, leaves requests and responses unchanged"""
+        return (yield request)
+
 
 class Executor(t.Generic[T_req, T_resp]):
 

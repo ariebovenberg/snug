@@ -365,7 +365,7 @@ class TestNest:
 
         gen = reduce(utils.nest,
                      [try_until_even,
-                      snug.pipe.identity,
+                      snug.Pipe.identity,
                       try_until_positive],
                      mymax(4))
 

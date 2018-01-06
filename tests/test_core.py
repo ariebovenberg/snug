@@ -119,3 +119,9 @@ def test_query_decorator():
     resolver = iter(post34)
     assert next(resolver) == '/posts/34/'
     assert genresult(resolver, b'hello') == 'hello'
+
+
+def test_identity_pipe():
+    pipe = snug.Pipe.identity('foo')
+    assert next(pipe) == 'foo'
+    assert genresult(pipe, 'bar') == 'bar'
