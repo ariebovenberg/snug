@@ -1,8 +1,15 @@
 """functionality for asynchronous behavior"""
+import abc
 import typing as t
 
-from .core import Pipe, Query, T, T_parsed, T_prepared, T_req, T_resp
-from .utils import dclass, genresult
+from .core import Query, T, T_req, T_resp
+
+
+class Executor(t.Generic[T_req, T_resp]):
+
+    @abc.abstractmethod
+    async def __call__(self, query: Query[T_req, T_resp, T]) -> T:
+        raise NotImplementedError()
 
 
 class Sender(t.Generic[T_req, T_resp]):
@@ -31,15 +38,3 @@ async def exec(sender: Sender[T_req, T_resp],
             request = gen.send(response)
         except StopIteration as e:
             return e.value
-
-
-@dclass
-class PipedSender(Sender[T_req, T_parsed]):
-    """an async sender wrapped with a pipe"""
-    pipe:  Pipe[T_req, T_prepared, T_resp, T_parsed]
-    inner: Sender[T_prepared, T_resp]
-
-    async def __call__(self, request):
-        wrap = self.pipe(request)
-        response = await self.inner(next(wrap))
-        return genresult(wrap, response)

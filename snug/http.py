@@ -131,11 +131,36 @@ simple_exec = partial(exec, sender=urllib_sender())
 """simple executor (without authentication)"""
 
 
-def authed_exec(auth, sender=urllib_sender()) -> (
-        Executor[Request, Response]):
-    """"""
+def authed_exec(auth: t.Tuple[str, str],
+                sender: Sender[Request, Response]=urllib_sender()) -> (
+                    Executor[Request, Response]):
+    """create an authenticated executor
+
+    Parameters
+    ----------
+    auth
+        (username, password)-tuple
+    sender
+        the request sender
+    """
     return partial(exec, compose(methodcaller('with_basic_auth', auth),
                                  sender))
+
+
+def authed_aexec(auth: t.Tuple[str, str],
+                 sender: asnc.Sender[Request, Response]) -> (
+                     asnc.Executor[Request, Response]):
+    """create an authenticated async executor
+
+    Parameters
+    ----------
+    auth
+        (username, password)-tuple
+    sender
+        the request sender
+    """
+    return partial(asnc.exec, compose(methodcaller('with_basic_auth', auth),
+                                      sender))
 
 
 try:
