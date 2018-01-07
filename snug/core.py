@@ -137,7 +137,7 @@ class query:
     Example
     -------
 
-    >>> @query.cls_from_gen()
+    >>> @query()
     ... def post(id: int):
     ...     return json.loads((yield f'posts/{id}/'))
 
