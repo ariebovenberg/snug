@@ -85,10 +85,18 @@ class Request:
 
 GET = partial(Request, 'GET')
 GET.__doc__ = """shortcut for a GET request"""
-PUT = partial(Request, 'PUT')
-PUT.__doc__ = """shortcut for a PUT request"""
 POST = partial(Request, 'POST')
 POST.__doc__ = """shortcut for a POST request"""
+PUT = partial(Request, 'PUT')
+PUT.__doc__ = """shortcut for a PUT request"""
+PATCH = partial(Request, 'PATCH')
+PATCH.__doc__ = """shortcut for a PATCH request"""
+DELETE = partial(Request, 'DELETE')
+DELETE.__doc__ = """shortcut for a DELETE request"""
+HEAD = partial(Request, 'HEAD')
+HEAD.__doc__ = """shortcut for a HEAD request"""
+OPTIONS = partial(Request, 'OPTIONS')
+OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
 
 
 @dclass
