@@ -148,7 +148,7 @@ def simple_exec(sender: Sender[Request, Response]=urllib_sender()) -> (
     sender
         the request sender
     """
-    return partial(exec, sender)
+    return partial(exec, sender=sender)
 
 
 def authed_exec(auth: t.Tuple[str, str],

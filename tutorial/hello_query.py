@@ -1,8 +1,11 @@
+import json
 import snug
 
-@snug.Query
+@snug.query()
 def repo(name: str, owner: str):
-    """a repository lookup by owner and name"""
-    return snug.Request(f'api.github.com/repos/{owner}/{name}')
+    """a repo lookup by owner and name"""
+    request = snug.http.GET(f'https://api.github.com/repos/{owner}/{name}')
+    response = yield request
+    return json.loads(response.data)
 
-resolve = snug.simple_resolve
+exec = snug.http.simple_exec()
