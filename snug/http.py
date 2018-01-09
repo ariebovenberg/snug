@@ -7,7 +7,7 @@ from functools import partial
 from operator import methodcaller
 
 from . import asnc
-from .core import Sender, compose, exec, Executor
+from .core import Sender, compose, execute, Executor
 from .utils import dclass
 
 __all__ = ['Request', 'GET', 'Response', 'urllib_sender']
@@ -148,7 +148,7 @@ def simple_exec(sender: Sender[Request, Response]=urllib_sender()) -> (
     sender
         the request sender
     """
-    return partial(exec, sender=sender)
+    return partial(execute, sender=sender)
 
 
 def authed_exec(auth: t.Tuple[str, str],
@@ -163,8 +163,8 @@ def authed_exec(auth: t.Tuple[str, str],
     sender
         the request sender
     """
-    return partial(exec, compose(methodcaller('with_basic_auth', auth),
-                                 sender))
+    return partial(execute, compose(methodcaller('with_basic_auth', auth),
+                                    sender))
 
 
 def authed_aexec(auth: t.Tuple[str, str],

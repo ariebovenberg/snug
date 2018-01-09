@@ -12,7 +12,7 @@ __all__ = [
     'Query',
     'Sender',
     'Pipe',
-    'exec',
+    'execute',
     'nested',
     'yieldmapped',
     'sendmapped',
@@ -74,8 +74,8 @@ class Executor(t.Generic[T_req, T_resp]):
         raise NotImplementedError()
 
 
-def exec(query:  Query[T_req, T_resp, T],
-         sender: Sender[T_req, T_resp]) -> T:
+def execute(query:  Query[T_req, T_resp, T],
+            sender: Sender[T_req, T_resp]) -> T:
     """execute a query
 
     Parameters

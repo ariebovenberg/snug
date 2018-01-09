@@ -20,7 +20,7 @@ def mymax(val):
     return val
 
 
-def test_exec():
+def test_execute():
     sender = {
         '/posts/latest': 'redirect:/posts/latest/',
         '/posts/latest/': 'redirect:/posts/december/',
@@ -34,7 +34,7 @@ def test_exec():
             response = yield redirect.split(':')[1]
             return response.decode('ascii')
 
-    assert snug.exec(MyQuery(), sender) == 'hello world'
+    assert snug.execute(MyQuery(), sender) == 'hello world'
 
 
 def test_nested():
