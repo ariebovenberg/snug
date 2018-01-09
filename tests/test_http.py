@@ -141,7 +141,7 @@ async def test_aiohttp_sender():
     from aioresponses import aioresponses
 
     with aioresponses() as m:
-        m.get('https://test.com', body=b'{"my": "content"}',
+        m.get('https://test.com/?bla=99', body=b'{"my": "content"}',
               status=201,
               headers={'Content-Type': 'application/json'})
 
@@ -154,7 +154,7 @@ async def test_aiohttp_sender():
             data=b'{"my": "content"}',
             headers={'Content-Type': 'application/json'})
 
-        call, = m.requests[('GET', 'https://test.com')]
+        call, = m.requests[('GET', 'https://test.com/?bla=99')]
         assert call.kwargs['headers'] == {'Authorization': 'Basic ABC'}
         assert call.kwargs['params'] == {'bla': 99}
         assert call.kwargs['data'] == b'{"foo": 4}'
