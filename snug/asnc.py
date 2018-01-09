@@ -19,16 +19,16 @@ class Sender(t.Generic[T_req, T_resp]):
         raise NotImplementedError()
 
 
-async def exec(sender: Sender[T_req, T_resp],
-               query:  Query[T_req, T_resp, T]) -> T:
+async def execute(query:  Query[T_req, T_resp, T],
+                  sender: Sender[T_req, T_resp]) -> T:
     """execute a query asynchronously
 
     Parameters
     ----------
-    sender
-        the sender to use
     query
         the query to resolve
+    sender
+        the sender to use
     """
     gen = iter(query)
     request = next(gen)

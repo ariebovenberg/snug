@@ -1,8 +1,29 @@
 from unittest import mock
+from dataclasses import dataclass
 
 import pytest
 
 from snug import http
+
+
+@dataclass
+class SingleSender:
+    response: http.Response
+    request:  http.Request = None
+
+    def __call__(self, request):
+        self.request = request
+        return self.response
+
+
+@dataclass
+class SingleAsyncSender:
+    response: http.Response
+    request:  http.Request = None
+
+    async def __call__(self, request):
+        self.request = request
+        return self.response
 
 
 class TestRequest:
@@ -34,6 +55,39 @@ class TestRequest:
                 'foo': 'bar',
                 'Authorization': 'Basic QWxhZGRpbjpPcGVuU2VzYW1l'
             })
+
+
+def test_simple_exec():
+    exec = http.simple_exec(sender={'foo': 'bar'}.__getitem__)
+
+    def myquery():
+        return (yield 'foo').upper()
+    assert exec(myquery()) == 'BAR'
+
+
+def test_authed_exec():
+    sender = SingleSender(http.Response(204))
+    exec = http.authed_exec(auth=('foo', 'bar'), sender=sender)
+
+    def myquery():
+        return (yield http.GET('foo')).status_code
+
+    assert exec(myquery()) == 204
+    assert sender.request.url == 'foo'
+    assert sender.request.headers['Authorization'].startswith('Basic')
+
+
+@pytest.mark.asyncio
+async def test_authed_aexec():
+    sender = SingleAsyncSender(http.Response(204))
+    exec = http.authed_aexec(auth=('foo', 'bar'), sender=sender)
+
+    def myquery():
+        return (yield http.GET('foo')).status_code
+
+    assert await exec(myquery()) == 204
+    assert sender.request.url == 'foo'
+    assert sender.request.headers['Authorization'].startswith('Basic')
 
 
 @mock.patch('urllib.request.Request', autospec=True)

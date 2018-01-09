@@ -6,7 +6,7 @@ import snug
 
 
 @pytest.mark.asyncio
-async def test_exec():
+async def test_execute():
 
     async def sender(req):
         await asyncio.sleep(0)
@@ -22,4 +22,4 @@ async def test_exec():
         return response.upper()
 
     query = myquery()
-    assert await snug.asnc.exec(sender, query) == 'HELLO WORLD'
+    assert await snug.asnc.execute(query, sender=sender) == 'HELLO WORLD'

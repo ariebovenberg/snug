@@ -163,8 +163,9 @@ def authed_exec(auth: t.Tuple[str, str],
     sender
         the request sender
     """
-    return partial(execute, compose(methodcaller('with_basic_auth', auth),
-                                    sender))
+    return partial(
+        execute,
+        sender=compose(sender, methodcaller('with_basic_auth', auth)))
 
 
 def authed_aexec(auth: t.Tuple[str, str],
@@ -179,8 +180,9 @@ def authed_aexec(auth: t.Tuple[str, str],
     sender
         the request sender
     """
-    return partial(asnc.exec, compose(methodcaller('with_basic_auth', auth),
-                                      sender))
+    return partial(
+        asnc.execute,
+        sender=compose(sender, methodcaller('with_basic_auth', auth)))
 
 
 try:
