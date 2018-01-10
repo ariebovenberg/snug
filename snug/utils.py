@@ -2,6 +2,7 @@
 import inspect
 import types
 import typing as t
+from types import MethodType
 from dataclasses import Field, dataclass, field
 from datetime import datetime
 from functools import partial
@@ -119,14 +120,44 @@ class flip:
         return self.func(b, a)
 
 
+class CalledAsMethod:
+    """mixin for callables to support method-like calling"""
+    def __get__(self, obj, objtype=None):
+        return self if obj is None else MethodType(self, obj)
+
+
 # TODO: __signature__
-@dataclass(init=False)
-class compose:
-    """compose a function from a chain of functions"""
+@dataclass(init=False, frozen=True)
+class compose(CalledAsMethod):
+    """compose a function from a chain of functions
+
+    Parameters
+    ----------
+    *funcs
+        callables to compose
+
+    """
     funcs: t.Tuple[t.Callable, ...]
 
-    def __init__(self, *funcs):
-        self.funcs = funcs
+    def __init__(self, *funcs: t.Callable):
+        self.__dict__['funcs'] = funcs
+        # determine the composed signature, if underlying callables
+        # support it.
+        if funcs:
+            try:
+                return_sig = inspect.signature(funcs[0])
+            except ValueError:
+                return_annotation = inspect.Signature.empty
+            else:
+                return_annotation = return_sig.return_annotation
+
+            try:
+                self.__dict__['__signature__'] = inspect.signature(
+                    funcs[-1]).replace(return_annotation=return_annotation)
+            except ValueError:  # callable does not support signature
+                pass
+        else:
+            self.__dict__['__signature__'] = inspect.signature(identity)
 
     def __call__(self, *args, **kwargs):
         if not self.funcs:

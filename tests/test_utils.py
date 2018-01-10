@@ -2,7 +2,7 @@ import datetime
 import inspect
 import typing as t
 from dataclasses import dataclass, field
-from operator import itemgetter
+from operator import itemgetter, attrgetter
 from unittest import mock
 from functools import reduce
 
@@ -243,6 +243,7 @@ class TestCompose:
         assert func(obj) is obj
         assert isinstance(func.funcs, tuple)
         assert func.funcs == ()
+        assert inspect.signature(func) == inspect.signature(utils.identity)
 
     def test_one_func_with_multiple_args(self):
         func = utils.compose(int)
@@ -254,6 +255,39 @@ class TestCompose:
         func = utils.compose(str, lambda x: x + 1, int)
         assert isinstance(func.funcs, tuple)
         assert func('30', base=5) == '16'
+
+    def test_called_as_method(self):
+
+        class Foo:
+            def __init__(self, value):
+                self.value = value
+            func = utils.compose(lambda x: x + 1, attrgetter('value'))
+
+        f = Foo(4)
+        assert Foo.func(f) == 5
+        assert f.func() == 5
+
+    def test_equality(self):
+        assert utils.compose(int, str) == utils.compose(int, str)
+        assert hash(utils.compose(int, str) == utils.compose(int, str))
+
+    def test_signature(self):
+
+        def func1(x: str, foo, *args, c=4) -> int:
+            return int(x) + foo + c
+
+        def func2(f: int) -> str:
+            return 'a' * f
+
+        func = utils.compose(
+            func2,
+            lambda x: x + 4,
+            func1)
+
+        sig = inspect.signature(func)
+        assert sig.parameters == inspect.signature(func1).parameters
+        assert sig.return_annotation == inspect.signature(
+            func2).return_annotation
 
 
 class TestValmap:
