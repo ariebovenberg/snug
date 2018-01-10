@@ -82,6 +82,8 @@ class Request:
         return self.with_headers({
             'Authorization': f'Basic {encoded.decode("ascii")}'})
 
+    replace = replace
+
 
 GET = partial(Request, 'GET')
 GET.__doc__ = """shortcut for a GET request"""
