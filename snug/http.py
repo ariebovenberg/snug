@@ -85,6 +85,15 @@ class Request:
     replace = replace
 
 
+prefix_adder = partial(methodcaller, 'with_prefix')
+prefix_adder.__doc__ = """
+make a callable which adds a prefix to a request url
+"""
+header_adder = partial(methodcaller, 'with_headers')
+header_adder.__doc__ = """
+make a callable which adds headers to a request
+"""
+
 GET = partial(Request, 'GET')
 GET.__doc__ = """shortcut for a GET request"""
 POST = partial(Request, 'POST')

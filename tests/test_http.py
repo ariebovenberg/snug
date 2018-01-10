@@ -62,6 +62,23 @@ class TestRequest:
             'GET', 'other/path/')
 
 
+def test_prefix_adder():
+    req = http.GET('my/url')
+    adder = http.prefix_adder('mysite.com/')
+    assert adder(req) == http.GET('mysite.com/my/url')
+
+
+def test_header_adder():
+    req = http.GET('my/url', headers={'Accept': 'application/json'})
+    adder = http.header_adder({
+        'Authorization': 'my-auth'
+    })
+    assert adder(req) == http.GET('my/url', headers={
+        'Accept': 'application/json',
+        'Authorization': 'my-auth'
+    })
+
+
 def test_simple_exec():
     exec = http.simple_exec(sender={'foo': 'bar'}.__getitem__)
 
