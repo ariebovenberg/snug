@@ -85,31 +85,6 @@ class Request:
     replace = replace
 
 
-prefix_adder = partial(methodcaller, 'with_prefix')
-prefix_adder.__doc__ = """
-make a callable which adds a prefix to a request url
-"""
-header_adder = partial(methodcaller, 'with_headers')
-header_adder.__doc__ = """
-make a callable which adds headers to a request
-"""
-
-GET = partial(Request, 'GET')
-GET.__doc__ = """shortcut for a GET request"""
-POST = partial(Request, 'POST')
-POST.__doc__ = """shortcut for a POST request"""
-PUT = partial(Request, 'PUT')
-PUT.__doc__ = """shortcut for a PUT request"""
-PATCH = partial(Request, 'PATCH')
-PATCH.__doc__ = """shortcut for a PATCH request"""
-DELETE = partial(Request, 'DELETE')
-DELETE.__doc__ = """shortcut for a DELETE request"""
-HEAD = partial(Request, 'HEAD')
-HEAD.__doc__ = """shortcut for a HEAD request"""
-OPTIONS = partial(Request, 'OPTIONS')
-OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
-
-
 @dclass
 class Response:
     """a simple HTTP response
@@ -255,3 +230,28 @@ else:
         return _aiohttp_sender
 
     __all__.append('aiohttp_sender')
+
+
+# useful shortcuts
+prefix_adder = partial(methodcaller, 'with_prefix')
+prefix_adder.__doc__ = """
+make a callable which adds a prefix to a request url
+"""
+header_adder = partial(methodcaller, 'with_headers')
+header_adder.__doc__ = """
+make a callable which adds headers to a request
+"""
+GET = partial(Request, 'GET')
+GET.__doc__ = """shortcut for a GET request"""
+POST = partial(Request, 'POST')
+POST.__doc__ = """shortcut for a POST request"""
+PUT = partial(Request, 'PUT')
+PUT.__doc__ = """shortcut for a PUT request"""
+PATCH = partial(Request, 'PATCH')
+PATCH.__doc__ = """shortcut for a PATCH request"""
+DELETE = partial(Request, 'DELETE')
+DELETE.__doc__ = """shortcut for a DELETE request"""
+HEAD = partial(Request, 'HEAD')
+HEAD.__doc__ = """shortcut for a HEAD request"""
+OPTIONS = partial(Request, 'OPTIONS')
+OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
