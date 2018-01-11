@@ -1,9 +1,9 @@
 import typing as t
-from dataclasses import dataclass
 from datetime import datetime
 from operator import itemgetter
 
 import pytest
+from dataclasses import dataclass
 
 from snug import load
 from snug.utils import compose, identity, parse_iso8601, valmap

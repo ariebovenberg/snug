@@ -1,7 +1,7 @@
-from dataclasses import dataclass
 from unittest import mock
 
 import pytest
+from dataclasses import dataclass
 
 from snug import http
 
