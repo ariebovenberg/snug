@@ -8,7 +8,7 @@ from operator import methodcaller
 
 from . import asnc
 from .core import Sender, compose, execute, Executor
-from .utils import dclass
+from .utils import dclass, called_as_method
 
 __all__ = ['Request', 'GET', 'Response', 'urllib_sender']
 
@@ -83,6 +83,7 @@ class Request:
             'Authorization': f'Basic {encoded.decode("ascii")}'})
 
     replace = replace
+    """replace fields in the requests instance"""
 
 
 @dclass

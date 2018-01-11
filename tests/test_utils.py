@@ -417,20 +417,10 @@ def test_oneyield():
         return a + b + c
 
     gen = myfunc(1, 2, 3)
+    assert inspect.unwrap(myfunc).__name__ == 'myfunc'
     assert inspect.isgenerator(gen)
     assert next(gen) == 6
     assert utils.genresult(gen, 9) == 9
-
-
-def test_onerecieve():
-
-    @utils.onerecieve
-    def myfunc(resp):
-        return resp.upper()
-
-    gen = myfunc(9)
-    assert next(gen) == 9
-    assert utils.genresult(gen, 'foo') == 'FOO'
 
 
 class TestPush:

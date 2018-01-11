@@ -2,7 +2,7 @@
 import abc
 import typing as t
 from dataclasses import make_dataclass
-from functools import partial, partialmethod
+from functools import partial, partialmethod, wraps
 from types import GeneratorType
 
 from .utils import (compose, nest, dclass, yieldmap, sendmap, returnmap,
@@ -101,7 +101,7 @@ class nested:
     thru: Pipe
 
     def __call__(self, func):
-        return compose(partial(nest, pipe=self.thru), func)
+        return wraps(func)(compose(partial(nest, pipe=self.thru), func))
 
 
 # TODO: docs, types
@@ -110,7 +110,7 @@ class yieldmapped:
     func: t.Callable
 
     def __call__(self, func):
-        return compose(partial(yieldmap, self.func), func)
+        return wraps(func)(compose(partial(yieldmap, self.func), func))
 
 
 # TODO: docs, types
@@ -119,7 +119,7 @@ class sendmapped:
     func: t.Callable
 
     def __call__(self, func):
-        return compose(partial(sendmap, self.func), func)
+        return wraps(func)(compose(partial(sendmap, self.func), func))
 
 
 # TODO: docs, types
@@ -128,7 +128,7 @@ class returnmapped:
     func: t.Callable
 
     def __call__(self, func):
-        return compose(partial(returnmap, self.func), func)
+        return wraps(func)(compose(partial(returnmap, self.func), func))
 
 
 class query:

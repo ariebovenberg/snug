@@ -8,9 +8,18 @@ from datetime import datetime
 from functools import partial
 
 T = t.TypeVar('T')
-
-
 dclass = partial(dataclass, frozen=True)
+
+
+class CallableAsMethod:
+    """mixin for callables to support method-like calling
+
+    See also
+    --------
+    `https://docs.python.org/3/howto/descriptor.html#functions-and-methods`
+    """
+    def __get__(self, obj, objtype=None):
+        return self if obj is None else MethodType(self, obj)
 
 
 def apply(func, args=(), kwargs=None):
@@ -67,9 +76,9 @@ def parse_iso8601(dtstring: str) -> datetime:
         '%Y-%m-%dT%H:%M:%SZ' if len(dtstring) == 20 else '%Y-%m-%dT%H:%M:%S%z')
 
 
-# TODO: types
+# TODO: type annotations
 def genresult(gen, value):
-    """retrieve the return value from a generator"""
+    """send an item into a generator expecting a final return value"""
     try:
         gen.send(value)
     except StopIteration as e:
@@ -120,15 +129,8 @@ class flip:
         return self.func(b, a)
 
 
-class CalledAsMethod:
-    """mixin for callables to support method-like calling"""
-    def __get__(self, obj, objtype=None):
-        return self if obj is None else MethodType(self, obj)
-
-
-# TODO: __signature__
-@dataclass(init=False, frozen=True)
-class compose(CalledAsMethod):
+@dataclass(init=False, hash=False)
+class compose(CallableAsMethod):
     """compose a function from a chain of functions
 
     Parameters
@@ -136,11 +138,16 @@ class compose(CalledAsMethod):
     *funcs
         callables to compose
 
+    Note
+    ----
+    * if given no functions, acts as :func:`identity`
+    * constructs an inspectable :class:`~inspect.Signature` if possible
+
     """
     funcs: t.Tuple[t.Callable, ...]
 
     def __init__(self, *funcs: t.Callable):
-        self.__dict__['funcs'] = funcs
+        self.funcs = funcs
         # determine the composed signature, if underlying callables
         # support it.
         if funcs:
@@ -152,12 +159,15 @@ class compose(CalledAsMethod):
                 return_annotation = return_sig.return_annotation
 
             try:
-                self.__dict__['__signature__'] = inspect.signature(
+                self.__signature__ = inspect.signature(
                     funcs[-1]).replace(return_annotation=return_annotation)
             except ValueError:  # callable does not support signature
                 pass
         else:
-            self.__dict__['__signature__'] = inspect.signature(identity)
+            self.__signature__ = inspect.signature(identity)
+
+    def __hash__(self):
+        return hash(self.funcs)
 
     def __call__(self, *args, **kwargs):
         if not self.funcs:
@@ -189,7 +199,7 @@ def yieldmap(func, gen) -> t.Generator:
         item = gen.send((yield func(item)))
 
 
-# TODO: types, docstring
+# TODO: type annotations, docstring
 def sendmap(func, gen) -> t.Generator:
     gen = iter(gen)
     assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
@@ -198,7 +208,7 @@ def sendmap(func, gen) -> t.Generator:
         item = gen.send(func((yield item)))
 
 
-# TODO: types, docstring
+# TODO: type annotations, docstring
 def nest(gen, pipe):
     gen = iter(gen)
     assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
@@ -211,38 +221,30 @@ def nest(gen, pipe):
             return e.value
 
 
-# TODO: types, docstring
+# TODO: type annotations, docstring
 def returnmap(func, gen):
     gen = iter(gen)
     assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
     return func((yield from gen))
 
 
-# TODO: types, docstring, signature
+# TODO: type annotations
 @dclass
 class oneyield:
-    func: t.Callable
+    """decorate a function to turn it into a basic generator"""
+    __wrapped__: t.Callable
 
     def __call__(self, *args, **kwargs):
-        return (yield self.func(*args, **kwargs))
+        return (yield self.__wrapped__(*args, **kwargs))
 
 
-# TODO: types, docstring, signature
-@dclass
-class onerecieve:
-    func: t.Callable
-
-    def __call__(self, obj):
-        return self.func((yield obj))
-
-
-# TODO inner types
+# TODO inner type annotations
 def valmap(func: t.Callable, mapping: t.Mapping) -> t.Mapping:
     """map() for values of a mapping"""
     return {k: func(v) for k, v in mapping.items()}
 
 
-# TODO inner types
+# TODO inner type annotations
 def valfilter(predicate: t.Callable, mapping: t.Mapping) -> t.Mapping:
     """filter() for values of a mapping"""
     return {k: v for k, v in mapping.items() if predicate(v)}
@@ -256,7 +258,7 @@ def push(value, *funcs):
 
 
 def as_tuple(dclass):
-    """like dataclasses.astuple(), but without recursing into fields"""
+    """like :func:`dataclasses.astuple`, but without recursing into fields"""
     return tuple(getattr(dclass, name) for name in dclass.__dataclass_fields__)
 
 
