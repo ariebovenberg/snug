@@ -59,37 +59,6 @@ def emptygen():
     return 99
 
 
-def test_str_repr():
-
-    class User(utils.StrRepr):
-
-        def __str__(self):
-            return 'foo'
-
-    # instance repr
-    user = User()
-    assert repr(user) == '<User: foo>'
-    del User.__str__
-    assert repr(user) == '<User: User object>'
-
-
-class TestApply:
-
-    def test_defaults(self):
-
-        def func():
-            return 'foo'
-
-        assert utils.apply(func) == 'foo'
-
-    def test_simple(self):
-
-        def func(a, b, c):
-            return a + b + c
-
-        assert utils.apply(func, (1, 2), {'c': 5}) == 8
-
-
 def test_isnone():
     assert not utils.notnone(None)
     assert utils.notnone(object())
@@ -142,93 +111,18 @@ class TestGenreturn:
             utils.genresult(gen, 1)
 
 
-class TestSignatureToFields:
-    pass
-
-
-class TestFuncToFields:
-
-    def test_no_fields(self):
-
-        def myfunc():
-            pass
-
-        assert utils.func_to_fields(myfunc) == []
-
-    def test_simple_args(self):
-
-        def myfunc(foo: int, bar: float):
-            pass
-
-        assert utils.func_to_fields(myfunc) == [
-            ('foo', int, mock.ANY),
-            ('bar', float, mock.ANY),
-        ]
-
-    def test_missing_annotation(self):
-
-        def myfunc(foo: int, bar):
-            pass
-
-        assert utils.func_to_fields(myfunc) == [
-            ('foo', int, mock.ANY),
-            ('bar', t.Any, mock.ANY),
-        ]
-
-    def test_keyword_only(self):
-
-        def myfunc(foo: int, *, bar: float):
-            pass
-
-        with pytest.raises(TypeError, match='keyword.only'):
-            utils.func_to_fields(myfunc)
-
-    def test_varargs(self):
-
-        def myfunc(foo: int, *bar: float):
-            pass
-
-        with pytest.raises(TypeError, match='varargs'):
-            utils.func_to_fields(myfunc)
-
-    def test_varkw(self):
-
-        def myfunc(foo: int, **bar: float):
-            pass
-
-        with pytest.raises(TypeError, match='varkw'):
-            utils.func_to_fields(myfunc)
-
-    def test_defaults(self):
-
-        _missing = field().default
-
-        def myfunc(foo: int, bar=9, qux: str=''):
-            pass
-
-        fields = utils.func_to_fields(myfunc)
-        assert fields == [
-            ('foo', int, mock.ANY),
-            ('bar', t.Any, mock.ANY),
-            ('qux', str, mock.ANY),
-        ]
-        assert [f.default for _, _, f in fields] == [
-            _missing,
-            9,
-            ''
-        ]
-
-
 def test_flip():
 
-    def myfunc(*args):
-        return args
+    flipped = utils.flip(int)
+    assert flipped(8, '10') == 8
 
-    flipped = utils.flip(myfunc)
-    assert flipped(2, 3) == (3, 2)
-    assert flipped(*'AB') == ('B', 'A')
+    other = utils.flip(int)
+    assert flipped == other
+    assert not flipped != other
+    assert hash(flipped) == hash(other)
 
-    assert flipped == utils.flip(myfunc)
+    assert flipped != utils.flip(divmod)
+    assert not flipped == utils.flip(str)
 
     with pytest.raises(TypeError, match='arguments'):
         flipped(1, 2, 3)
@@ -474,36 +368,3 @@ def test_called_as_method():
     child = Parent.Child(parent, 4)
     assert child.parent is parent
     assert child.foo == 4
-
-
-class TestAsTuple:
-
-    def test_empty(self):
-
-        @dataclass
-        class D:
-            pass
-
-        assert utils.as_tuple(D()) == ()
-
-    def test_simple(self):
-
-        @dataclass
-        class A:
-            foo: int
-            bar: str = 'hi'
-
-        assert utils.as_tuple(A(4)) == (4, 'hi')
-
-    def test_does_not_recurse(self):
-
-        @dataclass
-        class A:
-            pass
-
-        @dataclass
-        class D:
-            foo: int
-            bar: A
-
-        assert utils.as_tuple(D(4, A())) == (4, A())

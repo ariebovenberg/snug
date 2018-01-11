@@ -1,9 +1,8 @@
 """Miscellaneous tools, boilerplate, and shortcuts"""
 import inspect
-import types
 import typing as t
 from types import MethodType
-from dataclasses import Field, dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
 
@@ -22,24 +21,9 @@ class CallableAsMethod:
         return self if obj is None else MethodType(self, obj)
 
 
-def apply(func, args=(), kwargs=None):
-    """apply args and kwargs to a function"""
-    return func(*args, **kwargs or {})
-
-
 def notnone(obj):
     """return whether an object is not None"""
     return obj is not None
-
-
-class StrRepr():
-    """mixin which adds a ``__repr__`` based on ``__str__``"""
-
-    def __str__(self):
-        return '{0.__class__.__name__} object'.format(self)
-
-    def __repr__(self):
-        return '<{0.__class__.__name__}: {0}>'.format(self)
 
 
 class NO_DEFAULT:
@@ -87,49 +71,42 @@ def genresult(gen, value):
         raise TypeError('generator did not return as expected')
 
 
-def func_to_fields(func: types.FunctionType) -> t.List[Field]:
-    """get dataclass fields from a function signature
-
-    Parameters
-    ----------
-    func
-        a python function
-
-    Notes
-    -----
-    * keyword-only, varargs, and varkeywords are not supported
-    """
-    spec = inspect.getfullargspec(func)
-    defaults = dict(zip(reversed(spec.args), reversed(spec.defaults or ())))
-    if spec.kwonlyargs:
-        raise TypeError('keyword-only args not supported')
-    elif spec.varargs:
-        raise TypeError('varargs not supported')
-    elif spec.varkw:
-        raise TypeError('varkw not supported')
-    return [
-        (name,
-         spec.annotations.get(name, t.Any),
-         field(default=defaults[name]) if name in defaults else field())
-        for name in spec.args
-    ]
-
-
 def identity(obj):
     """identity function, returns input unmodified"""
     return obj
 
 
-@dataclass(frozen=True)
 class flip:
-    """create a function with flipped arguments"""
-    func: t.Callable[[t.Any, t.Any], t.Any]
+    """create a function with flipped arguments
+
+    Parameters
+    ----------
+    func
+        the function to flip
+    """
+    def __init__(self, func: t.Callable):
+        self.func = func
 
     def __call__(self, a, b):
         return self.func(b, a)
 
+    def __eq__(self, other):
+        if isinstance(other, flip):
+            return self.func == other.func
+        return NotImplemented
 
-@dataclass(init=False, hash=False)
+    def __hash__(self):
+        return hash(self.func)
+
+    def __ne__(self, other):
+        if isinstance(other, flip):
+            return not self == other
+        return NotImplemented
+
+    def __repr__(self):
+        return 'flipped({.func})'.format(self)
+
+
 class compose(CallableAsMethod):
     """compose a function from a chain of functions
 
@@ -142,10 +119,7 @@ class compose(CallableAsMethod):
     ----
     * if given no functions, acts as :func:`identity`
     * constructs an inspectable :class:`~inspect.Signature` if possible
-
     """
-    funcs: t.Tuple[t.Callable, ...]
-
     def __init__(self, *funcs: t.Callable):
         self.funcs = funcs
         # determine the composed signature, if underlying callables
@@ -168,6 +142,16 @@ class compose(CallableAsMethod):
 
     def __hash__(self):
         return hash(self.funcs)
+
+    def __eq__(self, other):
+        if isinstance(other, compose):
+            return self.funcs == other.funcs
+        return NotImplemented
+
+    def __ne__(self, other):
+        if isinstance(other, compose):
+            return self.funcs != other.funcs
+        return NotImplemented
 
     def __call__(self, *args, **kwargs):
         if not self.funcs:
@@ -255,8 +239,3 @@ def push(value, *funcs):
     for func in funcs:
         value = func(value)
     return value
-
-
-def as_tuple(dclass):
-    """like :func:`dataclasses.astuple`, but without recursing into fields"""
-    return tuple(getattr(dclass, name) for name in dclass.__dataclass_fields__)

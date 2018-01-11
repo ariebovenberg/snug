@@ -6,8 +6,7 @@ from functools import partial, wraps
 from types import GeneratorType
 from operator import itemgetter, attrgetter
 
-from .utils import (compose, nest, dclass, yieldmap, sendmap, returnmap,
-                    func_to_fields, apply, as_tuple)
+from .utils import compose, nest, dclass, yieldmap, sendmap, returnmap
 
 __all__ = [
     'Query',
