@@ -2,12 +2,11 @@
 import inspect
 import typing as t
 from types import MethodType
-from dataclasses import dataclass
+from collections import Mapping
 from datetime import datetime
 from functools import partial
 
 T = t.TypeVar('T')
-dclass = partial(dataclass, frozen=True)
 
 
 class CallableAsMethod:
@@ -30,11 +29,10 @@ class NO_DEFAULT:
     """sentinel for no default"""
 
 
-@dclass
 class lookup_defaults(t.Callable[[t.Any], T]):
     """wrap a lookup function with a default if lookup fails"""
-    lookup: t.Callable[[t.Any], T]
-    default: T
+    def __init__(self, lookup: t.Callable[[t.Any], T], default: T):
+        self.lookup, self.default = lookup, default
 
     def __call__(self, obj):
         try:
@@ -163,15 +161,15 @@ class compose(CallableAsMethod):
         return value
 
 
-@dclass
 class called_as_method:
     """decorate a callable (e.g. class or function) to be called as a method.
     I.e. the parent instance is passed as the first argument"""
-    target: t.Callable
+    def __init__(self, func: t.Callable):
+        self.func = func
 
     def __get__(self, instance, cls):
-        return (self.target if instance is None
-                else partial(self.target, instance))
+        return (self.func if instance is None
+                else partial(self.func, instance))
 
 
 # TODO: types, docstring
@@ -213,10 +211,10 @@ def returnmap(func, gen):
 
 
 # TODO: type annotations
-@dclass
 class oneyield:
     """decorate a function to turn it into a basic generator"""
-    __wrapped__: t.Callable
+    def __init__(self, func: t.Callable):
+        self.__wrapped__ = func
 
     def __call__(self, *args, **kwargs):
         return (yield self.__wrapped__(*args, **kwargs))
@@ -239,3 +237,18 @@ def push(value, *funcs):
     for func in funcs:
         value = func(value)
     return value
+
+
+class _EmptyMapping(Mapping):
+    """an empty mapping to use as a default value"""
+    def __iter__(self):
+        yield from ()
+
+    def __getitem__(self, key):
+        raise KeyError(key)
+
+    def __len__(self):
+        return 0
+
+
+EMPTY_MAPPING = _EmptyMapping()

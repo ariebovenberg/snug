@@ -1,9 +1,7 @@
+import collections
 import datetime
 import inspect
-import typing as t
-from dataclasses import dataclass, field
 from operator import itemgetter, attrgetter
-from unittest import mock
 from functools import reduce
 
 import pytest
@@ -121,11 +119,16 @@ def test_flip():
     assert not flipped != other
     assert hash(flipped) == hash(other)
 
+    assert 'int' in repr(flipped)
+
     assert flipped != utils.flip(divmod)
     assert not flipped == utils.flip(str)
 
     with pytest.raises(TypeError, match='arguments'):
         flipped(1, 2, 3)
+
+    assert flipped != object()
+    assert not flipped == object()
 
 
 def test_identity():
@@ -166,8 +169,17 @@ class TestCompose:
         assert f.func() == 5
 
     def test_equality(self):
-        assert utils.compose(int, str) == utils.compose(int, str)
-        assert hash(utils.compose(int, str) == utils.compose(int, str))
+        func = utils.compose(int, str)
+        other = utils.compose(int, str)
+        assert func == other
+        assert not func != other
+        assert hash(func) == hash(other)
+
+        assert not func == utils.compose(int)
+        assert func != utils.compose(int)
+
+        assert func != object()
+        assert not func == object()
 
     def test_signature(self):
 
@@ -368,3 +380,13 @@ def test_called_as_method():
     child = Parent.Child(parent, 4)
     assert child.parent is parent
     assert child.foo == 4
+
+
+def test_empty_mapping():
+    assert isinstance(utils.EMPTY_MAPPING, collections.Mapping)
+    assert utils.EMPTY_MAPPING == {}
+    with pytest.raises(KeyError):
+        utils.EMPTY_MAPPING['foo']
+
+    assert len(utils.EMPTY_MAPPING) == 0
+    assert list(utils.EMPTY_MAPPING) == []

@@ -2,22 +2,19 @@
 import typing as t
 import urllib.request
 from base64 import b64encode
-from dataclasses import field, replace
 from functools import partial
 from operator import methodcaller
 
 from . import asnc
 from .core import Sender, compose, execute, Executor
-from .utils import dclass, called_as_method
+from .utils import EMPTY_MAPPING
 
 __all__ = ['Request', 'GET', 'Response', 'urllib_sender']
 
-_dictfield = partial(field, default_factory=dict)
 Headers = t.Mapping[str, str]
 
 
-@dclass
-class Request:
+class Request(t.NamedTuple):
     """a simple HTTP request
 
     Parameters
@@ -36,8 +33,8 @@ class Request:
     method:  str
     url:     str
     data:    t.Optional[bytes] = None
-    params:  t.Mapping[str, str] = _dictfield()
-    headers: Headers = _dictfield()
+    params:  t.Mapping[str, str] = EMPTY_MAPPING
+    headers: Headers = EMPTY_MAPPING
 
     def with_headers(self, headers: Headers) -> 'Request':
         """new request with added headers
@@ -47,7 +44,7 @@ class Request:
         headers
             the headers to add
         """
-        return replace(self, headers={**self.headers, **headers})
+        return self._replace(headers={**self.headers, **headers})
 
     def with_prefix(self, prefix: str) -> 'Request':
         """new request with added url prefix
@@ -57,7 +54,7 @@ class Request:
         prefix
             the URL prefix
         """
-        return replace(self, url=prefix + self.url)
+        return self._replace(url=prefix + self.url)
 
     def with_params(self, params: t.Mapping[str, str]) -> 'Request':
         """new request with added params
@@ -67,7 +64,7 @@ class Request:
         params
             the parameters to add
         """
-        return replace(self, params={**self.params, **params})
+        return self._replace(params={**self.params, **params})
 
     def with_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
         """new request with "basic" authentication
@@ -82,12 +79,8 @@ class Request:
         return self.with_headers({
             'Authorization': f'Basic {encoded.decode("ascii")}'})
 
-    replace = replace
-    """replace fields in the requests instance"""
 
-
-@dclass
-class Response:
+class Response(t.NamedTuple):
     """a simple HTTP response
 
     Parameters
@@ -101,7 +94,7 @@ class Response:
     """
     status_code: int
     data:        t.Optional[bytes] = None
-    headers:     Headers = field(default_factory=dict)
+    headers:     Headers = EMPTY_MAPPING
 
 
 def urllib_sender(**kwargs) -> Sender[Request, Response]:

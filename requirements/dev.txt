@@ -7,3 +7,4 @@ wheel
 twine
 aioresponses
 isort
+dataclasses

@@ -56,11 +56,6 @@ class TestRequest:
                 'Authorization': 'Basic QWxhZGRpbjpPcGVuU2VzYW1l'
             })
 
-    def test_replace(self):
-        req = http.Request('GET', 'my/url')
-        assert req.replace(url='other/path/') == http.Request(
-            'GET', 'other/path/')
-
 
 def test_prefix_adder():
     req = http.GET('my/url')

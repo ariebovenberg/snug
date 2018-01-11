@@ -150,6 +150,9 @@ class TestQueryType:
         assert not query == myquery(3, 4, 5, d=10)
         assert query != myquery(1, 2, d=7)
 
+        assert not query == object()
+        assert query != object()
+
 
 def test_identity_pipe():
     pipe = snug.Pipe.identity('foo')

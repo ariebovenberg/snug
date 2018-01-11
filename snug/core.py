@@ -6,7 +6,7 @@ from functools import partial, wraps
 from types import GeneratorType
 from operator import itemgetter, attrgetter
 
-from .utils import compose, nest, dclass, yieldmap, sendmap, returnmap
+from .utils import compose, nest, yieldmap, sendmap, returnmap
 
 __all__ = [
     'Query',
@@ -96,36 +96,36 @@ def execute(query:  Query[T_req, T_resp, T],
 
 
 # TODO: docs, types
-@dclass
 class nested:
-    thru: Pipe
+    def __init__(self, thru):
+        self.thru = thru
 
     def __call__(self, func):
         return wraps(func)(compose(partial(nest, pipe=self.thru), func))
 
 
 # TODO: docs, types
-@dclass
 class yieldmapped:
-    func: t.Callable
+    def __init__(self, func):
+        self.func = func
 
     def __call__(self, func):
         return wraps(func)(compose(partial(yieldmap, self.func), func))
 
 
 # TODO: docs, types
-@dclass
 class sendmapped:
-    func: t.Callable
+    def __init__(self, func):
+        self.func = func
 
     def __call__(self, func):
         return wraps(func)(compose(partial(sendmap, self.func), func))
 
 
 # TODO: docs, types
-@dclass
 class returnmapped:
-    func: t.Callable
+    def __init__(self, func):
+        self.func = func
 
     def __call__(self, func):
         return wraps(func)(compose(partial(returnmap, self.func), func))

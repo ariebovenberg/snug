@@ -7,13 +7,13 @@ Todo
 """
 import abc
 import typing as t
-from dataclasses import dataclass, field
 from datetime import datetime
 from functools import partial
 from itertools import starmap
 from operator import attrgetter, itemgetter
 
-from .utils import compose, identity, lookup_defaults, parse_iso8601, valmap
+from .utils import (compose, identity, lookup_defaults, parse_iso8601, valmap,
+                    EMPTY_MAPPING)
 
 __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
            'PrimitiveRegistry', 'GenericRegistry', 'AutoDataclassRegistry',
@@ -22,7 +22,6 @@ __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
 
 T = t.TypeVar('T')
 _NoneType = type(None)
-_dictfield = partial(field, default_factory=dict)
 
 
 class Loader(t.Generic[T]):
@@ -62,9 +61,9 @@ class CombinableRegistry(Registry):
         return MultiRegistry([self, other])
 
 
-@dataclass(frozen=True, hash=False)
 class MultiRegistry(CombinableRegistry):
-    children: t.List[CombinableRegistry]
+    def __init__(self, children: t.List[CombinableRegistry]):
+        self.children = children
 
     def __call__(self, cls, main=None):
         exc = None
@@ -80,10 +79,10 @@ class MultiRegistry(CombinableRegistry):
         return MultiRegistry([*self.children, other])
 
 
-@dataclass(frozen=True, hash=False)
 class PrimitiveRegistry(CombinableRegistry):
     """a registry of primitive (i.e. non-nested) loaders"""
-    registry: t.Mapping[t.Type[T], t.Callable[[t.Any], T]] = _dictfield()
+    def __init__(self, registry=EMPTY_MAPPING):
+        self.registry = registry
 
     def __call__(self, cls, main=None):
         try:
@@ -92,15 +91,13 @@ class PrimitiveRegistry(CombinableRegistry):
             raise UnsupportedType(cls)
 
 
-@dataclass(frozen=True, hash=False)
 class GenericRegistry(CombinableRegistry):
     """registry for generic types. for example :class:`~typing.List`.
 
     These types must have ``__origin__`` and ``__args__`` attributes
     """
-    registry: t.Mapping[
-        t.Type[T],
-        t.Callable[[t.Tuple[type], t.Any, Registry], T]] = _dictfield()
+    def __init__(self, registry=EMPTY_MAPPING):
+        self.registry = registry
 
     def __call__(self, cls: t.Type[T], main: Registry=None) -> T:
         if not hasattr(cls, '__origin__'):
@@ -161,7 +158,6 @@ def _optional_loader(subloader, value):
     return value if value is None else subloader(value)
 
 
-@dataclass(frozen=True)
 class AutoDataclassRegistry(CombinableRegistry):
     """registry which creates dataclass loaders on-the-fly"""
 
@@ -174,10 +170,10 @@ class AutoDataclassRegistry(CombinableRegistry):
             raise UnsupportedType(cls)
 
 
-@dataclass(frozen=True)
 class DataclassRegistry(CombinableRegistry):
     """registry for dataclasses"""
-    confs: t.Mapping[t.Type[T], t.Mapping[str, str]]
+    def __init__(self, confs):
+        self.confs = confs
 
     def __call__(self, cls, main):
         try:
