@@ -12,8 +12,8 @@ from functools import partial
 from itertools import starmap
 from operator import attrgetter, itemgetter
 
-from .utils import (compose, identity, lookup_defaults, parse_iso8601, valmap,
-                    EMPTY_MAPPING)
+from .utils import (EMPTY_MAPPING, compose, identity, lookup_defaults,
+                    parse_iso8601, valmap)
 
 __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
            'PrimitiveRegistry', 'GenericRegistry', 'AutoDataclassRegistry',

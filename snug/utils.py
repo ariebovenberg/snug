@@ -1,10 +1,10 @@
 """Miscellaneous tools, boilerplate, and shortcuts"""
 import inspect
 import typing as t
-from types import MethodType
 from collections import Mapping
 from datetime import datetime
 from functools import partial
+from types import MethodType
 
 T = t.TypeVar('T')
 

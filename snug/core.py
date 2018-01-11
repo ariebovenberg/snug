@@ -3,10 +3,10 @@ import abc
 import inspect
 import typing as t
 from functools import partial, wraps
+from operator import attrgetter, itemgetter
 from types import GeneratorType
-from operator import itemgetter, attrgetter
 
-from .utils import compose, nest, yieldmap, sendmap, returnmap
+from .utils import compose, nest, returnmap, sendmap, yieldmap
 
 __all__ = [
     'Query',

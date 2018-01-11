@@ -6,7 +6,7 @@ from functools import partial
 from operator import methodcaller
 
 from . import asnc
-from .core import Sender, compose, execute, Executor
+from .core import Executor, Sender, compose, execute
 from .utils import EMPTY_MAPPING
 
 __all__ = ['Request', 'GET', 'Response', 'urllib_sender']

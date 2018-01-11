@@ -1,5 +1,5 @@
-from unittest import mock
 from dataclasses import dataclass
+from unittest import mock
 
 import pytest
 

@@ -1,8 +1,8 @@
 import collections
 import datetime
 import inspect
-from operator import itemgetter, attrgetter
 from functools import reduce
+from operator import attrgetter, itemgetter
 
 import pytest
 
