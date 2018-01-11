@@ -142,6 +142,10 @@ class TestGenreturn:
             utils.genresult(gen, 1)
 
 
+class TestSignatureToFields:
+    pass
+
+
 class TestFuncToFields:
 
     def test_no_fields(self):

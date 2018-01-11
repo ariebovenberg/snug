@@ -1,5 +1,7 @@
-import snug
+import inspect
+import types
 
+import snug
 from snug.utils import genresult
 
 
@@ -99,26 +101,54 @@ def test_generator_is_query():
     assert isinstance(gen, snug.Query)
 
 
-def test_query_decorator():
+class TestQueryType:
 
-    @snug.query()
-    def post(id: int):
-        """my docstring..."""
-        return (yield f'/posts/{id}/').decode('ascii')
+    def test_example(self):
 
-    assert issubclass(post, snug.Query)
-    assert post.__name__ == 'post'
-    assert post.__doc__ == 'my docstring...'
-    assert post.__module__ == 'test_core'
-    assert len(post.__dataclass_fields__) == 1
+        class mywrapper:
+            def __init__(self, func):
+                self.__wrapped__ = func
+                self.__signature__ = inspect.signature(func).replace(
+                    return_annotation=str)
 
-    post34 = post(34)
-    assert isinstance(post34, snug.Query)
-    assert post34.id == 34
+            def __call__(self, *args, **kwargs):
+                inner = self.__wrapped__(*args, **kwargs)
+                yield str(next(inner))
 
-    resolver = iter(post34)
-    assert next(resolver) == '/posts/34/'
-    assert genresult(resolver, b'hello') == 'hello'
+        @snug.querytype()
+        @mywrapper
+        def myquery(a: int, b: float, *cs, d, e=5, **fs):
+            """my docstring"""
+            return (yield sum([a, b, *cs, d, e, a]))
+
+        myquery.__qualname__ = 'mymodule.myquery'
+
+        assert issubclass(myquery, snug.Query)
+        assert isinstance(inspect.unwrap, types.FunctionType)
+        myquery.__name__ == 'myfunc'
+        myquery.__doc__ == 'my docstring'
+        myquery.__module__ == 'test_core'
+        query = myquery(4, 5, d=6, foo=10)
+
+        assert {'a', 'b', 'cs', 'd', 'e', 'fs'} < set(dir(query))
+        assert query.a == 4
+        assert query.b == 5
+        assert query.cs == ()
+        assert query.e == 5
+        assert query.fs == {'foo': 10}
+
+        assert next(iter(query)) == '24'
+
+        otherquery = myquery(4, b=5, d=6, e=5, foo=10)
+        assert query == otherquery
+        assert not query != otherquery
+        assert hash(query) == hash(otherquery)
+
+        assert repr(query) == ("mymodule.myquery("
+                               "a=4, b=5, cs=(), d=6, e=5, fs={'foo': 10})")
+
+        assert not query == myquery(3, 4, 5, d=10)
+        assert query != myquery(1, 2, d=7)
 
 
 def test_identity_pipe():

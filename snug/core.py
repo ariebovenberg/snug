@@ -1,9 +1,10 @@
 """the central abstractions"""
 import abc
+import inspect
 import typing as t
-from dataclasses import make_dataclass
-from functools import partial, partialmethod, wraps
+from functools import partial, wraps
 from types import GeneratorType
+from operator import itemgetter, attrgetter
 
 from .utils import (compose, nest, dclass, yieldmap, sendmap, returnmap,
                     func_to_fields, apply, as_tuple)
@@ -17,7 +18,7 @@ __all__ = [
     'yieldmapped',
     'sendmapped',
     'returnmapped',
-    'query',
+    'querytype',
 ]
 
 
@@ -131,34 +132,66 @@ class returnmapped:
         return wraps(func)(compose(partial(returnmap, self.func), func))
 
 
-class query:
-    """Create a query class from a generator function
+class _WrappedQuery(Query):
+    __slots__ = 'bound_args'
+
+    def __init__(self, *args, **kwargs):
+        self.bound_args = self.__signature__.bind(*args, **kwargs)
+        self.bound_args.apply_defaults()
+
+    def __iter__(self):
+        return self.__wrapped__(*self.bound_args.args,
+                                **self.bound_args.kwargs)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.bound_args.arguments == other.bound_args.arguments
+        return NotImplemented
+
+    def __ne__(self, other):
+        if isinstance(other, self.__class__):
+            return not self == other
+        return NotImplemented
+
+    def __repr__(self):
+        fields = (f'{n}={v}' for n, v in self.bound_args.arguments.items())
+        return f'{self.__class__.__qualname__}({", ".join(fields)})'
+
+    def __hash__(self):
+        return hash((self.bound_args.args,
+                     tuple(self.bound_args.kwargs.items())))
+
+
+class querytype:
+    """decorate a query function to create a reusable query class
 
     Example
     -------
 
-    >>> @query()
+    >>> @querytype()
     ... def post(id: int):
     ...     return json.loads((yield f'posts/{id}/'))
 
     Note
     ----
-    The function must:
-
-    * be a python function, bound to a module.
-    * be fully annotated, without keyword-only arguments
+    the callable must have a signature.
     """
-    def __call__(self,
-                 func: t.Callable[..., t.Generator[T_req, T_resp, T]]) -> (
-                     t.Type[Query[T, T_req, T_resp]]):
-        return make_dataclass(
-            func.__name__,
-            func_to_fields(func),
-            bases=(Query, ),
-            namespace={
-                '__doc__':     func.__doc__,
-                '__module__':  func.__module__,
-                '__iter__': partialmethod(compose(
-                    partial(apply, func), as_tuple)),
-            }
-        )
+    def __call__(self, func: t.Callable) -> t.Type[Query]:
+        sig = inspect.signature(func)
+        origin = inspect.unwrap(func)
+        cls = type(
+            origin.__name__,
+            (_WrappedQuery, ),
+            {
+                '__doc__': origin.__doc__,
+                '__module__': origin.__module__,
+                '__qualname__': origin.__qualname__,
+                '__signature__': sig,
+                '__wrapped__': staticmethod(func),
+                **{
+                    name: property(compose(itemgetter(name),
+                                           attrgetter('bound_args.arguments')))
+                    for name in sig.parameters
+                }
+            })
+        return cls
