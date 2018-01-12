@@ -11,7 +11,7 @@ dclass = partial(dataclass, frozen=True, repr=False)
 
 
 @dclass()
-class Station(snug.utils.StrRepr):
+class Station:
     name:       str
     full_name:  str
     short_name: str
@@ -25,13 +25,13 @@ class Station(snug.utils.StrRepr):
 
     latlon = property(attrgetter('lat', 'lon'))
 
-    def __str__(self):
+    def __repr__(self):
         country_suffix = f' ({self.country})' if self.country != 'NL' else ''
-        return self.full_name + country_suffix
+        return f'<Station: {self.full_name + country_suffix}>'
 
 
 @dclass()
-class Departure(snug.utils.StrRepr):
+class Departure:
     """a train departure"""
     ride_number:      int
     time:             datetime
@@ -45,20 +45,21 @@ class Departure(snug.utils.StrRepr):
     travel_tip:       t.Optional[str]
     comments:         t.List[str]
 
-    def __str__(self):
+    def __repr__(self):
         delaytext = f'[{self.delay}]' if self.delay else ''
         platform = f'{self.platform}{"*" if self.platform_changed else ""}'
         alert = ' (!)' if self.comments or self.travel_tip else ''
-        return (f'{self.time:%H:%M}{delaytext} | {self.destination} '
+        text = (f'{self.time:%H:%M}{delaytext} | {self.destination} '
                 f'| {platform}{alert}')
+        return f'<Departure: {text}>'
 
 
 @dclass()
-class Journey(snug.utils.StrRepr):
+class Journey:
     """a journey option"""
 
     @dclass()
-    class Component(snug.utils.StrRepr):
+    class Component:
         """a journey option component"""
 
         class Status(enum.Enum):
@@ -74,7 +75,7 @@ class Journey(snug.utils.StrRepr):
                 return f'Status.{self.name}'
 
         @dclass()
-        class Stop(snug.utils.StrRepr):
+        class Stop:
             """a travel stop on a journey component"""
             name:             str
             time:             t.Optional[datetime]
@@ -82,14 +83,15 @@ class Journey(snug.utils.StrRepr):
             platform:         t.Optional[str]
             platform_changed: t.Optional[bool]
 
-            def __str__(self):
+            def __repr__(self):
                 time = f'{self.time:%H:%M}' if self.time else '??:??'
                 delay_text = f'[{self.delay}]' if self.delay else ''
                 platform_changed = ' (changed)' if self.platform_changed else''
                 platform_text = (f'| platform {self.platform}'
                                  if self.platform else '')
-                return (f'{self.name} | {time} {delay_text}'
+                text = (f'{self.name} | {time} {delay_text}'
                         f'{platform_text}{platform_changed}')
+                return f'<Stop: {text}>'
 
         kind:        str
         carrier:     str
@@ -99,21 +101,23 @@ class Journey(snug.utils.StrRepr):
         details:     t.List[str]
         stops:       t.List[Stop]
 
-        def __str__(self):
+        def __repr__(self):
             status_suffix = (f' [{self.status.name}]'
                              if self.status is not self.Status.ON_SCHEDULE
                              else '')
-            return f'({self.carrier}) {self.type}' + status_suffix
+            text = f'({self.carrier}) {self.type}' + status_suffix
+            return f'<Component: {text}>'
 
     @dclass()
-    class Notification(snug.utils.StrRepr):
+    class Notification:
         """an notification about a journey option"""
         id:      t.Optional[str]
         serious: bool
         text:    str
 
-        def __str__(self):
-            return self.text.upper() if self.serious else self.text
+        def __repr__(self):
+            text = self.text.upper() if self.serious else self.text
+            return f'<Notification: {text}>'
 
     class Status(enum.Enum):
         """status of a journey option"""
@@ -140,7 +144,8 @@ class Journey(snug.utils.StrRepr):
     notifications:     t.Optional[t.List[Notification]]
     status:            Status
 
-    def __str__(self):
-        return (f'{self.actual_departure:%H:%M} -> {self.actual_arrival:%H:%M}'
+    def __repr__(self):
+        text = (f'{self.actual_departure:%H:%M} -> {self.actual_arrival:%H:%M}'
                 f' | {self.actual_duration} | {self.transfer_count}'
                 + (' (!)' if self.notifications else ''))
+        return f'<Journey: {text}>'
