@@ -1,9 +1,9 @@
 import inspect
-import types
 import pickle
+import types
 
 import snug
-from snug.utils import genresult, compose
+from snug.utils import compose, genresult
 
 
 def try_until_even(req):

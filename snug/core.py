@@ -3,7 +3,7 @@ import abc
 import inspect
 import typing as t
 from copy import copy
-from functools import partial, wraps
+from functools import partial
 from operator import attrgetter, itemgetter
 from types import GeneratorType
 
