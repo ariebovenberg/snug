@@ -14,7 +14,7 @@ add_prefix = snug.http.prefix_adder(API_PREFIX)
 parse_request = compose(xml.etree.ElementTree.fromstring, attrgetter('data'))
 basic_interaction = compose(snug.sendmapped(parse_request),
                             snug.yieldmapped(add_prefix),
-                            oneyield, )
+                            oneyield)
 
 authed_exec = snug.http.authed_exec
 authed_aexec = snug.http.authed_aexec

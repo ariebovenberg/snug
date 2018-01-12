@@ -32,6 +32,7 @@ Quickstart
    import json
    import snug
 
+   @snug.querytype()
    def repo(name: str, owner: str):
       """a repo lookup by owner and name"""
       request = snug.http.GET(f'https://api.github.com/repos/{owner}/{name}')
