@@ -123,6 +123,7 @@ class compose(CallableAsMethod):
         # determine the composed signature, if underlying callables
         # support it.
         if funcs:
+            self.__wrapped__ = funcs[-1]
             try:
                 return_sig = inspect.signature(funcs[0])
             except ValueError:
@@ -133,10 +134,10 @@ class compose(CallableAsMethod):
             try:
                 self.__signature__ = inspect.signature(
                     funcs[-1]).replace(return_annotation=return_annotation)
-            except ValueError:  # callable does not support signature
+            except ValueError:  # the callable does not support signature
                 pass
         else:
-            self.__signature__ = inspect.signature(identity)
+            self.__wrapped__ = identity
 
     def __hash__(self):
         return hash(self.funcs)
@@ -197,10 +198,7 @@ def nest(gen, pipe):
     item = next(gen)
     while True:
         sent = yield from pipe(item)
-        try:
-            item = gen.send(sent)
-        except StopIteration as e:
-            return e.value
+        item = gen.send(sent)
 
 
 # TODO: type annotations, docstring
@@ -249,6 +247,9 @@ class _EmptyMapping(Mapping):
 
     def __len__(self):
         return 0
+
+    def __repr__(self):
+        return '{}'
 
 
 EMPTY_MAPPING = _EmptyMapping()

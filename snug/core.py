@@ -2,6 +2,7 @@
 import abc
 import inspect
 import typing as t
+from copy import copy
 from functools import partial, wraps
 from operator import attrgetter, itemgetter
 from types import GeneratorType
@@ -101,7 +102,7 @@ class nested:
         self.thru = thru
 
     def __call__(self, func):
-        return wraps(func)(compose(partial(nest, pipe=self.thru), func))
+        return compose(partial(nest, pipe=self.thru), func)
 
 
 # TODO: docs, types
@@ -110,7 +111,7 @@ class yieldmapped:
         self.func = func
 
     def __call__(self, func):
-        return wraps(func)(compose(partial(yieldmap, self.func), func))
+        return compose(partial(yieldmap, self.func), func)
 
 
 # TODO: docs, types
@@ -119,7 +120,7 @@ class sendmapped:
         self.func = func
 
     def __call__(self, func):
-        return wraps(func)(compose(partial(sendmap, self.func), func))
+        return compose(partial(sendmap, self.func), func)
 
 
 # TODO: docs, types
@@ -128,23 +129,23 @@ class returnmapped:
         self.func = func
 
     def __call__(self, func):
-        return wraps(func)(compose(partial(returnmap, self.func), func))
+        return compose(partial(returnmap, self.func), func)
 
 
 class _WrappedQuery(Query):
-    __slots__ = 'bound_args'
+    __slots__ = '_bound_args'
 
     def __init__(self, *args, **kwargs):
-        self.bound_args = self.__signature__.bind(*args, **kwargs)
-        self.bound_args.apply_defaults()
+        self._bound_args = self.__signature__.bind(*args, **kwargs)
+        self._bound_args.apply_defaults()
 
     def __iter__(self):
-        return self.__wrapped__(*self.bound_args.args,
-                                **self.bound_args.kwargs)
+        return self.__wrapped__(*self._bound_args.args,
+                                **self._bound_args.kwargs)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
-            return self.bound_args.arguments == other.bound_args.arguments
+            return self._bound_args.arguments == other._bound_args.arguments
         return NotImplemented
 
     def __ne__(self, other):
@@ -153,16 +154,21 @@ class _WrappedQuery(Query):
         return NotImplemented
 
     def __repr__(self):
-        fields = (f'{n}={v}' for n, v in self.bound_args.arguments.items())
+        fields = (f'{n}={v}' for n, v in self._bound_args.arguments.items())
         return f'{self.__class__.__qualname__}({", ".join(fields)})'
 
     def __hash__(self):
-        return hash((self.bound_args.args,
-                     tuple(self.bound_args.kwargs.items())))
+        return hash((self._bound_args.args,
+                     tuple(self._bound_args.kwargs.items())))
+
+    def replace(self, **kwargs):
+        copied = copy(self._bound_args)
+        copied.arguments.update(**kwargs)
+        return self.__class__(*copied.args, **copied.kwargs)
 
 
 class querytype:
-    """decorate a query function to create a reusable query class
+    """decorate a generator function to create a reusable query class
 
     Example
     -------
@@ -171,14 +177,22 @@ class querytype:
     ... def post(id: int):
     ...     return json.loads((yield f'posts/{id}/'))
 
+    is roughly equivalent to:
+
+    >>> class post(Query):
+    ...     def __init__(self, id: int):
+    ...        self.id = id
+    ...     def __iter__(self):
+    ...         return json.loads((yield f'posts/{self.id}/))
+
     Note
     ----
-    the callable must have a signature.
+    the decorated object must have a signature to inspect.
     """
     def __call__(self, func: t.Callable) -> t.Type[Query]:
         sig = inspect.signature(func)
         origin = inspect.unwrap(func)
-        cls = type(
+        return type(
             origin.__name__,
             (_WrappedQuery, ),
             {
@@ -188,9 +202,9 @@ class querytype:
                 '__signature__': sig,
                 '__wrapped__': staticmethod(func),
                 **{
-                    name: property(compose(itemgetter(name),
-                                           attrgetter('bound_args.arguments')))
+                    name: property(compose(
+                        itemgetter(name),
+                        attrgetter('_bound_args.arguments')))
                     for name in sig.parameters
                 }
             })
-        return cls

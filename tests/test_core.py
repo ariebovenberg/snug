@@ -1,8 +1,9 @@
 import inspect
 import types
+import pickle
 
 import snug
-from snug.utils import genresult
+from snug.utils import genresult, compose
 
 
 def try_until_even(req):
@@ -19,7 +20,7 @@ def mymax(val):
         sent = yield val
         if sent > val:
             val = sent
-    return val
+    return val * 3
 
 
 def test_execute():
@@ -47,7 +48,7 @@ def test_nested():
     assert gen.send(8) == 8
     assert gen.send(9) == 'NOT EVEN!'
     assert gen.send(2) == 8
-    assert genresult(gen, 102) == 102
+    assert genresult(gen, 102) == 306
 
 
 def test_yieldmapped():
@@ -56,7 +57,9 @@ def test_yieldmapped():
     gen = decorated(5)
     assert next(gen) == '5'
     assert gen.send(2) == '5'
-    assert genresult(gen, 103) == 103
+    assert gen.send(9) == '9'
+    assert gen.send(12) == '12'
+    assert genresult(gen, 103) == 309
 
 
 def test_sendmapped():
@@ -65,30 +68,33 @@ def test_sendmapped():
     gen = decorated(5)
     assert next(gen) == 5
     assert gen.send(5.3) == 5
-    assert genresult(gen, '103') == 103
+    assert gen.send(9) == 9
+    assert genresult(gen, '103') == 309
 
 
 def test_returnmapped():
     decorated = snug.returnmapped(str)(mymax)
     gen = decorated(5)
     assert next(gen) == 5
-    assert genresult(gen, 103) == '103'
+    assert gen.send(9) == 9
+    assert genresult(gen, 103) == '309'
 
 
-def test_query_class():
+def test_combined_decorator():
+    decorators = compose(
+        snug.returnmapped('result: {}'.format),
+        snug.sendmapped(int),
+        snug.yieldmapped(str),
+        snug.nested(try_until_even),
+    )
+    decorated = decorators(mymax)
+    gen = decorated(4)
+    assert next(gen) == '4'
+    assert gen.send('6') == '6'
+    assert gen.send('5') == 'NOT EVEN!'
+    assert genresult(gen, '104') == 'result: 312'
 
-    class post(snug.Query):
-        def __init__(self, id):
-            self.id = id
-
-        def __iter__(self):
-            return (yield f'/posts/{self.id}/').decode('ascii')
-
-    query = post(id=2)
-    gen = iter(query)
-    assert isinstance(query, snug.Query)
-    assert next(gen) == '/posts/2/'
-    assert genresult(gen, b'hello') == 'hello'
+    assert inspect.unwrap(decorated) is mymax
 
 
 def test_generator_is_query():
@@ -101,7 +107,17 @@ def test_generator_is_query():
     assert isinstance(gen, snug.Query)
 
 
+@snug.querytype()
+def simplequery(a: str):
+    """simply query bound to module"""
+    return (yield a)
+
+
 class TestQueryType:
+
+    def test_pickleable_instances(self):
+        query = simplequery(5)
+        assert pickle.loads(pickle.dumps(query)) == query
 
     def test_example(self):
 
@@ -152,6 +168,9 @@ class TestQueryType:
 
         assert not query == object()
         assert query != object()
+
+        changed = query.replace(b=9)
+        assert changed == myquery(4, 9, d=6, foo=10)
 
 
 def test_identity_pipe():

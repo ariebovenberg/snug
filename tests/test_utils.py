@@ -33,7 +33,7 @@ def mymax(val):
         sent = yield val
         if sent > val:
             val = sent
-    return val
+    return val * 3
 
 
 class MyMax:
@@ -48,7 +48,7 @@ class MyMax:
             sent = yield val
             if sent > val:
                 val = sent
-        return val
+        return val * 3
 
 
 def emptygen():
@@ -224,7 +224,7 @@ class TestYieldMap:
         assert next(mapped) == '4'
         assert mapped.send(7) == '7'
         assert mapped.send(3) == '7'
-        assert utils.genresult(mapped, 103) == 103
+        assert utils.genresult(mapped, 103) == 309
 
 
 class TestSendMap:
@@ -241,7 +241,7 @@ class TestSendMap:
         assert next(mapped) == 4
         assert mapped.send('7') == 7
         assert mapped.send(7.3) == 7
-        assert utils.genresult(mapped, '104') == 104
+        assert utils.genresult(mapped, '104') == 312
 
     def test_any_iterable(self):
         mapped = utils.sendmap(int, MyMax(4))
@@ -249,7 +249,7 @@ class TestSendMap:
         assert next(mapped) == 4
         assert mapped.send('7') == 7
         assert mapped.send(7.3) == 7
-        assert utils.genresult(mapped, '104') == 104
+        assert utils.genresult(mapped, '104') == 312
 
 
 class TestReturnMap:
@@ -265,14 +265,16 @@ class TestReturnMap:
 
         assert next(mapped) == 4
         assert mapped.send(7) == 7
-        assert utils.genresult(mapped, 104) == '104'
+        assert mapped.send(4) == 7
+        assert utils.genresult(mapped, 104) == '312'
 
     def test_any_iterable(self):
         mapped = utils.returnmap(str, MyMax(4))
 
         assert next(mapped) == 4
         assert mapped.send(7) == 7
-        assert utils.genresult(mapped, 104) == '104'
+        assert mapped.send(4) == 7
+        assert utils.genresult(mapped, 104) == '312'
 
 
 class TestNest:
@@ -292,7 +294,7 @@ class TestNest:
         assert nested.send(-1) == 'TRY AGAIN!'
         assert nested.send(-4) == 'TRY AGAIN!'
         assert nested.send(0) == 7
-        assert utils.genresult(nested, 102) == 102
+        assert utils.genresult(nested, 102) == 306
 
     def test_any_iterable(self):
         nested = utils.nest(MyMax(4), try_until_positive)
@@ -303,7 +305,7 @@ class TestNest:
         assert nested.send(-1) == 'TRY AGAIN!'
         assert nested.send(-4) == 'TRY AGAIN!'
         assert nested.send(0) == 7
-        assert utils.genresult(nested, 102) == 102
+        assert utils.genresult(nested, 102) == 306
 
     def test_accumulate(self):
 
@@ -317,7 +319,26 @@ class TestNest:
         assert gen.send(-4) == 'TRY AGAIN!'
         assert gen.send(3) == 'NOT EVEN!'
         assert gen.send(90) == 90
-        assert utils.genresult(gen, 110) == 110
+        assert utils.genresult(gen, 110) == 330
+
+
+def test_combined():
+
+    gen = utils.returnmap(
+        'result: {}'.format,
+        utils.sendmap(
+            int,
+            utils.yieldmap(
+                str,
+                utils.nest(
+                    mymax(4),
+                    try_until_even))))
+
+    assert next(gen) == '4'
+    assert gen.send(3) == 'NOT EVEN!'
+    assert gen.send('5') == 'NOT EVEN!'
+    assert gen.send(8.4) == '8'
+    assert utils.genresult(gen, 104) == 'result: 312'
 
 
 def test_oneyield():
@@ -390,3 +411,4 @@ def test_empty_mapping():
 
     assert len(utils.EMPTY_MAPPING) == 0
     assert list(utils.EMPTY_MAPPING) == []
+    assert repr(utils.EMPTY_MAPPING) == '{}'
