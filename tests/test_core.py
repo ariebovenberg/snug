@@ -3,7 +3,7 @@ import pickle
 import types
 
 import snug
-from snug.utils import called_as_method, compose, genresult
+from snug.utils import compose, genresult
 
 
 def try_until_even(req):
