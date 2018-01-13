@@ -23,14 +23,14 @@ def load_json_content(resp):
     """get the response body as JSON"""
     return json.loads(resp.data)
 
-@snug.query()
+@snug.querytype()
 @snug.sendmapped(load_json_content, handle_errors)
 @snug.yieldmapped(add_headers, add_prefix, snug.http.GET)
 def repo(name: str, owner: str):
     """a repository lookup by owner and name"""
     return Repository(**(yield f'/repos/{owner}/{name}'))
 
-@snug.query()
+@snug.querytype()
 @snug.sendmapped(handle_errors)
 @snug.yieldmapped(add_headers, add_prefix, snug.http.PUT)
 def follow(username: str):

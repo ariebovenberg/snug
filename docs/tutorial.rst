@@ -1,22 +1,15 @@
 Tutorial
 ========
 
-.. currentmodule:: snug
-
 This guide explains how to use the building-blocks that ``snug`` provides.
 In this example, we will be wrapping the github v3 REST API.
-
-.. warning::
-
-   this tutorial is not yet finished
 
 Hello query
 -----------
 
 The basic building block we'll be working with is the *query*,
 A query represents an interaction with the API which may be executed.
-A simple way to define a query
-is by a :term:`generator function <generator>`.
+At the heart of a query is a :term:`generator function <generator>`.
 
 Let's start by creating a lookup query for repositories.
 
@@ -39,15 +32,17 @@ Our module is now usable as follows:
    >>> repo['description']
    'My first repository on GitHub!'
 
-.. admonition:: Why generators?
+Why generators?
+^^^^^^^^^^^^^^^
 
-   Expressing queries as generators has two main advantages:
+Expressing queries as generators has two main advantages:
 
-   1. as built-in concepts of the language, generators can be easily
-      :ref:`composed and extended<composing>`.
-   2. decoupling of networking logic allows
-      the :ref:`use different HTTP (asynchronous) clients<executors>`.
+1. as built-in concepts of the language, generators can be easily
+   :ref:`composed and extended<composing>`.
+2. decoupling of networking logic allows
+   the :ref:`use different and asynchronous HTTP clients<executors>`.
 
+We will explore these features in the following sections.
 
 .. admonition:: What's in a query?
 
@@ -55,18 +50,29 @@ Our module is now usable as follows:
    may be considered a :class:`~snug.core.Query`.
    (This includes any :term:`generator iterator` created by
    a :term:`generator function <generator>`.)
-   The example below shows a query class roughly equivalent
+   The :class:`~snug.core.querytype` decorator simply makes the query reusable
+   by creating a class around the generator function;
+   the example below shows a query class roughly equivalent
    to our previously defined ``repo``.
+
+   .. code-block:: python
    
-   .. literalinclude:: ../tutorial/query_api.py
-     :pyobject: repo
-     :linenos:
+      class repo(snug.Query):
+          """a repository lookup by owner and name"""
+          def __init__(self, name: str, owner: str):
+              self.name, self.owner = name, owner
+
+          def __iter__(self):
+              request = snug.http.GET(
+                  f'https://api.github.com/repos/{self.owner}/{self.name}')
+              response = yield request
+              return json.loads(response.data)
 
 
 .. _executors:
 
-Executors
----------
+Ways to execute your query
+--------------------------
 
 Queries can be executed by different executors.
 Lets add another query, and see the different ways it may be executed.
@@ -119,7 +125,7 @@ We can make use of the module as follows:
 Composing queries
 -----------------
 
-To keep everything DRY, queries may be composed and extended.
+To keep everything nice and modular, queries may be composed and extended.
 In our github API example, we may wish to define common logic for:
 
 * prefixing urls with ``https://api.github.com``
@@ -127,7 +133,7 @@ In our github API example, we may wish to define common logic for:
 * parsing responses to JSON
 * deserializing JSON into objects
 * raising descriptive exceptions from responses
-* follows redirects
+* following redirects
 
 Preparing requests
 ^^^^^^^^^^^^^^^^^^
@@ -155,16 +161,37 @@ the :class:`~snug.core.sendmapped` decorator.
    :linenos:
    :emphasize-lines: 15,22
 
+
 Nesting queries
 ^^^^^^^^^^^^^^^
 
 For advanced cases, queries may also be nested.
 The following example shows how this can be used to implement redirects.
+Since most HTTP clients automatically handle redirects for us,
+this is a bit of a contrived example.
 
 .. literalinclude:: ../tutorial/composing_queries3.py
    :lines: 26-38
    :linenos:
    :emphasize-lines: 8
+
+
+Loading return values
+^^^^^^^^^^^^^^^^^^^^^
+
+To modify the return value of a generator,
+use the :class:`~snug.core.returnmapped` decorator.
+
+.. literalinclude:: ../tutorial/composing_queries3.py
+   :linenos:
+
+
+Combining decorators
+^^^^^^^^^^^^^^^^^^^^
+
+The decorators mentioned in the section
+may be combined in any number of ways.
+See the examples.
 
 
 Related queries
@@ -174,7 +201,7 @@ The github API is full of related queries:
 for example, creating a new issue related to a repository,
 or retrieving gists for a user.
 
-We can make use of query classes:
+We can make use of query classes to express these relations.
 
 
 .. literalinclude:: ../tutorial/relations.py
@@ -196,6 +223,11 @@ The related queries allow us to write:
    Issue(...)
    >>> ghub.exec(star_repo)
    True
+
+.. admonition:: what's in a related query?
+
+   passing the ``related=True`` ensures the ``self`` argument is passed to
+   the query.
 
 .. _customizing-loaders:
 

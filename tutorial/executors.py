@@ -1,14 +1,14 @@
 import json
 import snug
 
-@snug.query()
+@snug.querytype()
 def repo(name: str, owner: str):
     """a repo lookup by owner and name"""
     request = snug.http.GET(f'https://api.github.com/repos/{owner}/{name}')
     response = yield request
     return json.loads(response.data)
 
-@snug.query()
+@snug.querytype()
 def follow(username: str):
     """follow a user"""
     request = snug.http.PUT(f'https://api.github.com/user/following/{username}')

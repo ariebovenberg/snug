@@ -29,7 +29,7 @@ def follow_redirects(req):
         response = yield req.replace(url=response.headers['Location'])
     return response
 
-@snug.query()
+@snug.querytype()
 @snug.nested(follow_redirects)
 @snug.sendmapped(load_json_content, handle_errors)
 @snug.yieldmapped(add_headers, add_prefix, snug.http.GET)
@@ -37,7 +37,7 @@ def repo(name: str, owner: str):
     """a repository lookup by owner and name"""
     return Repository(**(yield f'/repos/{owner}/{name}'))
 
-@snug.query()
+@snug.querytype()
 @snug.sendmapped(handle_errors)
 @snug.yieldmapped(add_headers, add_prefix, snug.http.PUT)
 def follow_user(name: str):

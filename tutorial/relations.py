@@ -10,6 +10,7 @@ add_headers = snug.https.header_adder({
 
 Repository = namedtuple(...)
 Issue = namedtuple(...)
+User = namedtuple(...)
 
 class ApiException(Exception):
     """an error from the github API"""
@@ -35,11 +36,10 @@ class repo(snug.Query):
     def __init__(self, name, owner):
         self.name, self.owner = name, owner
 
-    @snug.nested(follow_redirects)
     @snug.sendmapped(load_json_content, handle_errors)
     @snug.yieldmapped(add_headers, add_prefix, snug.http.GET)
     def __iter__(self):
-        return Repository(**(yield f'/repos/{owner}/{name}'))
+        return Repository(**(yield f'/repos/{self.owner}/{self.name}'))
 
     @snug.query(related=True)
     @snug.sendmapped(load_json_content, handle_errors)
@@ -47,7 +47,7 @@ class repo(snug.Query):
     def new_issue(self, title: str, body: str=''):
         """create a new issue in this repo"""
         request = snug.http.POST(
-            f'/repos/{repo.owner}/{repo.name}/issues/{number}',
+            f'/repos/{self.owner}/{self.name}/issues',
             data=json.dumps({'title': title, 'body': body}))
         return Issue(**(yield request))
 
@@ -65,17 +65,16 @@ class user(snug.Query):
     def __init__(self, username):
         self.username = username
 
-    @snug.nested(follow_redirects)
     @snug.sendmapped(load_json_content, handle_errors)
     @snug.yieldmapped(add_headers, add_prefix, snug.http.GET)
     def __iter__(self):
-        return Repository(**(yield f'/repos/{owner}/{name}'))
+        return User(**(yield f'/users/{self.username}'))
 
-    @snug.query()
+    @snug.query(related=True)
     @snug.sendmapped(handle_errors)
     @snug.yieldmapped(add_headers, add_prefix, snug.http.PUT)
-    def follow(user: 'user'):
-        """follow the user"""
-        return (yield f'/user/following/{name}').status_code == 204
+    def follow(self):
+        """follow this user"""
+        return (yield f'/user/following/{self.username}').status_code == 204
 
 authed_exec = snug.http.authed_exec

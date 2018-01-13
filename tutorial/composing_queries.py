@@ -10,13 +10,13 @@ add_headers = snug.https.header_adder({
     'User-Agent': 'my awesome app',
 })
 
-@snug.query()
+@snug.querytype()
 @snug.yieldmapped(add_headers, add_prefix, snug.http.GET)
 def repo(name: str, owner: str):
     """a repository lookup by owner and name"""
     return Repository(**json.loads((yield f'/repos/{owner}/{name}').data))
 
-@snug.query()
+@snug.querytype()
 @snug.yieldmapped(add_headers, add_prefix, snug.http.PUT)
 def follow(username: str):
     """follow a user"""
