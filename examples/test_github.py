@@ -1,5 +1,6 @@
 import json
-from dataclasses import replace
+import inspect
+
 from pathlib import Path
 
 import aiohttp
@@ -23,48 +24,48 @@ my_issues = current_user.issues()
 
 repo_issues = one_repo.issues()
 one_repo_issue = one_repo.issue(123)
-one_repos_fixed_bugs = replace(repo_issues, labels='bug', state='closed')
+one_repos_fixed_bugs = repo_issues.replace(labels='bug', state='closed')
 
 live = pytest.config.getoption('--live')
 
 
 @pytest.fixture(scope='module')
-async def resolver():
+async def aexec():
     async with aiohttp.ClientSession() as client:
-        yield gh.async_resolver(
+        yield gh.authed_aexec(
             auth=auth,
             sender=snug.http.aiohttp_sender(client)
         )
 
 
 @pytest.mark.asyncio
-async def test_all_orgs(resolver):
-    assert all_orgs._request() == snug.Request('organizations')
+async def test_all_orgs(aexec):
+    # assert next(iter(all_orgs)) == snug.http.GET('organizations')
 
     if live:
-        orgs = await resolver(all_orgs)
+        orgs = await aexec(all_orgs)
 
         assert isinstance(orgs, list)
         assert len(orgs) > 1
 
 
 @pytest.mark.asyncio
-async def test_one_org(resolver):
-    assert one_org._request() == snug.Request('orgs/github')
+async def test_one_org(aexec):
+    # assert next(iter(one_org)) == snug.http.GET('orgs/github')
 
     if live:
-        org = await resolver(one_org)
+        org = await aexec(one_org)
 
         assert isinstance(org, gh.Organization)
         assert org.login == 'github'
 
 
 @pytest.mark.asyncio
-async def test_all_repos(resolver):
-    assert all_repos._request() == snug.Request('repositories')
+async def test_all_repos(aexec):
+    # assert next(iter(all_repos)) == snug.http.GET('repositories')
 
     if live:
-        repos = await resolver(all_repos)
+        repos = await aexec(all_repos)
 
         assert isinstance(repos, list)
         assert len(repos) > 1
@@ -72,22 +73,22 @@ async def test_all_repos(resolver):
 
 
 @pytest.mark.asyncio
-async def test_one_repo(resolver):
-    assert one_repo._request() == snug.Request('repos/github/hub')
+async def test_one_repo(aexec):
+    # assert next(iter(one_repo)) == snug.http.GET('repos/github/hub')
 
     if live:
-        repo = await resolver(one_repo)
+        repo = await aexec(one_repo)
 
         assert isinstance(repo, gh.Repo)
         assert repo.name == 'hub'
 
 
 @pytest.mark.asyncio
-async def test_assigned_issues(resolver):
-    assert assigned_issues._request() == snug.Request('issues')
+async def test_assigned_issues(aexec):
+    # assert next(iter(assigned_issues)) == snug.http.GET('issues')
 
     if live:
-        issues = await resolver(assigned_issues)
+        issues = await aexec(assigned_issues)
 
         assert isinstance(issues, list)
         assert len(issues) > 1
@@ -95,30 +96,31 @@ async def test_assigned_issues(resolver):
 
 
 @pytest.mark.asyncio
-async def test_current_user(resolver):
-    assert current_user._request() == snug.Request('user')
+async def test_current_user(aexec):
+    # assert next(iter(current_user)) == snug.http.GET('user')
 
     if live:
-        me = await resolver(current_user)
+        me = await aexec(current_user)
 
         assert isinstance(me, gh.User)
 
 
 @pytest.mark.asyncio
-async def test_current_user_issues(resolver):
-    assert my_issues._request() == snug.Request('user/issues')
+async def test_current_user_issues(aexec):
+    # assert next(iter(my_issues)) == snug.http.GET('user/issues')
 
     if live:
-        issues = await resolver(my_issues)
+        issues = await aexec(my_issues)
         assert isinstance(issues, list)
 
 
 @pytest.mark.asyncio
-async def test_all_repo_issues(resolver):
-    assert repo_issues._request() == snug.Request('repos/github/hub/issues')
+async def test_all_repo_issues(aexec):
+    # assert next(iter(repo_issues)) == snug.http.GET(
+    #     'repos/github/hub/issues')
 
     if live:
-        issues = await resolver(repo_issues)
+        issues = await aexec(repo_issues)
 
         assert isinstance(issues, list)
         assert len(issues) > 1
@@ -126,18 +128,22 @@ async def test_all_repo_issues(resolver):
 
 
 @pytest.mark.asyncio
-async def test_one_repo_issue(resolver):
-    assert one_repo_issue._request() == snug.Request(
-        'repos/github/hub/issues/123')
+async def test_one_repo_issue(aexec):
+    # assert next(iter(one_repo_issue)) == snug.http.GET(
+    #     'repos/github/hub/issues/123')
+    if live:
+        issue = await aexec(one_repo_issue)
+
+        assert isinstance(issue, gh.Issue)
 
 
 @pytest.mark.asyncio
-async def test_filtered_repo_issues(resolver):
-    assert one_repos_fixed_bugs._request() == snug.Request(
-        'repos/github/hub/issues', params=dict(labels='bug', state='closed'))
+async def test_filtered_repo_issues(aexec):
+    # assert next(iter(one_repos_fixed_bugs)) == snug.http.GET(
+    #     'repos/github/hub/issues', params=dict(labels='bug', state='closed'))
 
     if live:
-        issues = await resolver(one_repos_fixed_bugs)
+        issues = await aexec(one_repos_fixed_bugs)
 
         assert isinstance(issues, list)
         assert len(issues) > 1

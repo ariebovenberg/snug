@@ -15,7 +15,7 @@ dclass = partial(dataclass, frozen=True, repr=False)
 
 
 @dclass()
-class UserSummary(snug.utils.StrRepr):
+class UserSummary:
     login:       str
     id:          int
     avatar_url:  str
@@ -25,8 +25,8 @@ class UserSummary(snug.utils.StrRepr):
     type:        str
     site_admin:  bool
 
-    def __str__(self):
-        return self.login
+    def __repr__(self):
+        return f'<User: {self.login}>'
 
 
 @dclass()
@@ -47,7 +47,7 @@ class User(UserSummary):
 
 
 @dclass()
-class RepoSummary(snug.utils.StrRepr):
+class RepoSummary:
     id:          int
     owner:       UserSummary
     name:        str
@@ -58,9 +58,8 @@ class RepoSummary(snug.utils.StrRepr):
     url:         str
     html_url:    str
 
-    def __str__(self):
-        return '{} | {}'.format(
-            self.name, _repr.repr(self.description))
+    def __repr__(self):
+        return f'<RepoSummary: {self.name} | {_repr.repr(self.description)}>'
 
 
 @dclass()
@@ -84,7 +83,7 @@ class Repo(RepoSummary):
 
 
 @dclass()
-class Organization(snug.utils.StrRepr):
+class Organization:
     """a github organization"""
     blog:        t.Optional[str]
     created_at:  t.Optional[datetime]
@@ -95,15 +94,12 @@ class Organization(snug.utils.StrRepr):
     repos_url:   str
     type:        t.Optional[str]
 
-    def __str__(self):
-        try:
-            return self.name
-        except KeyError:
-            return self.login
+    def __repr__(self):
+        return '<Organization: {self.login}>'
 
 
 @dclass()
-class Issue(snug.utils.StrRepr):
+class Issue:
     """a github issue or pull-request"""
 
     class State(enum.Enum):
@@ -116,8 +112,8 @@ class Issue(snug.utils.StrRepr):
     body: str
     state: State
 
-    def __str__(self):
-        return f'#{self.number} {self.title}'
+    def __repr__(self):
+        return f'<Issue: #{self.number} {self.title}>'
 
     class Sort(enum.Enum):
         CREATED = 'created'
