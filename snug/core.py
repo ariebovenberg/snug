@@ -3,7 +3,7 @@ import abc
 import inspect
 import typing as t
 from copy import copy
-from functools import partial
+from functools import partial, reduce
 from operator import attrgetter, itemgetter
 from types import GeneratorType
 from itertools import starmap
@@ -99,38 +99,38 @@ def execute(query:  Query[T_req, T_resp, T],
 
 # TODO: docs, types
 class nested:
-    def __init__(self, thru):
-        self.thru = thru
+    def __init__(self, *genfuncs):
+        self._genfuncs = genfuncs
 
     def __call__(self, func):
-        return compose(partial(nest, pipe=self.thru), func)
+        return compose(partial(reduce, nest, self._genfuncs), func)
 
 
 # TODO: docs, types
 class yieldmapped:
-    def __init__(self, func):
-        self.func = func
+    def __init__(self, *funcs):
+        self._mapper = compose(*funcs)
 
     def __call__(self, func):
-        return compose(partial(yieldmap, self.func), func)
+        return compose(partial(yieldmap, self._mapper), func)
 
 
 # TODO: docs, types
 class sendmapped:
-    def __init__(self, func):
-        self.func = func
+    def __init__(self, *funcs):
+        self._mapper = compose(*funcs)
 
     def __call__(self, func):
-        return compose(partial(sendmap, self.func), func)
+        return compose(partial(sendmap, self._mapper), func)
 
 
 # TODO: docs, types
 class returnmapped:
-    def __init__(self, func):
-        self.func = func
+    def __init__(self, *funcs):
+        self._mapper = compose(*funcs)
 
     def __call__(self, func):
-        return compose(partial(returnmap, self.func), func)
+        return compose(partial(returnmap, self._mapper), func)
 
 
 class _WrappedQuery(Query):

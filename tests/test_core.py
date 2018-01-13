@@ -14,6 +14,14 @@ def try_until_even(req):
     return response
 
 
+def try_until_positive(req):
+    """an example Pipe"""
+    response = yield req
+    while response < 0:
+        response = yield 'NOT POSITIVE!'
+    return response
+
+
 def mymax(val):
     """an example generator function"""
     while val < 100:
@@ -41,46 +49,47 @@ def test_execute():
 
 
 def test_nested():
-    decorated = snug.nested(try_until_even)(mymax)
+    decorated = snug.nested(try_until_even, try_until_positive)(mymax)
 
     gen = decorated(4)
     assert next(gen) == 4
     assert gen.send(8) == 8
     assert gen.send(9) == 'NOT EVEN!'
     assert gen.send(2) == 8
+    assert gen.send(-1) == 'NOT POSITIVE!'
     assert genresult(gen, 102) == 306
 
 
 def test_yieldmapped():
-    decorated = snug.yieldmapped(str)(mymax)
+    decorated = snug.yieldmapped(str, lambda x: x * 2)(mymax)
 
     gen = decorated(5)
-    assert next(gen) == '5'
-    assert gen.send(2) == '5'
-    assert gen.send(9) == '9'
-    assert gen.send(12) == '12'
+    assert next(gen) == '10'
+    assert gen.send(2) == '10'
+    assert gen.send(9) == '18'
+    assert gen.send(12) == '24'
     assert genresult(gen, 103) == 309
 
 
 def test_sendmapped():
-    decorated = snug.sendmapped(int)(mymax)
+    decorated = snug.sendmapped(lambda x: x * 2, int)(mymax)
 
     gen = decorated(5)
     assert next(gen) == 5
-    assert gen.send(5.3) == 5
-    assert gen.send(9) == 9
-    assert genresult(gen, '103') == 309
+    assert gen.send(5.3) == 10
+    assert gen.send(9) == 18
+    assert genresult(gen, '103') == 618
 
 
 def test_returnmapped():
-    decorated = snug.returnmapped(str)(mymax)
+    decorated = snug.returnmapped(lambda s: s.center(5), str)(mymax)
     gen = decorated(5)
     assert next(gen) == 5
     assert gen.send(9) == 9
-    assert genresult(gen, 103) == '309'
+    assert genresult(gen, 103) == ' 309 '
 
 
-def test_combined_decorator():
+def test_combining_decorators():
     decorators = compose(
         snug.returnmapped('result: {}'.format),
         snug.sendmapped(int),
