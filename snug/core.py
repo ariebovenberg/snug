@@ -8,7 +8,8 @@ from operator import attrgetter, itemgetter
 from types import GeneratorType
 from itertools import starmap
 
-from .utils import compose, nest, returnmap, sendmap, yieldmap
+from .utils import (compose, nest, returnmap, sendmap, yieldmap,
+                    called_as_method)
 
 __all__ = [
     'Query',
@@ -190,10 +191,13 @@ class querytype:
     ----
     the decorated object must have a signature to inspect.
     """
+    def __init__(self, related: bool=False):
+        self._related = related
+
     def __call__(self, func: t.Callable) -> t.Type[Query]:
         sig = inspect.signature(func)
         origin = inspect.unwrap(func)
-        return type(
+        cls = type(
             origin.__name__,
             (_WrappedQuery, ),
             {
@@ -209,3 +213,4 @@ class querytype:
                     for name in sig.parameters
                 }
             })
+        return called_as_method(cls) if self._related else cls

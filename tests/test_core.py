@@ -3,7 +3,7 @@ import pickle
 import types
 
 import snug
-from snug.utils import compose, genresult
+from snug.utils import compose, genresult, called_as_method
 
 
 def try_until_even(req):
@@ -127,6 +127,19 @@ class TestQueryType:
     def test_pickleable_instances(self):
         query = simplequery(5)
         assert pickle.loads(pickle.dumps(query)) == query
+
+    def test_related(self):
+
+        class Parent:
+            def __init__(self, foo):
+                self.foo = foo
+
+            @snug.querytype(related=True)
+            def query(parent, a: int):
+                return (yield parent.foo + a)
+
+        child = Parent(3).query(4)
+        assert isinstance(child, Parent.query)
 
     def test_example(self):
 
