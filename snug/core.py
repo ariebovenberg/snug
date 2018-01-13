@@ -4,12 +4,12 @@ import inspect
 import typing as t
 from copy import copy
 from functools import partial, reduce
+from itertools import starmap
 from operator import attrgetter, itemgetter
 from types import GeneratorType
-from itertools import starmap
 
-from .utils import (compose, nest, returnmap, sendmap, yieldmap,
-                    called_as_method)
+from .utils import (called_as_method, compose, nest, returnmap, sendmap,
+                    yieldmap)
 
 __all__ = [
     'Query',
