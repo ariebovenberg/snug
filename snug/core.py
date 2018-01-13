@@ -6,6 +6,7 @@ from copy import copy
 from functools import partial
 from operator import attrgetter, itemgetter
 from types import GeneratorType
+from itertools import starmap
 
 from .utils import compose, nest, returnmap, sendmap, yieldmap
 
@@ -154,8 +155,8 @@ class _WrappedQuery(Query):
         return NotImplemented
 
     def __repr__(self):
-        fields = (f'{n}={v}' for n, v in self._bound_args.arguments.items())
-        return f'{self.__class__.__qualname__}({", ".join(fields)})'
+        fields = starmap('{}={}'.format, self._bound_args.arguments.items())
+        return '{}({})'.format(self.__class__.__qualname__, ', '.join(fields))
 
     def __hash__(self):
         return hash((self._bound_args.args,

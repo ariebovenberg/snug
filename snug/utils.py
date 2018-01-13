@@ -29,7 +29,7 @@ class NO_DEFAULT:
     """sentinel for no default"""
 
 
-class lookup_defaults(t.Callable[[t.Any], T]):
+class lookup_defaults:
     """wrap a lookup function with a default if lookup fails"""
     def __init__(self, lookup: t.Callable[[t.Any], T], default: T):
         self.lookup, self.default = lookup, default

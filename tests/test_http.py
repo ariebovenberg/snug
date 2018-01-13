@@ -1,25 +1,22 @@
 from unittest import mock
 
 import pytest
-from dataclasses import dataclass
 
 from snug import http
 
 
-@dataclass
 class SingleSender:
-    response: http.Response
-    request:  http.Request = None
+    def __init__(self, response):
+        self.response = response
 
     def __call__(self, request):
         self.request = request
         return self.response
 
 
-@dataclass
 class SingleAsyncSender:
-    response: http.Response
-    request:  http.Request = None
+    def __init__(self, response):
+        self.response = response
 
     async def __call__(self, request):
         self.request = request
@@ -55,6 +52,33 @@ class TestRequest:
                 'foo': 'bar',
                 'Authorization': 'Basic QWxhZGRpbjpPcGVuU2VzYW1l'
             })
+
+    def test_equality(self):
+        req = http.Request('GET', 'my/url')
+        other = req.replace()
+        assert req == other
+        assert not req != other
+
+        assert not req == req.replace(headers={'foo': 'bar'})
+        assert req != req.replace(headers={'foo': 'bar'})
+
+        assert not req == object()
+        assert req != object()
+
+
+class TestResponse:
+
+    def test_equality(self):
+        rsp = http.Response(204)
+        other = rsp.replace()
+        assert rsp == other
+        assert not rsp != other
+
+        assert not rsp == rsp.replace(headers={'foo': 'bar'})
+        assert rsp != rsp.replace(headers={'foo': 'bar'})
+
+        assert not rsp == object()
+        assert rsp != object()
 
 
 def test_prefix_adder():

@@ -2,5 +2,5 @@ formats:
     - none
 requirements_file: requirements/docs.txt
 python:
-    version: 3.6
+    version: 3.5
     setup_py_install: true

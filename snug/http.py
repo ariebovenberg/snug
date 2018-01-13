@@ -14,7 +14,7 @@ __all__ = ['Request', 'GET', 'Response', 'urllib_sender']
 Headers = t.Mapping[str, str]
 
 
-class Request(t.NamedTuple):
+class Request:
     """a simple HTTP request
 
     Parameters
@@ -30,11 +30,20 @@ class Request(t.NamedTuple):
     headers
         mapping of headers
     """
-    method:  str
-    url:     str
-    data:    t.Optional[bytes] = None
-    params:  t.Mapping[str, str] = EMPTY_MAPPING
-    headers: Headers = EMPTY_MAPPING
+    __slots__ = 'method', 'url', 'data', 'params', 'headers'
+    __hash__ = None
+
+    def __init__(self,
+                 method:  str,
+                 url:     str,
+                 data:    t.Optional[bytes]=None,
+                 params:  t.Mapping[str, str]=EMPTY_MAPPING,
+                 headers: t.Mapping[str, str]=EMPTY_MAPPING):
+        self.method = method
+        self.url = url
+        self.data = data
+        self.params = params
+        self.headers = headers
 
     def with_headers(self, headers: Headers) -> 'Request':
         """new request with added headers
@@ -44,7 +53,7 @@ class Request(t.NamedTuple):
         headers
             the headers to add
         """
-        return self._replace(headers={**self.headers, **headers})
+        return self.replace(headers={**self.headers, **headers})
 
     def with_prefix(self, prefix: str) -> 'Request':
         """new request with added url prefix
@@ -54,7 +63,7 @@ class Request(t.NamedTuple):
         prefix
             the URL prefix
         """
-        return self._replace(url=prefix + self.url)
+        return self.replace(url=prefix + self.url)
 
     def with_params(self, params: t.Mapping[str, str]) -> 'Request':
         """new request with added params
@@ -64,7 +73,7 @@ class Request(t.NamedTuple):
         params
             the parameters to add
         """
-        return self._replace(params={**self.params, **params})
+        return self.replace(params={**self.params, **params})
 
     def with_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
         """new request with "basic" authentication
@@ -74,13 +83,27 @@ class Request(t.NamedTuple):
         credentials
             the username-password pair
         """
-        username, password = credentials
-        encoded = b64encode(f'{username}:{password}'.encode('ascii'))
-        return self.with_headers({
-            'Authorization': f'Basic {encoded.decode("ascii")}'})
+        encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
+        return self.with_headers({'Authorization': 'Basic ' + encoded})
+
+    def _asdict(self):
+        return {a: getattr(self, a) for a in self.__slots__}
+
+    def __eq__(self, other):
+        if isinstance(other, Request):
+            return self._asdict() == other._asdict()
+        return NotImplemented
+
+    def __ne__(self, other):
+        if isinstance(other, Request):
+            return self._asdict() != other._asdict()
+        return NotImplemented
+
+    def replace(self, **kwargs):
+        return Request(**{**self._asdict(), **kwargs})
 
 
-class Response(t.NamedTuple):
+class Response:
     """a simple HTTP response
 
     Parameters
@@ -92,9 +115,32 @@ class Response(t.NamedTuple):
     headers
         the headers of the response
     """
-    status_code: int
-    data:        t.Optional[bytes] = None
-    headers:     Headers = EMPTY_MAPPING
+    __slots__ = 'status_code', 'data', 'headers'
+    __hash__ = None
+
+    def __init__(self,
+                 status_code: int,
+                 data:        t.Optional[bytes]=None,
+                 headers:     t.Mapping[str, str]=EMPTY_MAPPING):
+        self.status_code = status_code
+        self.data = data
+        self.headers = headers
+
+    def _asdict(self):
+        return {a: getattr(self, a) for a in self.__slots__}
+
+    def __eq__(self, other):
+        if isinstance(other, Response):
+            return self._asdict() == other._asdict()
+        return NotImplemented
+
+    def __ne__(self, other):
+        if isinstance(other, Response):
+            return self._asdict() != other._asdict()
+        return NotImplemented
+
+    def replace(self, **kwargs):
+        return Response(**{**self._asdict(), **kwargs})
 
 
 def urllib_sender(**kwargs) -> Sender[Request, Response]:
@@ -106,7 +152,7 @@ def urllib_sender(**kwargs) -> Sender[Request, Response]:
         parameters passed to :func:`urllib.request.urlopen`
     """
     def _urllib_send(req: Request) -> Response:
-        url = f'{req.url}?{urllib.parse.urlencode(req.params)}'
+        url = req.url + '?' + urllib.parse.urlencode(req.params)
         raw_request = urllib.request.Request(url, headers=req.headers,
                                              method=req.method)
         raw_response = urllib.request.urlopen(raw_request, **kwargs)
@@ -167,7 +213,7 @@ def authed_aexec(auth: t.Tuple[str, str],
 
 try:
     import requests
-except ModuleNotFoundError:  # pragma: no cover
+except ImportError:  # pragma: no cover
     pass
 else:
     def requests_sender(session: requests.Session) -> Sender[Request,
@@ -197,7 +243,7 @@ else:
 
 try:
     import aiohttp
-except ModuleNotFoundError:  # pragma: no cover
+except ImportError:  # pragma: no cover
     pass
 else:
     def aiohttp_sender(session: aiohttp.ClientSession) -> asnc.Sender[Response,
