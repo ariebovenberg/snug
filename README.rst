@@ -20,9 +20,7 @@ Snug
     :target: http://snug.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
-(Work in progress)
-
-Wrap web APIs to fit nicely into your python code. Python >=3.6 only.
+Wrap web APIs to fit nicely into your python code For python 3.5+.
 
 Quickstart
 ----------
@@ -42,10 +40,3 @@ Quickstart
   exec = snug.http.simple_exec()
 
 Check the ``examples/`` directory for some samples.
-
-
-Features
---------
-
-- simple
-- easy async support
