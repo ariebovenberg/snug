@@ -77,6 +77,10 @@ class TestRequest:
         assert not req == object()
         assert req != object()
 
+    def test_repr(self):
+        req = http.GET('my/url')
+        assert 'GET my/url' in repr(req)
+
 
 class TestResponse:
 
@@ -91,6 +95,9 @@ class TestResponse:
 
         assert not rsp == object()
         assert rsp != object()
+
+    def test_repr(self):
+        assert '404' in repr(http.Response(404))
 
 
 def test_prefix_adder():
@@ -149,6 +156,30 @@ class TestExecutor:
         assert exec(myquery()) == http.Response(204)
         assert client.request == http.GET(
             'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
+
+
+def test_optional_basic_auth():
+    no_auth = http.optional_basic_auth(None)
+    assert no_auth(http.GET('foo')) == http.GET('foo')
+
+    authed = http.optional_basic_auth(('user', 'pw'))
+    assert authed(http.GET('foo')) == http.GET('foo', headers={
+        'Authorization': 'Basic dXNlcjpwdw=='
+    })
+
+
+def test_sender_factory_unknown_client():
+    class MyClass:
+        pass
+    with pytest.raises(TypeError, match='MyClass'):
+        http.sender(MyClass())
+
+
+def test_async_sender_factory_unknown_client():
+    class MyClass:
+        pass
+    with pytest.raises(TypeError, match='MyClass'):
+        http.async_sender(MyClass())
 
 
 class TestAsyncExecutor:

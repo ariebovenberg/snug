@@ -109,6 +109,10 @@ class Request:
     def replace(self, **kwargs):
         return Request(**{**self._asdict(), **kwargs})
 
+    def __repr__(self):
+        return ('<Request: {0.method} {0.url}, params={0.params!r}, '
+                'headers={0.headers!r}>').format(self)
+
 
 class Response:
     """a simple HTTP response
@@ -145,6 +149,10 @@ class Response:
         if isinstance(other, Response):
             return self._asdict() != other._asdict()
         return NotImplemented
+
+    def __repr__(self):
+        return ('<Response: {0.status_code}, '
+                'headers={0.headers!r}>').format(self)
 
     def replace(self, **kwargs):
         return Response(**{**self._asdict(), **kwargs})
@@ -191,7 +199,8 @@ def executor(auth: T_auth=None,
     authenticator
         the authentication method to use
     """
-    return partial(execute, sender=compose(sender(client),
+    _sender = urllib_sender if client is None else sender(client)
+    return partial(execute, sender=compose(_sender,
                                            authenticator(auth)))
 
 
@@ -215,11 +224,9 @@ def async_executor(
 
 
 @singledispatch
-def sender(client=None) -> Sender:
+def sender(client) -> Sender:
     """create a sender for the given client"""
-    if client is None:
-        return urllib_sender
-    return TypeError('no sender factory registered for {!r}'.format(client))
+    raise TypeError('no sender factory registered for {!r}'.format(client))
 
 
 @singledispatch

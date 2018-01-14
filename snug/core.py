@@ -156,7 +156,7 @@ class _WrappedQuery(Query):
         return NotImplemented
 
     def __repr__(self):
-        fields = starmap('{}={}'.format, self._bound_args.arguments.items())
+        fields = starmap('{}={!r}'.format, self._bound_args.arguments.items())
         return '{}({})'.format(self.__class__.__qualname__, ', '.join(fields))
 
     def __hash__(self):
