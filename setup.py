@@ -14,7 +14,7 @@ history = local_path('HISTORY.rst').read_text()
 setup(
     name='snug',
     version=metadata['__version__'],
-    description='Wrap REST APIs to fit nicely into your python code',
+    description='Wrap web APIs to fit nicely into your python code',
     license='MIT',
     long_description=readme + '\n\n' + history,
     url='https://github.com/ariebovenberg/snug',
@@ -32,11 +32,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
     ],
-    keywords=['api', 'wrapper', 'rest'],
-    extras_require={
-        'requests': ['requests>=2.18.0,<3'],
-        'aiohttp': ['aiohttp>=2.3.3,<3'],
-    },
+    keywords=['api', 'wrapper', 'rest', 'http'],
     python_requires='>=3.5',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))
 )
