@@ -1,26 +1,38 @@
+from functools import partial
 from unittest import mock
+from operator import methodcaller
 
 import pytest
 
 from snug import http
 
 
-class SingleSender:
+class MockClient:
     def __init__(self, response):
         self.response = response
 
-    def __call__(self, request):
-        self.request = request
+    def send(self, req):
+        self.request = req
         return self.response
 
 
-class SingleAsyncSender:
+@http.sender.register(MockClient)
+def _sender(client):
+    return client.send
+
+
+class MockAsyncClient:
     def __init__(self, response):
         self.response = response
 
-    async def __call__(self, request):
-        self.request = request
+    async def send(self, req):
+        self.request = req
         return self.response
+
+
+@http.async_sender.register(MockAsyncClient)
+def _async_sender(client):
+    return client.send
 
 
 class TestRequest:
@@ -98,47 +110,83 @@ def test_header_adder():
     })
 
 
-def test_simple_exec():
-    exec = http.simple_exec(sender={'foo': 'bar'}.__getitem__)
+class TestExecutor:
 
-    def myquery():
-        return (yield 'foo').upper()
-    assert exec(myquery()) == 'BAR'
+    @mock.patch('urllib.request.Request', autospec=True)
+    @mock.patch('urllib.request.urlopen', autospec=True)
+    def test_defaults_to_urllib(self, urlopen, urllib_request):
+        exec = http.executor()
+
+        def myquery():
+            return (yield http.GET('my/url'))
+
+        assert exec(myquery()) == http.Response(
+            status_code=urlopen.return_value.getcode.return_value,
+            data=urlopen.return_value.read.return_value,
+            headers=urlopen.return_value.headers,
+        )
+
+    def test_custom_client(self):
+        client = MockClient(http.Response(204))
+        exec = http.executor(client=client)
+
+        def myquery():
+            return (yield http.GET('my/url'))
+
+        assert exec(myquery()) == http.Response(204)
+        assert client.request == http.GET('my/url')
+
+    def test_authentication(self):
+        client = MockClient(http.Response(204))
+        exec = http.executor(('user', 'pw'),
+                             client=client,
+                             authenticator=partial(methodcaller,
+                                                   'with_basic_auth'))
+
+        def myquery():
+            return (yield http.GET('my/url'))
+
+        assert exec(myquery()) == http.Response(204)
+        assert client.request == http.GET(
+            'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
 
 
-def test_authed_exec():
-    sender = SingleSender(http.Response(204))
-    exec = http.authed_exec(auth=('foo', 'bar'), sender=sender)
+class TestAsyncExecutor:
 
-    def myquery():
-        return (yield http.GET('foo')).status_code
+    @pytest.mark.asyncio
+    async def test_custom_client(self):
+        client = MockAsyncClient(http.Response(204))
+        exec = http.async_executor(client=client)
 
-    assert exec(myquery()) == 204
-    assert sender.request.url == 'foo'
-    assert sender.request.headers['Authorization'].startswith('Basic')
+        def myquery():
+            return (yield http.GET('my/url'))
 
+        assert await exec(myquery()) == http.Response(204)
+        assert client.request == http.GET('my/url')
 
-@pytest.mark.asyncio
-async def test_authed_aexec():
-    sender = SingleAsyncSender(http.Response(204))
-    exec = http.authed_aexec(auth=('foo', 'bar'), sender=sender)
+    @pytest.mark.asyncio
+    async def test_authentication(self):
+        client = MockAsyncClient(http.Response(204))
+        exec = http.async_executor(('user', 'pw'),
+                                   client=client,
+                                   authenticator=partial(methodcaller,
+                                                         'with_basic_auth'))
 
-    def myquery():
-        return (yield http.GET('foo')).status_code
+        def myquery():
+            return (yield http.GET('my/url'))
 
-    assert await exec(myquery()) == 204
-    assert sender.request.url == 'foo'
-    assert sender.request.headers['Authorization'].startswith('Basic')
+        assert await exec(myquery()) == http.Response(204)
+        assert client.request == http.GET(
+            'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
 
 
 @mock.patch('urllib.request.Request', autospec=True)
 @mock.patch('urllib.request.urlopen', autospec=True)
 def test_urllib_sender(urlopen, urllib_request):
-    sender = http.urllib_sender(timeout=10)
     req = http.Request('HEAD', 'https://www.api.github.com/organizations',
                        params={'since': 3043},
                        headers={'Accept': 'application/vnd.github.v3+json'})
-    response = sender(req)
+    response = http.urllib_sender(req, timeout=10)
     assert response == http.Response(
         status_code=urlopen.return_value.getcode.return_value,
         data=urlopen.return_value.read.return_value,
@@ -155,7 +203,7 @@ def test_urllib_sender(urlopen, urllib_request):
 def test_requests_sender():
     requests = pytest.importorskip("requests")
     session = mock.Mock(spec=requests.Session)
-    sender = http.requests_sender(session)
+    sender = http.sender(session)
     req = http.GET('https://www.api.github.com/organizations',
                    params={'since': 3043},
                    headers={'Accept': 'application/vnd.github.v3+json'})
@@ -187,7 +235,7 @@ async def test_aiohttp_sender():
               headers={'Content-Type': 'application/json'})
 
         async with aiohttp.ClientSession() as session:
-            sender = http.aiohttp_sender(session)
+            sender = http.async_sender(session)
             response = await sender(req)
 
         assert response == http.Response(

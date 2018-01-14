@@ -2,16 +2,23 @@
 import typing as t
 import urllib.request
 from base64 import b64encode
-from functools import partial
+from functools import partial, singledispatch
 from operator import methodcaller
 
 from . import asnc
-from .core import Executor, Sender, compose, execute
-from .utils import EMPTY_MAPPING
+from .core import Executor as _Executor, Sender as _Sender, compose, execute
+from .utils import EMPTY_MAPPING, identity
 
-__all__ = ['Request', 'GET', 'Response', 'urllib_sender']
+__all__ = [
+    'Request',
+    'GET',
+    'Response',
+    'urllib_sender',
+    'executor'
+]
 
-Headers = t.Mapping[str, str]
+
+T_auth = t.TypeVar('T_auth')
 
 
 class Request:
@@ -45,7 +52,7 @@ class Request:
         self.params = params
         self.headers = headers
 
-    def with_headers(self, headers: Headers) -> 'Request':
+    def with_headers(self, headers: t.Mapping[str, str]) -> 'Request':
         """new request with added headers
 
         Parameters
@@ -143,72 +150,83 @@ class Response:
         return Response(**{**self._asdict(), **kwargs})
 
 
-def urllib_sender(**kwargs) -> Sender[Request, Response]:
-    """create a :class:`~snug.Sender` using :mod:`urllib`.
-
-    Parameters
-    ----------
-    **kwargs
-        parameters passed to :func:`urllib.request.urlopen`
-    """
-    def _urllib_send(req: Request) -> Response:
-        url = req.url + '?' + urllib.parse.urlencode(req.params)
-        raw_request = urllib.request.Request(url, headers=req.headers,
-                                             method=req.method)
-        raw_response = urllib.request.urlopen(raw_request, **kwargs)
-        return Response(
-            raw_response.getcode(),
-            data=raw_response.read(),
-            headers=raw_response.headers,
-        )
-
-    return _urllib_send
+Sender = _Sender[Request, Response]
+Executor = _Executor[Request, Response]
 
 
-def simple_exec(sender: Sender[Request, Response]=urllib_sender()) -> (
-        Executor[Request, Response]):
-    """create a simple executor
+def urllib_sender(req: Request, **kwargs) -> Response:
+    url = req.url + '?' + urllib.parse.urlencode(req.params)
+    raw_request = urllib.request.Request(url, headers=req.headers,
+                                         method=req.method)
+    raw_response = urllib.request.urlopen(raw_request, **kwargs)
+    return Response(
+        raw_response.getcode(),
+        data=raw_response.read(),
+        headers=raw_response.headers,
+    )
 
-    Parameters
-    ----------
-    sender
-        the request sender
-    """
-    return partial(execute, sender=sender)
+
+def optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
+        t.Callable[[Request], Request]):
+    if credentials is None:
+        return identity
+    else:
+        return methodcaller('with_basic_auth', credentials)
 
 
-def authed_exec(auth: t.Tuple[str, str],
-                sender: Sender[Request, Response]=urllib_sender()) -> (
-                    Executor[Request, Response]):
-    """create an authenticated executor
+_Authenticator = t.Callable[[T_auth], t.Callable[[Request], Request]]
+
+
+def executor(auth: T_auth=None,
+             client=None,
+             authenticator: _Authenticator=optional_basic_auth) -> Executor:
+    """create an executor
 
     Parameters
     ----------
     auth
-        (username, password)-tuple
-    sender
-        the request sender
+        the credentials
+    client
+        The HTTP client to use.
+    authenticator
+        the authentication method to use
     """
-    return partial(
-        execute,
-        sender=compose(sender, methodcaller('with_basic_auth', auth)))
+    return partial(execute, sender=compose(sender(client),
+                                           authenticator(auth)))
 
 
-def authed_aexec(auth: t.Tuple[str, str],
-                 sender: asnc.Sender[Request, Response]) -> (
-                     asnc.Executor[Request, Response]):
-    """create an authenticated async executor
+def async_executor(
+        auth: T_auth=None,
+        client=None,
+        authenticator: _Authenticator=optional_basic_auth) -> asnc.Executor:
+    """create an ascynchronous executor
 
     Parameters
     ----------
     auth
-        (username, password)-tuple
-    sender
-        the request sender
+        the credentials
+    client
+        The (asynchronous) HTTP client to use.
+    authenticator
+        the authentication method to use
     """
-    return partial(
-        asnc.execute,
-        sender=compose(sender, methodcaller('with_basic_auth', auth)))
+    return partial(asnc.execute, sender=compose(async_sender(client),
+                                                authenticator(auth)))
+
+
+@singledispatch
+def sender(client=None) -> Sender:
+    """create a sender for the given client"""
+    if client is None:
+        return urllib_sender
+    return TypeError('no sender factory registered for {!r}'.format(client))
+
+
+@singledispatch
+def async_sender(client) -> asnc.Sender:
+    """create an asynchronous sender from the given client"""
+    raise TypeError(
+        'no async sender factory registered for {!r}'.format(client))
 
 
 try:
@@ -216,8 +234,8 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    def requests_sender(session: requests.Session) -> Sender[Request,
-                                                             Response]:
+    @sender.register(requests.Session)
+    def _requests_sender(session: requests.Session) -> Sender:
         """create a :class:`~snug.Sender` for a :class:`requests.Session`
 
         Parameters
@@ -238,16 +256,14 @@ else:
 
         return _req_send
 
-    __all__.append('requests_sender')
-
 
 try:
     import aiohttp
 except ImportError:  # pragma: no cover
     pass
 else:
-    def aiohttp_sender(session: aiohttp.ClientSession) -> asnc.Sender[Response,
-                                                                      Request]:
+    @async_sender.register(aiohttp.ClientSession)
+    def _aiohttp_sender(session: aiohttp.ClientSession) -> asnc.Sender:
         """create an asynchronous sender
         for an `aiohttp` client session
 
@@ -268,8 +284,6 @@ else:
                 )
 
         return _aiohttp_sender
-
-    __all__.append('aiohttp_sender')
 
 
 # useful shortcuts
