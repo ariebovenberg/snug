@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from setuptools import setup, find_packages
 
@@ -27,17 +28,15 @@ setup(
         'License :: OSI Approved :: MIT License',
 
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
     keywords=['api', 'wrapper', 'rest'],
-    install_requires=[
-        'dataclasses>=0.1,<0.2',
-        'toolz>=0.8.2,<0.9',
-    ],
     extras_require={
         'requests': ['requests>=2.18.0,<3'],
         'aiohttp': ['aiohttp>=2.3.3,<3'],
     },
-    python_requires='>=3.6',
+    python_requires='>=3.5',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))
 )

@@ -1,40 +1,44 @@
 import typing as t
 import xml.etree.ElementTree
 from datetime import datetime
-from functools import partial
-from operator import attrgetter, methodcaller
-
-from toolz import compose, valfilter
+from operator import attrgetter
 
 import snug
-from snug.utils import notnone
+from snug.utils import notnone, valfilter, compose, oneyield
 
-from .types import Station, Departure, Journey
-from .load import registry
+from .load import registry as loads
+from .types import Departure, Journey, Station
 
+API_PREFIX = 'https://webservices.ns.nl/ns-api-'
+add_prefix = snug.http.prefix_adder(API_PREFIX)
+parse_request = compose(xml.etree.ElementTree.fromstring, attrgetter('data'))
+basic_interaction = compose(snug.sendmapped(parse_request),
+                            snug.yieldmapped(add_prefix),
+                            oneyield)
 
-api = snug.Api(
-    prepare=methodcaller('add_prefix', 'https://webservices.ns.nl/ns-api-'),
-    parse=compose(xml.etree.ElementTree.fromstring, attrgetter('content')),
-    add_auth=snug.Request.add_basic_auth,
-)
-resolve = partial(
-    snug.query.resolve,
-    api=api,
-    loaders=registry,
-    sender=snug.urllib_sender())
-
-stations = snug.Query(snug.Request('stations-v2'), rtype=t.List[Station])
-"""a list of all stations"""
+authed_exec = snug.http.authed_exec
+authed_aexec = snug.http.authed_aexec
 
 
-@snug.Query(t.List[Departure])
+@snug.querytype()
+@snug.returnmapped(loads(t.List[Station]))
+@basic_interaction
+def stations():
+    """a list of all stations"""
+    return snug.http.GET('stations-v2')
+
+
+@snug.querytype()
+@snug.returnmapped(loads(t.List[Departure]))
+@basic_interaction
 def departures(station: str):
     """departures for a station"""
-    return snug.Request('avt', params={'station': station})
+    return snug.http.GET('avt', params={'station': station})
 
 
-@snug.Query(t.List[Journey])
+@snug.querytype()
+@snug.returnmapped(loads(t.List[Journey]))
+@basic_interaction
 def journey_options(origin:      str,
                     destination: str,
                     via:         t.Optional[str]=None,
@@ -44,7 +48,7 @@ def journey_options(origin:      str,
                     hsl:         t.Optional[bool]=None,
                     year_card:   t.Optional[bool]=None):
     """journey recommendations from an origin to a destination station"""
-    return snug.Request('treinplanner', params=valfilter(notnone, {
+    return snug.http.GET('treinplanner', params=valfilter(notnone, {
         'fromStation':     origin,
         'toStation':       destination,
         'viaStation':      via,

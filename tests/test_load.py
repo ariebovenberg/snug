@@ -1,13 +1,12 @@
 import typing as t
-from operator import itemgetter
-
 from datetime import datetime
+from operator import itemgetter
 
 import pytest
 from dataclasses import dataclass
-from toolz import compose, identity, valmap
 
-from snug import load, utils
+from snug import load
+from snug.utils import compose, identity, parse_iso8601, valmap
 
 
 @dataclass(frozen=True)
@@ -30,7 +29,7 @@ def registry():
         str:        str,
         type(None): identity,
         object:     identity,
-        datetime:   utils.parse_iso8601,
+        datetime:   parse_iso8601,
     }) | load.GenericRegistry({
         t.List:  load.list_loader,
         t.Set:   load.set_loader,

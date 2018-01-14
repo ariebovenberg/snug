@@ -1,93 +1,113 @@
 import json
 import reprlib
 import typing as t
+from dataclasses import dataclass
 from datetime import datetime
-from operator import methodcaller, attrgetter
+from functools import partial
+from operator import attrgetter
 
 import snug
-from toolz import partial, valfilter, compose
-from dataclasses import dataclass
-from snug.utils import notnone
+from snug.utils import notnone, valfilter, compose, oneyield
 
-from .types import Repo, Organization, User, Issue, RepoSummary
-from .load import registry
+from .load import registry as loads
+from .types import Issue, Organization, Repo, RepoSummary, User
 
 _repr = reprlib.Repr()
 _repr.maxstring = 45
 
+dclass = partial(dataclass, frozen=True)
 
-api = snug.Api(
-    prepare=compose(
-        methodcaller('add_headers',
-                     {'Accept': 'application/vnd.github.v3+json'}),
-        methodcaller('add_prefix', 'https://api.github.com/')),
-    parse=compose(
-        json.loads,
-        methodcaller('decode', 'utf-8'),
-        attrgetter('content')),
-    add_auth=snug.Request.add_basic_auth,
+API_PREFIX = 'https://api.github.com/'
+add_prefix = snug.http.prefix_adder(API_PREFIX)
+add_headers = snug.http.header_adder({
+    'Accept': 'application/vnd.github.v3+json',
+})
+parse_response = compose(json.loads, attrgetter('data'))
+
+basic_interaction = compose(
+    snug.yieldmapped(add_prefix, add_headers),
+    snug.sendmapped(parse_response),
 )
 
-resolve = partial(snug.query.resolve,
-                  api=api,
-                  sender=snug.urllib_sender(),
-                  loaders=registry)
+exec = snug.http.simple_exec()
+authed_exec = snug.http.authed_exec
+authed_aexec = snug.http.authed_aexec
 
 
-@dataclass(frozen=True)
-class repo(snug.Query, rtype=Repo):
+@dclass
+class repo(snug.Query):
     """repository lookup by owner & name"""
     owner: str
     name:  str
 
-    @property
-    def __req__(self):
-        return snug.Request(f'repos/{self.owner}/{self.name}')
+    @snug.returnmapped(loads(Repo))
+    @basic_interaction
+    @oneyield
+    def __iter__(self):
+        return snug.http.GET(f'repos/{self.owner}/{self.name}')
 
-    @snug.Query(t.List[Issue])
+    @snug.querytype(related=True)
+    @snug.returnmapped(loads(t.List[Issue]))
+    @basic_interaction
+    @oneyield
     def issues(repo:   'repo',
                labels: t.Optional[str]=None,
                state:  t.Optional[str]=None):
-        return snug.Request(
+        return snug.http.GET(
             f'repos/{repo.owner}/{repo.name}/issues',
             params=valfilter(notnone, {
                 'labels': labels,
                 'state':  state,
             }))
 
-    @snug.Query(Issue)
+    @snug.querytype(related=True)
+    @snug.returnmapped(loads(Issue))
+    @basic_interaction
+    @oneyield
     def issue(repo: 'repo', number: int):
-        return snug.Request(
+        return snug.http.GET(
             f'repos/{repo.owner}/'
             f'{repo.name}/issues/{number}')
 
 
-@snug.Query(t.List[RepoSummary])
+@snug.querytype()
+@snug.returnmapped(loads(t.List[RepoSummary]))
+@basic_interaction
+@oneyield
 def repos():
     """a selection on repositories"""
-    return snug.Request('repositories')
+    return snug.http.GET('repositories')
 
 
-@snug.Query(Organization)
+@snug.querytype()
+@snug.returnmapped(loads(Organization))
+@basic_interaction
+@oneyield
 def org(login: str):
     """Organization lookup by login"""
-    return snug.Request(f'orgs/{login}')
+    return snug.http.GET(f'orgs/{login}')
 
 
-@snug.Query(t.List[Organization])
+@snug.querytype()
+@snug.returnmapped(loads(t.List[Organization]))
+@basic_interaction
+@oneyield
 def orgs():
     """a selection of organizations"""
-    return snug.Request('organizations')
+    return snug.http.GET('organizations')
 
 
-@snug.Query(t.List[Issue])
+@snug.querytype()
+@snug.returnmapped(loads(t.List[Issue]))
+@basic_interaction
+@oneyield
 def issues(filter: t.Optional[str]=None,
            state:  t.Optional[Issue.State]=None,
            labels: t.Optional[str]=None,
            sort:   t.Optional[Issue.Sort]=None,
            since:  t.Optional[datetime]=None):
     """a selection of assigned issues"""
-    return snug.Request('issues', params=valfilter(notnone, {
+    return snug.http.GET('issues', params=valfilter(notnone, {
         'filter': filter,
         'state':  state,
         'labels': labels,
@@ -97,13 +117,18 @@ def issues(filter: t.Optional[str]=None,
 
 
 @dataclass(frozen=True)
-class current_user(snug.Query, rtype=User):
+class current_user(snug.Query):
     """a reference to the current user"""
 
-    @property
-    def __req__(self):
-        return snug.Request('user')
+    @snug.returnmapped(loads(User))
+    @basic_interaction
+    @oneyield
+    def __iter__(self):
+        return snug.http.GET('user')
 
-    @snug.Query(t.List[Issue])
-    def issues(user: 'current_user'):
-        return snug.Request('user/issues')
+    @snug.querytype()
+    @snug.returnmapped(loads(t.List[Issue]))
+    @basic_interaction
+    @oneyield
+    def issues():
+        return snug.http.GET('user/issues')

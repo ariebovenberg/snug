@@ -1,23 +1,14 @@
 API reference
 =============
 
-.. todo::
-   cleanup the formatting
 
-query
------
-
-.. automodule:: snug.query
-   :members:
-   :show-inheritance:
-
-
-load
+core
 ----
 
-.. automodule:: snug.load
+.. automodule:: snug.core
    :members:
-   :show-inheritance:
+   :special-members:
+   :exclude-members: __next_in_mro__,__weakref__
 
 
 http
@@ -26,8 +17,25 @@ http
 .. automodule:: snug.http
    :members:
 
+.. autodata:: snug.http.GET
+.. autodata:: snug.http.POST
+.. autodata:: snug.http.PUT
+.. autodata:: snug.http.PATCH
+.. autodata:: snug.http.DELETE
+.. autodata:: snug.http.HEAD
+.. autodata:: snug.http.OPTIONS
+
+
 utils
 -----
 
 .. automodule:: snug.utils
    :members:
+
+
+load
+----
+
+.. automodule:: snug.load
+   :members:
+   :show-inheritance:
