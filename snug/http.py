@@ -5,12 +5,8 @@ from base64 import b64encode
 from functools import partial, singledispatch
 from operator import methodcaller
 
-from .core import (Executor as _Executor,
-                   Sender as _Sender,
-                   execute, AsyncExecutor as _AsyncExecutor, 
-                   execute_async)
 from . import core
-from .utils import EMPTY_MAPPING, identity, compose
+from .utils import EMPTY_MAPPING, compose, identity
 
 __all__ = [
     'Request',
@@ -26,7 +22,6 @@ __all__ = [
     'HEAD',
     'OPTIONS',
 ]
-
 
 T_auth = t.TypeVar('T_auth')
 
@@ -172,6 +167,7 @@ Sender = core.Sender[Request, Response]
 Executor = core.Executor[Request, Response]
 AsyncSender = core.AsyncSender[Request, Response]
 AsyncExecutor = core.AsyncExecutor[Request, Response]
+_Authenticator = t.Callable[[T_auth], t.Callable[[Request], Request]]
 
 
 def urllib_sender(req: Request, **kwargs) -> Response:
@@ -187,21 +183,17 @@ def urllib_sender(req: Request, **kwargs) -> Response:
     )
 
 
-def optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
+def _optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
         t.Callable[[Request], Request]):
-    """"""
     if credentials is None:
         return identity
     else:
         return methodcaller('with_basic_auth', credentials)
 
 
-_Authenticator = t.Callable[[T_auth], t.Callable[[Request], Request]]
-
-
 def executor(auth: T_auth=None,
              client=None,
-             authenticator: _Authenticator=optional_basic_auth) -> Executor:
+             authenticator: _Authenticator=_optional_basic_auth) -> Executor:
     """create an executor
 
     Parameters
@@ -214,14 +206,14 @@ def executor(auth: T_auth=None,
         the authentication method to use
     """
     _sender = urllib_sender if client is None else sender(client)
-    return partial(execute, sender=compose(_sender,
-                                           authenticator(auth)))
+    return partial(core.execute, sender=compose(_sender,
+                                                authenticator(auth)))
 
 
 def async_executor(
         auth: T_auth=None,
         client=None,
-        authenticator: _Authenticator=optional_basic_auth) -> AsyncExecutor:
+        authenticator: _Authenticator=_optional_basic_auth) -> AsyncExecutor:
     """create an ascynchronous executor
 
     Parameters
@@ -233,8 +225,8 @@ def async_executor(
     authenticator
         the authentication method to use
     """
-    return partial(execute_async, sender=compose(async_sender(client),
-                                                 authenticator(auth)))
+    return partial(core.execute_async, sender=compose(async_sender(client),
+                                                      authenticator(auth)))
 
 
 @singledispatch

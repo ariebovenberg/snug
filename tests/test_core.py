@@ -1,7 +1,7 @@
+import asyncio
 import inspect
 import pickle
 import types
-import asyncio
 
 import pytest
 

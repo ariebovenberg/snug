@@ -1,6 +1,6 @@
 from functools import partial
-from unittest import mock
 from operator import methodcaller
+from unittest import mock
 
 import pytest
 
@@ -159,10 +159,10 @@ class TestExecutor:
 
 
 def test_optional_basic_auth():
-    no_auth = http.optional_basic_auth(None)
+    no_auth = http._optional_basic_auth(None)
     assert no_auth(http.GET('foo')) == http.GET('foo')
 
-    authed = http.optional_basic_auth(('user', 'pw'))
+    authed = http._optional_basic_auth(('user', 'pw'))
     assert authed(http.GET('foo')) == http.GET('foo', headers={
         'Authorization': 'Basic dXNlcjpwdw=='
     })
