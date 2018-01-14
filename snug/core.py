@@ -13,14 +13,17 @@ from .utils import (called_as_method, compose, nest, returnmap, sendmap,
 
 __all__ = [
     'Query',
-    'Sender',
-    'Pipe',
+    'querytype',
     'execute',
+    'execute_async',
     'nested',
     'yieldmapped',
     'sendmapped',
     'returnmapped',
-    'querytype',
+    'Sender',
+    'AsyncSender',
+    'Executor',
+    'AsyncExecutor',
 ]
 
 
@@ -53,21 +56,13 @@ class Sender(t.Generic[T_req, T_resp]):
         raise NotImplementedError()
 
 
-class Pipe(t.Generic[T_req, T_prepared, T_resp, T_parsed]):
-    """ABC for middleware objects.
-    generator callables with the same signature implement it."""
+class AsyncSender(t.Generic[T_req, T_resp]):
+    """ABC for asynchronous sender-like objects.
+    Any callable with the same signature implements it"""
 
-    @abc.abstractmethod
-    def __call__(self, request: T_req) -> t.Generator[T_prepared,
-                                                      T_resp,
-                                                      T_parsed]:
-        """wrap a request and response"""
+    async def __call__(self, request: T_req) -> T_resp:
+        """send a request, returning a response"""
         raise NotImplementedError()
-
-    @staticmethod
-    def identity(request: T_req) -> t.Generator[T_req, T_resp, T_resp]:
-        """identity pipe, leaves requests and responses unchanged"""
-        return (yield request)
 
 
 class Executor(t.Generic[T_req, T_resp]):
@@ -75,6 +70,34 @@ class Executor(t.Generic[T_req, T_resp]):
     @abc.abstractmethod
     def __call__(self, query: Query[T_req, T_resp, T]) -> T:
         raise NotImplementedError()
+
+
+class AsyncExecutor(t.Generic[T_req, T_resp]):
+
+    @abc.abstractmethod
+    async def __call__(self, query: Query[T_req, T_resp, T]) -> T:
+        raise NotImplementedError()
+
+
+async def execute_async(query:  Query[T_req, T_resp, T],
+                        sender: AsyncSender[T_req, T_resp]) -> T:
+    """execute a query asynchronously
+
+    Parameters
+    ----------
+    query
+        the query to resolve
+    sender
+        the sender to use
+    """
+    gen = iter(query)
+    request = next(gen)
+    while True:
+        response = await sender(request)
+        try:
+            request = gen.send(response)
+        except StopIteration as e:
+            return e.value
 
 
 def execute(query:  Query[T_req, T_resp, T],

@@ -1,6 +1,9 @@
 import inspect
 import pickle
 import types
+import asyncio
+
+import pytest
 
 import snug
 from snug.utils import compose, genresult
@@ -195,7 +198,21 @@ class TestQueryType:
         assert changed == myquery(4, 9, d=6, foo=10)
 
 
-def test_identity_pipe():
-    pipe = snug.Pipe.identity('foo')
-    assert next(pipe) == 'foo'
-    assert genresult(pipe, 'bar') == 'bar'
+@pytest.mark.asyncio
+async def test_execute_async():
+
+    async def sender(req):
+        await asyncio.sleep(0)
+        if not req.endswith('/'):
+            return 'redirect:' + req + '/'
+        elif req == '/posts/latest/':
+            return 'hello world'
+
+    def myquery():
+        response = yield '/posts/latest'
+        while response.startswith('redirect:'):
+            response = yield response[9:]
+        return response.upper()
+
+    query = myquery()
+    assert await snug.execute_async(query, sender=sender) == 'HELLO WORLD'

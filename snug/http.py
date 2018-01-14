@@ -5,16 +5,26 @@ from base64 import b64encode
 from functools import partial, singledispatch
 from operator import methodcaller
 
-from . import asnc
-from .core import Executor as _Executor, Sender as _Sender, compose, execute
-from .utils import EMPTY_MAPPING, identity
+from .core import (Executor as _Executor,
+                   Sender as _Sender,
+                   execute, AsyncExecutor as _AsyncExecutor, 
+                   execute_async)
+from . import core
+from .utils import EMPTY_MAPPING, identity, compose
 
 __all__ = [
     'Request',
-    'GET',
     'Response',
+    'executor',
+    'async_executor',
     'urllib_sender',
-    'executor'
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'HEAD',
+    'OPTIONS',
 ]
 
 
@@ -158,11 +168,14 @@ class Response:
         return Response(**{**self._asdict(), **kwargs})
 
 
-Sender = _Sender[Request, Response]
-Executor = _Executor[Request, Response]
+Sender = core.Sender[Request, Response]
+Executor = core.Executor[Request, Response]
+AsyncSender = core.AsyncSender[Request, Response]
+AsyncExecutor = core.AsyncExecutor[Request, Response]
 
 
 def urllib_sender(req: Request, **kwargs) -> Response:
+    """simple :class:`~snug.http.Sender` which uses python's :mod:`urllib`"""
     url = req.url + '?' + urllib.parse.urlencode(req.params)
     raw_request = urllib.request.Request(url, headers=req.headers,
                                          method=req.method)
@@ -176,6 +189,7 @@ def urllib_sender(req: Request, **kwargs) -> Response:
 
 def optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
         t.Callable[[Request], Request]):
+    """"""
     if credentials is None:
         return identity
     else:
@@ -207,7 +221,7 @@ def executor(auth: T_auth=None,
 def async_executor(
         auth: T_auth=None,
         client=None,
-        authenticator: _Authenticator=optional_basic_auth) -> asnc.Executor:
+        authenticator: _Authenticator=optional_basic_auth) -> AsyncExecutor:
     """create an ascynchronous executor
 
     Parameters
@@ -219,8 +233,8 @@ def async_executor(
     authenticator
         the authentication method to use
     """
-    return partial(asnc.execute, sender=compose(async_sender(client),
-                                                authenticator(auth)))
+    return partial(execute_async, sender=compose(async_sender(client),
+                                                 authenticator(auth)))
 
 
 @singledispatch
@@ -230,7 +244,7 @@ def sender(client) -> Sender:
 
 
 @singledispatch
-def async_sender(client) -> asnc.Sender:
+def async_sender(client) -> AsyncSender:
     """create an asynchronous sender from the given client"""
     raise TypeError(
         'no async sender factory registered for {!r}'.format(client))
@@ -270,7 +284,7 @@ except ImportError:  # pragma: no cover
     pass
 else:
     @async_sender.register(aiohttp.ClientSession)
-    def _aiohttp_sender(session: aiohttp.ClientSession) -> asnc.Sender:
+    def _aiohttp_sender(session: aiohttp.ClientSession) -> AsyncSender:
         """create an asynchronous sender
         for an `aiohttp` client session
 

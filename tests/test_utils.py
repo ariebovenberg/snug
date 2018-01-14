@@ -310,9 +310,7 @@ class TestNest:
     def test_accumulate(self):
 
         gen = reduce(utils.nest,
-                     [try_until_even,
-                      snug.Pipe.identity,
-                      try_until_positive],
+                     [try_until_even, try_until_positive],
                      mymax(4))
 
         assert next(gen) == 4
