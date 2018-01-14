@@ -20,6 +20,11 @@ Snug
     :target: http://snug.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
+.. image:: https://api.codeclimate.com/v1/badges/00312aa548eb87fe11b4/maintainability
+   :target: https://codeclimate.com/github/ariebovenberg/snug/maintainability
+   :alt: Maintainability
+
+
 Wrap web APIs to fit nicely into your python code For python 3.5+.
 
 Quickstart
