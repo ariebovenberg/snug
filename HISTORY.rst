@@ -1,8 +1,13 @@
 Release history
 ---------------
 
-dev
-+++
+development
++++++++++++
+
+0.3.0 (2018-01-14)
+++++++++++++++++++
+
+- generator-based queries
 
 0.1.2
 +++++
