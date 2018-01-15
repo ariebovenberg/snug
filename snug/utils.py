@@ -156,13 +156,6 @@ def valfilter(predicate: t.Callable, mapping: t.Mapping) -> t.Mapping:
     return {k: v for k, v in mapping.items() if predicate(v)}
 
 
-def push(value, *funcs):
-    """pipe a value through a sequence of functions"""
-    for func in funcs:
-        value = func(value)
-    return value
-
-
 class _EmptyMapping(Mapping):
     """an empty mapping to use as a default value"""
     def __iter__(self):
