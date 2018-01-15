@@ -8,8 +8,8 @@ from itertools import starmap
 from operator import attrgetter, itemgetter
 from types import GeneratorType
 
-from .utils import (called_as_method, compose, nest, returnmap, sendmap,
-                    yieldmap)
+from .utils import called_as_method, compose
+from .gentools import nest, returnmap, sendmap, yieldmap
 
 __all__ = [
     'Query',

@@ -6,7 +6,8 @@ import types
 import pytest
 
 import snug
-from snug.utils import compose, genresult
+from snug.utils import compose
+from snug.gentools import genresult
 
 
 def try_until_even(req):

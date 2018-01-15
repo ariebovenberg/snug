@@ -19,6 +19,17 @@ class CallableAsMethod:
         return self if obj is None else MethodType(self, obj)
 
 
+class called_as_method:
+    """decorate a callable (e.g. class or function) to be called as a method.
+    I.e. the parent instance is passed as the first argument"""
+    def __init__(self, func: t.Callable):
+        self.func = func
+
+    def __get__(self, instance, cls):
+        return (self.func if instance is None
+                else partial(self.func, instance))
+
+
 def notnone(obj):
     """return whether an object is not None"""
     return obj is not None
@@ -38,17 +49,6 @@ class lookup_defaults:
             return self.lookup(obj)
         except LookupError:
             return self.default
-
-
-# TODO: type annotations
-def genresult(gen, value):
-    """send an item into a generator expecting a final return value"""
-    try:
-        gen.send(value)
-    except StopIteration as e:
-        return e.value
-    else:
-        raise TypeError('generator did not return as expected')
 
 
 def identity(obj):
@@ -142,62 +142,6 @@ class compose(CallableAsMethod):
         for func in reversed(tail):
             value = func(value)
         return value
-
-
-class called_as_method:
-    """decorate a callable (e.g. class or function) to be called as a method.
-    I.e. the parent instance is passed as the first argument"""
-    def __init__(self, func: t.Callable):
-        self.func = func
-
-    def __get__(self, instance, cls):
-        return (self.func if instance is None
-                else partial(self.func, instance))
-
-
-# TODO: types, docstring
-def yieldmap(func, gen) -> t.Generator:
-    gen = iter(gen)
-    assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
-    item = next(gen)
-    while True:
-        item = gen.send((yield func(item)))
-
-
-# TODO: type annotations, docstring
-def sendmap(func, gen) -> t.Generator:
-    gen = iter(gen)
-    assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
-    item = next(gen)
-    while True:
-        item = gen.send(func((yield item)))
-
-
-# TODO: type annotations, docstring
-def nest(gen, pipe):
-    gen = iter(gen)
-    assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
-    item = next(gen)
-    while True:
-        sent = yield from pipe(item)
-        item = gen.send(sent)
-
-
-# TODO: type annotations, docstring
-def returnmap(func, gen):
-    gen = iter(gen)
-    assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
-    return func((yield from gen))
-
-
-# TODO: type annotations
-class oneyield:
-    """decorate a function to turn it into a basic generator"""
-    def __init__(self, func: t.Callable):
-        self.__wrapped__ = func
-
-    def __call__(self, *args, **kwargs):
-        return (yield self.__wrapped__(*args, **kwargs))
 
 
 # TODO inner type annotations
