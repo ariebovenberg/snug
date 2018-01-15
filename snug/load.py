@@ -10,7 +10,7 @@ import typing as t
 from datetime import datetime
 from functools import partial
 from itertools import starmap
-from operator import itemgetter, attrgetter
+from operator import attrgetter, itemgetter
 
 from .utils import EMPTY_MAPPING, compose, identity
 

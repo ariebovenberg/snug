@@ -1,5 +1,5 @@
 import typing as t
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from operator import itemgetter
 
 import pytest
