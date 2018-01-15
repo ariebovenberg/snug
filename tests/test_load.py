@@ -50,28 +50,7 @@ def test_lookup_default():
     assert getter({'foo': 4}) == 4
 
 
-@pytest.mark.parametrize('data, loaded', [
-    ({
-        'id': 98,
-        'username': 'wilma',
-        'hobbies': ['tennis', 'diving'],
-        'pizza': 'true',
-        'height': 1.64,
-        'nicknames': []
-    },
-     User(98, 'wilma', hobbies=['tennis', 'diving'],
-          likes_pizza=True, height=1.64, nicknames=set())),
-    ({
-        'id': '44',
-        'username': 'bob',
-        'height': '1.85',
-        'nicknames': ['bobby'],
-    },
-     User(44, 'bob', hobbies=None, likes_pizza=None, height=1.85,
-          nicknames={'bobby'})
-    )
-])
-def test_create_dataclass_loader(data, loaded, registry):
+def test_create_dataclass_loader(registry):
     dloader = load.create_dataclass_loader(User, registry, {
         'id':          itemgetter('id'),
         'name':        itemgetter('username'),
@@ -80,7 +59,15 @@ def test_create_dataclass_loader(data, loaded, registry):
         'nicknames':   itemgetter('nicknames'),
         'hobbies':     itemgetter('hobbies'),
     })
-    assert dloader(data) == loaded
+    assert dloader({
+        'id': 98,
+        'username': 'wilma',
+        'hobbies': ['tennis', 'diving'],
+        'pizza': 'true',
+        'height': 1.64,
+        'nicknames': []
+    }) == User(98, 'wilma', hobbies=['tennis', 'diving'],
+               likes_pizza=True, height=1.64, nicknames=set())
 
 
 class TestPrimitiveRegistry:
@@ -251,6 +238,7 @@ def test_simple_registry():
         'comments': ['first!', 'another comment', 5],
         'user': {
             'name': 'bob',
+            'nickname': 'bobby',
             'id': '543',
             'extra data': '...',
         }
@@ -261,7 +249,7 @@ def test_simple_registry():
         user=User(
             name='bob',
             id=543,
-            nickname=None
+            nickname='bobby'
         )
     )
 

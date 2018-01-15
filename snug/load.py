@@ -10,7 +10,7 @@ import typing as t
 from datetime import datetime
 from functools import partial
 from itertools import starmap
-from operator import attrgetter, itemgetter
+from operator import itemgetter, attrgetter
 
 from .utils import EMPTY_MAPPING, compose, identity
 
@@ -143,24 +143,13 @@ class UnsupportedType(LookupError):
 
 def create_dataclass_loader(cls, registry, field_getters):
     """create a loader for a dataclass type"""
-    fields = {
-        name: field.type
-        for name, field in cls.__dataclass_fields__.items()
-    }
+    fields = cls.__dataclass_fields__
+    item_loaders = map(registry, map(attrgetter('type'), fields.values()))
     getters = map(field_getters.__getitem__, fields)
-    optionals = map(_is_optional_type, fields.values())
-
-    # coverage examption here because branch coverage
-    # cannot tell if the generator is fully consumed by zip().
-    itemgetters = (  # pragma: no cover
-        lookup_defaults(getter, None) if optional else getter
-        for getter, optional in zip(getters, optionals)
-    )
-    loaders = map(registry, fields.values())
-    getters = list(starmap(compose, zip(loaders, itemgetters)))
+    loaders = list(starmap(compose, zip(item_loaders, getters)))
 
     def dloader(obj):
-        return cls(*(g(obj) for g in getters))
+        return cls(*(g(obj) for g in loaders))
 
     return dloader
 
