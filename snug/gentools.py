@@ -1,5 +1,20 @@
 import inspect
 import typing as t
+from functools import partial, reduce
+
+from .utils import compose
+
+
+__all__ = [
+    'nest',
+    'yieldmap',
+    'sendmap',
+    'returnmap',
+    'nested',
+    'yieldmapped',
+    'sendmapped',
+    'returnmapped',
+]
 
 
 # TODO: type annotations
@@ -46,6 +61,42 @@ def returnmap(func, gen):
     gen = iter(gen)
     assert inspect.getgeneratorstate(gen) == 'GEN_CREATED'
     return func((yield from gen))
+
+
+# TODO: docs, types
+class nested:
+    def __init__(self, *genfuncs):
+        self._genfuncs = genfuncs
+
+    def __call__(self, func):
+        return compose(partial(reduce, nest, self._genfuncs), func)
+
+
+# TODO: docs, types
+class yieldmapped:
+    def __init__(self, *funcs):
+        self._mapper = compose(*funcs)
+
+    def __call__(self, func):
+        return compose(partial(yieldmap, self._mapper), func)
+
+
+# TODO: docs, types
+class sendmapped:
+    def __init__(self, *funcs):
+        self._mapper = compose(*funcs)
+
+    def __call__(self, func):
+        return compose(partial(sendmap, self._mapper), func)
+
+
+# TODO: docs, types
+class returnmapped:
+    def __init__(self, *funcs):
+        self._mapper = compose(*funcs)
+
+    def __call__(self, func):
+        return compose(partial(returnmap, self._mapper), func)
 
 
 # TODO: type annotations

@@ -6,33 +6,6 @@ import types
 import pytest
 
 import snug
-from snug.gentools import genresult
-from snug.utils import compose
-
-
-def try_until_even(req):
-    """an example Pipe"""
-    response = yield req
-    while response % 2:
-        response = yield 'NOT EVEN!'
-    return response
-
-
-def try_until_positive(req):
-    """an example Pipe"""
-    response = yield req
-    while response < 0:
-        response = yield 'NOT POSITIVE!'
-    return response
-
-
-def mymax(val):
-    """an example generator function"""
-    while val < 100:
-        sent = yield val
-        if sent > val:
-            val = sent
-    return val * 3
 
 
 def test_execute():
@@ -50,64 +23,6 @@ def test_execute():
             return response.decode('ascii')
 
     assert snug.execute(MyQuery(), sender) == 'hello world'
-
-
-def test_nested():
-    decorated = snug.nested(try_until_even, try_until_positive)(mymax)
-
-    gen = decorated(4)
-    assert next(gen) == 4
-    assert gen.send(8) == 8
-    assert gen.send(9) == 'NOT EVEN!'
-    assert gen.send(2) == 8
-    assert gen.send(-1) == 'NOT POSITIVE!'
-    assert genresult(gen, 102) == 306
-
-
-def test_yieldmapped():
-    decorated = snug.yieldmapped(str, lambda x: x * 2)(mymax)
-
-    gen = decorated(5)
-    assert next(gen) == '10'
-    assert gen.send(2) == '10'
-    assert gen.send(9) == '18'
-    assert gen.send(12) == '24'
-    assert genresult(gen, 103) == 309
-
-
-def test_sendmapped():
-    decorated = snug.sendmapped(lambda x: x * 2, int)(mymax)
-
-    gen = decorated(5)
-    assert next(gen) == 5
-    assert gen.send(5.3) == 10
-    assert gen.send(9) == 18
-    assert genresult(gen, '103') == 618
-
-
-def test_returnmapped():
-    decorated = snug.returnmapped(lambda s: s.center(5), str)(mymax)
-    gen = decorated(5)
-    assert next(gen) == 5
-    assert gen.send(9) == 9
-    assert genresult(gen, 103) == ' 309 '
-
-
-def test_combining_decorators():
-    decorators = compose(
-        snug.returnmapped('result: {}'.format),
-        snug.sendmapped(int),
-        snug.yieldmapped(str),
-        snug.nested(try_until_even),
-    )
-    decorated = decorators(mymax)
-    gen = decorated(4)
-    assert next(gen) == '4'
-    assert gen.send('6') == '6'
-    assert gen.send('5') == 'NOT EVEN!'
-    assert genresult(gen, '104') == 'result: 312'
-
-    assert inspect.unwrap(decorated) is mymax
 
 
 def test_generator_is_query():

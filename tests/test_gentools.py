@@ -3,14 +3,14 @@ from functools import reduce
 
 import pytest
 
-from snug import gentools
+from snug import gentools, utils
 
 
 def try_until_positive(req):
     """an example Pipe"""
     response = yield req
     while response < 0:
-        response = yield 'TRY AGAIN!'
+        response = yield 'NOT POSITIVE!'
     return response
 
 
@@ -159,8 +159,8 @@ class TestNest:
         assert next(nested) == 4
         assert nested.send(7) == 7
         assert nested.send(6) == 7
-        assert nested.send(-1) == 'TRY AGAIN!'
-        assert nested.send(-4) == 'TRY AGAIN!'
+        assert nested.send(-1) == 'NOT POSITIVE!'
+        assert nested.send(-4) == 'NOT POSITIVE!'
         assert nested.send(0) == 7
         assert gentools.genresult(nested, 102) == 306
 
@@ -170,8 +170,8 @@ class TestNest:
         assert next(nested) == 4
         assert nested.send(7) == 7
         assert nested.send(6) == 7
-        assert nested.send(-1) == 'TRY AGAIN!'
-        assert nested.send(-4) == 'TRY AGAIN!'
+        assert nested.send(-1) == 'NOT POSITIVE!'
+        assert nested.send(-4) == 'NOT POSITIVE!'
         assert nested.send(0) == 7
         assert gentools.genresult(nested, 102) == 306
 
@@ -182,7 +182,7 @@ class TestNest:
                      mymax(4))
 
         assert next(gen) == 4
-        assert gen.send(-4) == 'TRY AGAIN!'
+        assert gen.send(-4) == 'NOT POSITIVE!'
         assert gen.send(3) == 'NOT EVEN!'
         assert gen.send(90) == 90
         assert gentools.genresult(gen, 110) == 330
@@ -218,3 +218,61 @@ def test_oneyield():
     assert inspect.isgenerator(gen)
     assert next(gen) == 6
     assert gentools.genresult(gen, 9) == 9
+
+
+def test_nested():
+    decorated = gentools.nested(try_until_even, try_until_positive)(mymax)
+
+    gen = decorated(4)
+    assert next(gen) == 4
+    assert gen.send(8) == 8
+    assert gen.send(9) == 'NOT EVEN!'
+    assert gen.send(2) == 8
+    assert gen.send(-1) == 'NOT POSITIVE!'
+    assert gentools.genresult(gen, 102) == 306
+
+
+def test_yieldmapped():
+    decorated = gentools.yieldmapped(str, lambda x: x * 2)(mymax)
+
+    gen = decorated(5)
+    assert next(gen) == '10'
+    assert gen.send(2) == '10'
+    assert gen.send(9) == '18'
+    assert gen.send(12) == '24'
+    assert gentools.genresult(gen, 103) == 309
+
+
+def test_sendmapped():
+    decorated = gentools.sendmapped(lambda x: x * 2, int)(mymax)
+
+    gen = decorated(5)
+    assert next(gen) == 5
+    assert gen.send(5.3) == 10
+    assert gen.send(9) == 18
+    assert gentools.genresult(gen, '103') == 618
+
+
+def test_returnmapped():
+    decorated = gentools.returnmapped(lambda s: s.center(5), str)(mymax)
+    gen = decorated(5)
+    assert next(gen) == 5
+    assert gen.send(9) == 9
+    assert gentools.genresult(gen, 103) == ' 309 '
+
+
+def test_combining_decorators():
+    decorators = utils.compose(
+        gentools.returnmapped('result: {}'.format),
+        gentools.sendmapped(int),
+        gentools.yieldmapped(str),
+        gentools.nested(try_until_even),
+    )
+    decorated = decorators(mymax)
+    gen = decorated(4)
+    assert next(gen) == '4'
+    assert gen.send('6') == '6'
+    assert gen.send('5') == 'NOT EVEN!'
+    assert gentools.genresult(gen, '104') == 'result: 312'
+
+    assert inspect.unwrap(decorated) is mymax

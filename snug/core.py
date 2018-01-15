@@ -3,12 +3,10 @@ import abc
 import inspect
 import typing as t
 from copy import copy
-from functools import partial, reduce
 from itertools import starmap
 from operator import attrgetter, itemgetter
 from types import GeneratorType
 
-from .gentools import nest, returnmap, sendmap, yieldmap
 from .utils import called_as_method, compose
 
 __all__ = [
@@ -16,10 +14,6 @@ __all__ = [
     'querytype',
     'execute',
     'execute_async',
-    'nested',
-    'yieldmapped',
-    'sendmapped',
-    'returnmapped',
     'Sender',
     'AsyncSender',
     'Executor',
@@ -119,42 +113,6 @@ def execute(query:  Query[T_req, T_resp, T],
             request = gen.send(response)
         except StopIteration as e:
             return e.value
-
-
-# TODO: docs, types
-class nested:
-    def __init__(self, *genfuncs):
-        self._genfuncs = genfuncs
-
-    def __call__(self, func):
-        return compose(partial(reduce, nest, self._genfuncs), func)
-
-
-# TODO: docs, types
-class yieldmapped:
-    def __init__(self, *funcs):
-        self._mapper = compose(*funcs)
-
-    def __call__(self, func):
-        return compose(partial(yieldmap, self._mapper), func)
-
-
-# TODO: docs, types
-class sendmapped:
-    def __init__(self, *funcs):
-        self._mapper = compose(*funcs)
-
-    def __call__(self, func):
-        return compose(partial(sendmap, self._mapper), func)
-
-
-# TODO: docs, types
-class returnmapped:
-    def __init__(self, *funcs):
-        self._mapper = compose(*funcs)
-
-    def __call__(self, func):
-        return compose(partial(returnmap, self._mapper), func)
 
 
 class _WrappedQuery(Query):
