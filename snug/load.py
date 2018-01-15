@@ -86,11 +86,11 @@ class CombinableRegistry(Registry):
         raise NotImplementedError()
 
     def __or__(self, other: 'CombinableRegistry') -> 'MultiRegistry':
-        return MultiRegistry([self, other])
+        return MultiRegistry(self, other)
 
 
 class MultiRegistry(CombinableRegistry):
-    def __init__(self, children: t.List[CombinableRegistry]):
+    def __init__(self, *children: CombinableRegistry):
         self.children = children
 
     def __call__(self, cls, main=None):
@@ -104,7 +104,7 @@ class MultiRegistry(CombinableRegistry):
         raise exc
 
     def __or__(self, other: CombinableRegistry) -> 'MultiRegistry':
-        return MultiRegistry([*self.children, other])
+        return MultiRegistry(*self.children, other)
 
 
 class PrimitiveRegistry(CombinableRegistry):
