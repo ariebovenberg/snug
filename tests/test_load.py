@@ -1,12 +1,12 @@
 import typing as t
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from operator import itemgetter
 
 import pytest
 from dataclasses import dataclass
 
 from snug import load
-from snug.utils import compose, identity, parse_iso8601, valmap
+from snug.utils import compose, identity, valmap
 
 
 @dataclass(frozen=True)
@@ -29,7 +29,7 @@ def registry():
         str:        str,
         type(None): identity,
         object:     identity,
-        datetime:   parse_iso8601,
+        datetime:   load.parse_iso8601,
     }) | load.GenericRegistry({
         t.List:  load.list_loader,
         t.Set:   load.set_loader,
@@ -258,3 +258,16 @@ def test_simple_registry():
             nickname=None
         )
     )
+
+
+class TestParseIso8601:
+
+    def test_with_timezone(self):
+        parsed = load.parse_iso8601('2012-02-27T13:08:00+0100')
+        assert parsed == datetime(
+            2012, 2, 27, 13, 8,
+            tzinfo=timezone(timedelta(hours=1)))
+
+    def test_no_timezone(self):
+        parsed = load.parse_iso8601('2014-06-10T17:25:29Z')
+        assert parsed == datetime(2014, 6, 10, 17, 25, 29)

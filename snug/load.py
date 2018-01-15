@@ -12,16 +12,32 @@ from functools import partial
 from itertools import starmap
 from operator import attrgetter, itemgetter
 
-from .utils import (EMPTY_MAPPING, compose, identity, lookup_defaults,
-                    parse_iso8601, valmap)
+from .utils import EMPTY_MAPPING, compose, identity, lookup_defaults, valmap
 
 __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
            'PrimitiveRegistry', 'GenericRegistry', 'AutoDataclassRegistry',
            'create_dataclass_loader', 'list_loader', 'set_loader',
-           'get_optional_loader', 'simple_registry']
+           'get_optional_loader', 'simple_registry', 'parse_iso8601']
 
 T = t.TypeVar('T')
 _NoneType = type(None)
+
+
+def parse_iso8601(dtstring: str) -> datetime:
+    """naive parser for ISO8061 datetime strings,
+
+    Parameters
+    ----------
+    dtstring
+        the datetime as string in one of two formats:
+
+        * ``2017-11-20T07:16:29+0000``
+        * ``2017-11-20T07:16:29Z``
+
+    """
+    return datetime.strptime(
+        dtstring,
+        '%Y-%m-%dT%H:%M:%SZ' if len(dtstring) == 20 else '%Y-%m-%dT%H:%M:%S%z')
 
 
 class Loader(t.Generic[T]):

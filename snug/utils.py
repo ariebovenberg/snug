@@ -2,7 +2,6 @@
 import inspect
 import typing as t
 from collections import Mapping
-from datetime import datetime
 from functools import partial
 from types import MethodType
 
@@ -39,23 +38,6 @@ class lookup_defaults:
             return self.lookup(obj)
         except LookupError:
             return self.default
-
-
-def parse_iso8601(dtstring: str) -> datetime:
-    """naive parser for ISO8061 datetime strings,
-
-    Parameters
-    ----------
-    dtstring
-        the datetime as string in one of two formats:
-
-        * ``2017-11-20T07:16:29+0000``
-        * ``2017-11-20T07:16:29Z``
-
-    """
-    return datetime.strptime(
-        dtstring,
-        '%Y-%m-%dT%H:%M:%SZ' if len(dtstring) == 20 else '%Y-%m-%dT%H:%M:%S%z')
 
 
 # TODO: type annotations
