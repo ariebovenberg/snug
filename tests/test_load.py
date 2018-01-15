@@ -6,7 +6,7 @@ import pytest
 from dataclasses import dataclass
 
 from snug import load
-from snug.utils import compose, identity, valmap
+from snug.utils import compose, identity
 
 
 @dataclass(frozen=True)
@@ -44,6 +44,12 @@ def test_set_loader():
     assert load.set_loader((int, ), [4, '3', '-1']) == {4, 3, -1}
 
 
+def test_lookup_default():
+    getter = load.lookup_defaults(itemgetter('foo'), 'bla')
+    assert getter({}) == 'bla'
+    assert getter({'foo': 4}) == 4
+
+
 @pytest.mark.parametrize('data, loaded', [
     ({
         'id': 98,
@@ -66,14 +72,14 @@ def test_set_loader():
     )
 ])
 def test_create_dataclass_loader(data, loaded, registry):
-    dloader = load.create_dataclass_loader(User, registry, valmap(itemgetter, {
-        'id':          'id',
-        'name':        'username',
-        'likes_pizza': 'pizza',
-        'height':      'height',
-        'nicknames':   'nicknames',
-        'hobbies':     'hobbies',
-    }))
+    dloader = load.create_dataclass_loader(User, registry, {
+        'id':          itemgetter('id'),
+        'name':        itemgetter('username'),
+        'likes_pizza': itemgetter('pizza'),
+        'height':      itemgetter('height'),
+        'nicknames':   itemgetter('nicknames'),
+        'hobbies':     itemgetter('hobbies'),
+    })
     assert dloader(data) == loaded
 
 

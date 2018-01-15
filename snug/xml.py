@@ -6,7 +6,8 @@ from operator import itemgetter as _itemgetter
 from operator import methodcaller
 from xml.etree.ElementTree import Element
 
-from .utils import NO_DEFAULT, compose, identity, lookup_defaults
+from .utils import NO_DEFAULT, compose, identity
+from .load import lookup_defaults
 
 T = t.TypeVar('T')
 

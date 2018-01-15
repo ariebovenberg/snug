@@ -1,24 +1,10 @@
 import collections
 import inspect
-from functools import reduce
-from operator import attrgetter, itemgetter
+from operator import attrgetter
 
 import pytest
 
 from snug import utils
-
-
-def test_isnone():
-    assert not utils.notnone(None)
-    assert utils.notnone(object())
-    assert utils.notnone(True)
-    assert utils.notnone(False)
-
-
-def test_lookup_default():
-    getter = utils.lookup_defaults(itemgetter('foo'), 'bla')
-    assert getter({}) == 'bla'
-    assert getter({'foo': 4}) == 4
 
 
 def test_flip():
@@ -110,33 +96,6 @@ class TestCompose:
         assert sig.parameters == inspect.signature(func1).parameters
         assert sig.return_annotation == inspect.signature(
             func2).return_annotation
-
-
-class TestValmap:
-
-    def test_empty(self):
-        assert utils.valmap(int, {}) == {}
-
-    def test_simple(self):
-        assert utils.valmap(int, {'foo': '4', 'bar': 5.3}) == {
-            'foo': 4, 'bar': 5}
-
-
-class TestValFilter:
-
-    def test_empty(self):
-        assert utils.valfilter(int, {}) == {}
-
-    def test_simple(self):
-        assert utils.valfilter(lambda x: x % 2, {
-            'foo': 5,
-            'bar': 4,
-            'baz': 3,
-            'qux': 98,
-        }) == {
-            'foo': 5,
-            'baz': 3
-        }
 
 
 def test_called_as_method():

@@ -12,7 +12,7 @@ from functools import partial
 from itertools import starmap
 from operator import attrgetter, itemgetter
 
-from .utils import EMPTY_MAPPING, compose, identity, lookup_defaults, valmap
+from .utils import EMPTY_MAPPING, compose, identity
 
 __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
            'PrimitiveRegistry', 'GenericRegistry', 'AutoDataclassRegistry',
@@ -21,6 +21,18 @@ __all__ = ['Registry', 'Loader', 'CombinableRegistry', 'MultiRegistry',
 
 T = t.TypeVar('T')
 _NoneType = type(None)
+
+
+class lookup_defaults:
+    """wrap a lookup function with a default if lookup fails"""
+    def __init__(self, lookup: t.Callable[[t.Any], T], default: T):
+        self.lookup, self.default = lookup, default
+
+    def __call__(self, obj):
+        try:
+            return self.lookup(obj)
+        except LookupError:
+            return self.default
 
 
 def parse_iso8601(dtstring: str) -> datetime:
@@ -131,7 +143,10 @@ class UnsupportedType(LookupError):
 
 def create_dataclass_loader(cls, registry, field_getters):
     """create a loader for a dataclass type"""
-    fields = valmap(attrgetter('type'), cls.__dataclass_fields__)
+    fields = {
+        name: field.type
+        for name, field in cls.__dataclass_fields__.items()
+    }
     getters = map(field_getters.__getitem__, fields)
     optionals = map(_is_optional_type, fields.values())
 

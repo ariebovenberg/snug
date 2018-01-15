@@ -30,25 +30,8 @@ class called_as_method:
                 else partial(self.func, instance))
 
 
-def notnone(obj):
-    """return whether an object is not None"""
-    return obj is not None
-
-
 class NO_DEFAULT:
     """sentinel for no default"""
-
-
-class lookup_defaults:
-    """wrap a lookup function with a default if lookup fails"""
-    def __init__(self, lookup: t.Callable[[t.Any], T], default: T):
-        self.lookup, self.default = lookup, default
-
-    def __call__(self, obj):
-        try:
-            return self.lookup(obj)
-        except LookupError:
-            return self.default
 
 
 def identity(obj):
@@ -142,18 +125,6 @@ class compose(CallableAsMethod):
         for func in reversed(tail):
             value = func(value)
         return value
-
-
-# TODO inner type annotations
-def valmap(func: t.Callable, mapping: t.Mapping) -> t.Mapping:
-    """map() for values of a mapping"""
-    return {k: func(v) for k, v in mapping.items()}
-
-
-# TODO inner type annotations
-def valfilter(predicate: t.Callable, mapping: t.Mapping) -> t.Mapping:
-    """filter() for values of a mapping"""
-    return {k: v for k, v in mapping.items() if predicate(v)}
 
 
 class _EmptyMapping(Mapping):
