@@ -6,17 +6,15 @@ from base64 import b64encode
 from functools import partial, singledispatch
 from operator import methodcaller
 
-from .utils import EMPTY_MAPPING, identity, compose
+from .utils import EMPTY_MAPPING, compose, identity
 
 __all__ = [
     'Request',
     'Response',
+    'Query',
     'executor',
     'async_executor',
     'urllib_sender',
-    'Query',
-    'execute',
-    'execute_async',
     'Sender',
     'AsyncSender',
     'Executor',
@@ -25,6 +23,8 @@ __all__ = [
     'async_sender',
     'header_adder',
     'prefix_adder',
+    'execute',
+    'execute_async',
     'GET',
     'POST',
     'PUT',
