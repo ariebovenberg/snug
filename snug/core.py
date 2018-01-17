@@ -1,80 +1,351 @@
 """the central abstractions"""
 import abc
-import inspect
 import typing as t
-from copy import copy
-from itertools import starmap
-from operator import attrgetter, itemgetter
-from types import GeneratorType
+import urllib.request
+from base64 import b64encode
+from functools import partial, singledispatch
+from operator import methodcaller
 
-from .utils import called_as_method, compose
+from .utils import EMPTY_MAPPING, identity, compose
 
 __all__ = [
+    'Request',
+    'Response',
+    'executor',
+    'async_executor',
+    'urllib_sender',
     'Query',
-    'querytype',
     'execute',
     'execute_async',
     'Sender',
     'AsyncSender',
     'Executor',
     'AsyncExecutor',
+    'sender',
+    'async_sender',
+    'header_adder',
+    'prefix_adder',
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'HEAD',
+    'OPTIONS',
 ]
 
-
 T = t.TypeVar('T')
-T_req = t.TypeVar('T_req')
-T_resp = t.TypeVar('T_resp')
-T_prepared = t.TypeVar('T_prepared')
-T_parsed = t.TypeVar('T_parsed')
+T_auth = t.TypeVar('T_auth')
 
 
-class Query(t.Generic[T_req, T_resp, T], t.Iterable[T_req]):
+class Request:
+    """a simple HTTP request
+
+    Parameters
+    ----------
+    method
+        the http method
+    url
+        the requested url
+    data
+        the request content
+    params
+        the query parameters
+    headers
+        mapping of headers
+    """
+    __slots__ = 'method', 'url', 'data', 'params', 'headers'
+    __hash__ = None
+
+    def __init__(self,
+                 method:  str,
+                 url:     str,
+                 data:    t.Optional[bytes]=None,
+                 params:  t.Mapping[str, str]=EMPTY_MAPPING,
+                 headers: t.Mapping[str, str]=EMPTY_MAPPING):
+        self.method = method
+        self.url = url
+        self.data = data
+        self.params = params
+        self.headers = headers
+
+    def with_headers(self, headers: t.Mapping[str, str]) -> 'Request':
+        """new request with added headers
+
+        Parameters
+        ----------
+        headers
+            the headers to add
+        """
+        return self.replace(headers={**self.headers, **headers})
+
+    def with_prefix(self, prefix: str) -> 'Request':
+        """new request with added url prefix
+
+        Parameters
+        ----------
+        prefix
+            the URL prefix
+        """
+        return self.replace(url=prefix + self.url)
+
+    def with_params(self, params: t.Mapping[str, str]) -> 'Request':
+        """new request with added params
+
+        Parameters
+        ----------
+        params
+            the parameters to add
+        """
+        return self.replace(params={**self.params, **params})
+
+    def with_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
+        """new request with "basic" authentication
+
+        Parameters
+        ----------
+        credentials
+            the username-password pair
+        """
+        encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
+        return self.with_headers({'Authorization': 'Basic ' + encoded})
+
+    def _asdict(self):
+        return {a: getattr(self, a) for a in self.__slots__}
+
+    def __eq__(self, other):
+        if isinstance(other, Request):
+            return self._asdict() == other._asdict()
+        return NotImplemented
+
+    def __ne__(self, other):
+        if isinstance(other, Request):
+            return self._asdict() != other._asdict()
+        return NotImplemented
+
+    def replace(self, **kwargs):
+        return Request(**{**self._asdict(), **kwargs})
+
+    def __repr__(self):
+        return ('<Request: {0.method} {0.url}, params={0.params!r}, '
+                'headers={0.headers!r}>').format(self)
+
+
+class Response:
+    """a simple HTTP response
+
+    Parameters
+    ----------
+    status_code
+        the HTTP status code
+    data
+        the response content
+    headers
+        the headers of the response
+    """
+    __slots__ = 'status_code', 'data', 'headers'
+    __hash__ = None
+
+    def __init__(self,
+                 status_code: int,
+                 data:        t.Optional[bytes]=None,
+                 headers:     t.Mapping[str, str]=EMPTY_MAPPING):
+        self.status_code = status_code
+        self.data = data
+        self.headers = headers
+
+    def _asdict(self):
+        return {a: getattr(self, a) for a in self.__slots__}
+
+    def __eq__(self, other):
+        if isinstance(other, Response):
+            return self._asdict() == other._asdict()
+        return NotImplemented
+
+    def __ne__(self, other):
+        if isinstance(other, Response):
+            return self._asdict() != other._asdict()
+        return NotImplemented
+
+    def __repr__(self):
+        return ('<Response: {0.status_code}, '
+                'headers={0.headers!r}>').format(self)
+
+    def replace(self, **kwargs):
+        return Response(**{**self._asdict(), **kwargs})
+
+
+class Query(t.Generic[T], t.Iterable[Request]):
     """ABC for query-like objects.
     Any object where ``__iter__`` returns a generator implements it"""
 
     @abc.abstractmethod
-    def __iter__(self) -> t.Generator[T_req, T_resp, T]:
+    def __iter__(self) -> t.Generator[Request, Response, T]:
         """a generator which resolves the query"""
         raise NotImplementedError()
 
 
-Query.register(GeneratorType)
+Sender = t.Callable[[Request], Response]
+AsyncSender = t.Callable[[Request], t.Awaitable[Response]]
+Executor = t.Callable[[Query[T]], T]
+AsyncExecutor = t.Callable[[Query[T]], t.Awaitable[T]]
+Authenticator = t.Callable[[T_auth], t.Callable[[Request], Request]]
 
 
-class Sender(t.Generic[T_req, T_resp]):
-    """ABC for sender-like objects.
-    Any callable with the same signature implements it"""
-
-    def __call__(self, request: T_req) -> T_resp:
-        """send a request, returning a response"""
-        raise NotImplementedError()
-
-
-class AsyncSender(t.Generic[T_req, T_resp]):
-    """ABC for asynchronous sender-like objects.
-    Any callable with the same signature implements it"""
-
-    async def __call__(self, request: T_req) -> T_resp:
-        """send a request, returning a response"""
-        raise NotImplementedError()
+def urllib_sender(req: Request, **kwargs) -> Response:
+    """simple :class:`~snug.http.Sender` which uses python's :mod:`urllib`"""
+    url = req.url + '?' + urllib.parse.urlencode(req.params)
+    raw_request = urllib.request.Request(url, headers=req.headers,
+                                         method=req.method)
+    raw_response = urllib.request.urlopen(raw_request, **kwargs)
+    return Response(
+        raw_response.getcode(),
+        data=raw_response.read(),
+        headers=raw_response.headers,
+    )
 
 
-class Executor(t.Generic[T_req, T_resp]):
-
-    @abc.abstractmethod
-    def __call__(self, query: Query[T_req, T_resp, T]) -> T:
-        raise NotImplementedError()
-
-
-class AsyncExecutor(t.Generic[T_req, T_resp]):
-
-    @abc.abstractmethod
-    async def __call__(self, query: Query[T_req, T_resp, T]) -> T:
-        raise NotImplementedError()
+def _optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
+        t.Callable[[Request], Request]):
+    if credentials is None:
+        return identity
+    else:
+        return methodcaller('with_basic_auth', credentials)
 
 
-async def execute_async(query:  Query[T_req, T_resp, T],
-                        sender: AsyncSender[T_req, T_resp]) -> T:
+def executor(auth: T_auth=None,
+             client=None,
+             authenticator: Authenticator=_optional_basic_auth) -> Executor:
+    """create an executor
+
+    Parameters
+    ----------
+    auth
+        the credentials
+    client
+        The HTTP client to use.
+    authenticator
+        the authentication method to use
+    """
+    _sender = urllib_sender if client is None else sender(client)
+    return partial(execute, sender=compose(_sender, authenticator(auth)))
+
+
+def async_executor(
+        auth: T_auth=None,
+        client=None,
+        authenticator: Authenticator=_optional_basic_auth) -> AsyncExecutor:
+    """create an ascynchronous executor
+
+    Parameters
+    ----------
+    auth
+        the credentials
+    client
+        The (asynchronous) HTTP client to use.
+    authenticator
+        the authentication method to use
+    """
+    return partial(execute_async,
+                   sender=compose(async_sender(client), authenticator(auth)))
+
+
+@singledispatch
+def sender(client) -> Sender:
+    """create a sender for the given client"""
+    raise TypeError('no sender factory registered for {!r}'.format(client))
+
+
+@singledispatch
+def async_sender(client) -> AsyncSender:
+    """create an asynchronous sender from the given client"""
+    raise TypeError(
+        'no async sender factory registered for {!r}'.format(client))
+
+
+try:
+    import requests
+except ImportError:  # pragma: no cover
+    pass
+else:
+    @sender.register(requests.Session)
+    def _requests_sender(session: requests.Session) -> Sender:
+        """create a :class:`~snug.Sender` for a :class:`requests.Session`
+
+        Parameters
+        ----------
+        session
+            a requests session
+        """
+
+        def _req_send(req: Request) -> Response:
+            response = session.request(req.method, req.url,
+                                       params=req.params,
+                                       headers=req.headers)
+            return Response(
+                response.status_code,
+                response.content,
+                response.headers,
+            )
+
+        return _req_send
+
+
+try:
+    import aiohttp
+except ImportError:  # pragma: no cover
+    pass
+else:
+    @async_sender.register(aiohttp.ClientSession)
+    def _aiohttp_sender(session: aiohttp.ClientSession) -> AsyncSender:
+        """create an asynchronous sender
+        for an `aiohttp` client session
+
+        Parameters
+        ----------
+        session
+            the aiohttp session
+        """
+        async def _aiohttp_sender(req: Request) -> Response:
+            async with session.request(req.method, req.url,
+                                       params=req.params,
+                                       data=req.data,
+                                       headers=req.headers) as response:
+                return Response(
+                    response.status,
+                    data=await response.read(),
+                    headers=response.headers,
+                )
+
+        return _aiohttp_sender
+
+
+# useful shortcuts
+prefix_adder = partial(methodcaller, 'with_prefix')
+prefix_adder.__doc__ = """
+make a callable which adds a prefix to a request url
+"""
+header_adder = partial(methodcaller, 'with_headers')
+header_adder.__doc__ = """
+make a callable which adds headers to a request
+"""
+GET = partial(Request, 'GET')
+GET.__doc__ = """shortcut for a GET request"""
+POST = partial(Request, 'POST')
+POST.__doc__ = """shortcut for a POST request"""
+PUT = partial(Request, 'PUT')
+PUT.__doc__ = """shortcut for a PUT request"""
+PATCH = partial(Request, 'PATCH')
+PATCH.__doc__ = """shortcut for a PATCH request"""
+DELETE = partial(Request, 'DELETE')
+DELETE.__doc__ = """shortcut for a DELETE request"""
+HEAD = partial(Request, 'HEAD')
+HEAD.__doc__ = """shortcut for a HEAD request"""
+OPTIONS = partial(Request, 'OPTIONS')
+OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
+
+
+async def execute_async(query:  Query[T], sender: AsyncSender) -> T:
     """execute a query asynchronously
 
     Parameters
@@ -94,8 +365,7 @@ async def execute_async(query:  Query[T_req, T_resp, T],
             return e.value
 
 
-def execute(query:  Query[T_req, T_resp, T],
-            sender: Sender[T_req, T_resp]) -> T:
+def execute(query:  Query[T], sender: Sender) -> T:
     """execute a query
 
     Parameters
@@ -113,85 +383,3 @@ def execute(query:  Query[T_req, T_resp, T],
             request = gen.send(response)
         except StopIteration as e:
             return e.value
-
-
-class _WrappedQuery(Query):
-    __slots__ = '_bound_args'
-
-    def __init__(self, *args, **kwargs):
-        self._bound_args = self.__signature__.bind(*args, **kwargs)
-        self._bound_args.apply_defaults()
-
-    def __iter__(self):
-        return self.__wrapped__(*self._bound_args.args,
-                                **self._bound_args.kwargs)
-
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return self._bound_args.arguments == other._bound_args.arguments
-        return NotImplemented
-
-    def __ne__(self, other):
-        if isinstance(other, self.__class__):
-            return not self == other
-        return NotImplemented
-
-    def __repr__(self):
-        fields = starmap('{}={!r}'.format, self._bound_args.arguments.items())
-        return '{}({})'.format(self.__class__.__qualname__, ', '.join(fields))
-
-    def __hash__(self):
-        return hash((self._bound_args.args,
-                     tuple(self._bound_args.kwargs.items())))
-
-    def replace(self, **kwargs):
-        copied = copy(self._bound_args)
-        copied.arguments.update(**kwargs)
-        return self.__class__(*copied.args, **copied.kwargs)
-
-
-class querytype:
-    """decorate a generator function to create a reusable query class
-
-    Example
-    -------
-
-    >>> @querytype()
-    ... def post(id: int):
-    ...     return json.loads((yield f'posts/{id}/'))
-
-    is roughly equivalent to:
-
-    >>> class post(Query):
-    ...     def __init__(self, id: int):
-    ...        self.id = id
-    ...     def __iter__(self):
-    ...         return json.loads((yield f'posts/{self.id}/))
-
-    Note
-    ----
-    the decorated object must have a signature to inspect.
-    """
-    def __init__(self, related: bool=False):
-        self._related = related
-
-    def __call__(self, func: t.Callable) -> t.Type[Query]:
-        sig = inspect.signature(func)
-        origin = inspect.unwrap(func)
-        cls = type(
-            origin.__name__,
-            (_WrappedQuery, ),
-            {
-                '__doc__': origin.__doc__,
-                '__module__': origin.__module__,
-                '__qualname__': origin.__qualname__,
-                '__signature__': sig,
-                '__wrapped__': staticmethod(func),
-                **{
-                    name: property(compose(
-                        itemgetter(name),
-                        attrgetter('_bound_args.arguments')))
-                    for name in sig.parameters
-                }
-            })
-        return called_as_method(cls) if self._related else cls
