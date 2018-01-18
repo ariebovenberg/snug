@@ -5,8 +5,6 @@ from collections import Mapping
 from functools import partial
 from types import MethodType
 
-T = t.TypeVar('T')
-
 
 class CallableAsMethod:
     """mixin for callables to support method-like calling
@@ -30,44 +28,9 @@ class called_as_method:
                 else partial(self.func, instance))
 
 
-class NO_DEFAULT:
-    """sentinel for no default"""
-
-
 def identity(obj):
     """identity function, returns input unmodified"""
     return obj
-
-
-class flip:
-    """create a function with flipped arguments
-
-    Parameters
-    ----------
-    func
-        the function to flip
-    """
-    def __init__(self, func: t.Callable):
-        self.func = func
-
-    def __call__(self, a, b):
-        return self.func(b, a)
-
-    def __eq__(self, other):
-        if isinstance(other, flip):
-            return self.func == other.func
-        return NotImplemented
-
-    def __hash__(self):
-        return hash(self.func)
-
-    def __ne__(self, other):
-        if isinstance(other, flip):
-            return not self == other
-        return NotImplemented
-
-    def __repr__(self):
-        return 'flipped({.func})'.format(self)
 
 
 class compose(CallableAsMethod):

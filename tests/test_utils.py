@@ -7,28 +7,6 @@ import pytest
 from snug import utils
 
 
-def test_flip():
-
-    flipped = utils.flip(int)
-    assert flipped(8, '10') == 8
-
-    other = utils.flip(int)
-    assert flipped == other
-    assert not flipped != other
-    assert hash(flipped) == hash(other)
-
-    assert 'int' in repr(flipped)
-
-    assert flipped != utils.flip(divmod)
-    assert not flipped == utils.flip(str)
-
-    with pytest.raises(TypeError, match='arguments'):
-        flipped(1, 2, 3)
-
-    assert flipped != object()
-    assert not flipped == object()
-
-
 def test_identity():
     obj = object()
     assert utils.identity(obj) is obj
