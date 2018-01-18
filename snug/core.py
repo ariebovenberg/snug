@@ -1,8 +1,11 @@
 """the central abstractions"""
 import abc
+import asyncio
 import typing as t
 import urllib.request
 from base64 import b64encode
+from http.client import HTTPResponse
+from io import BytesIO
 from functools import partial, singledispatch
 from operator import methodcaller
 
@@ -15,6 +18,7 @@ __all__ = [
     'executor',
     'async_executor',
     'urllib_sender',
+    'asyncio_sender',
     'Sender',
     'AsyncSender',
     'Executor',
@@ -193,11 +197,58 @@ Authenticator = t.Callable[[T_auth], t.Callable[[Request], Request]]
 
 
 def urllib_sender(req: Request, **kwargs) -> Response:
-    """simple :class:`~snug.http.Sender` which uses python's :mod:`urllib`"""
+    """simple :class:`~snug.http.Sender` which uses python's :mod:`urllib`
+
+    Parameters
+    ----------
+    req
+        the request to send
+    **kwargs
+        keyword arguments passed to :func:`urllib.request.urlopen`
+    """
     url = req.url + '?' + urllib.parse.urlencode(req.params)
     raw_request = urllib.request.Request(url, headers=req.headers,
                                          method=req.method)
     raw_response = urllib.request.urlopen(raw_request, **kwargs)
+    return Response(
+        raw_response.getcode(),
+        data=raw_response.read(),
+        headers=raw_response.headers,
+    )
+
+
+class _IoAsSocket():
+    def __init__(self, io):
+        self._file = io
+
+    def makefile(self, *args, **kwargs):
+        return self._file
+
+
+async def asyncio_sender(req: Request) -> Response:
+    url = urllib.parse.urlsplit(
+        req.url + '?' + urllib.parse.urlencode(req.params))
+    if url.scheme == 'https':
+        connect = asyncio.open_connection(url.hostname, 443, ssl=True)
+    else:
+        connect = asyncio.open_connection(url.hostname, 80)
+    reader, writer = await connect
+
+    writer.write(b'\r\n'.join([
+        b'%b %b HTTP/1.1' % (req.method.encode(), url.path.encode('latin-1')),
+        b'Host: %b' % url.hostname.encode('latin-1'),
+        b'Connection: close',
+        b'User-Agent: python/asyncio',
+        *[
+            '{}: {}'.format(name, value).encode()
+            for name, value in req.headers.items()
+        ],
+        b'', req.data or b''
+    ]))
+    response_bytes = BytesIO(await reader.read())
+    writer.close()
+    raw_response = HTTPResponse(_IoAsSocket(response_bytes))
+    raw_response.begin()
     return Response(
         raw_response.getcode(),
         data=raw_response.read(),

@@ -1,4 +1,5 @@
 import asyncio
+import json
 from functools import partial
 from operator import methodcaller
 from unittest import mock
@@ -266,8 +267,19 @@ def test_urllib_sender(urlopen, urllib_request):
     urllib_request.assert_called_once_with(
         'https://www.api.github.com/organizations?since=3043',
         headers={'Accept': 'application/vnd.github.v3+json'},
-        method='HEAD',
+        method='head',
     )
+
+
+@pytest.mark.asyncio
+async def test_asyncio_sender():
+    req = snug.Request('GET', 'https://api.github.com/organizations',
+                       params={'since': 119},
+                       headers={'Accept': 'application/vnd.github.v3+json'})
+    response = await snug.asyncio_sender(req)
+    import pdb; pdb.set_trace()
+    assert response == snug.Response(200, mock.ANY, mock.ANY)
+    data = json.loads(response.data)
 
 
 def test_requests_sender():
