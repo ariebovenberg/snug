@@ -14,7 +14,7 @@ history = local_path('HISTORY.rst').read_text()
 setup(
     name='snug',
     version=metadata['__version__'],
-    description='Wrap web APIs to fit nicely into your python code',
+    description=metadata['__description__'],
     license='MIT',
     long_description=readme + '\n\n' + history,
     url='https://github.com/ariebovenberg/snug',
