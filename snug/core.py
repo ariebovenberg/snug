@@ -4,27 +4,24 @@ import typing as t
 import urllib.request
 from base64 import b64encode
 from functools import partial, singledispatch
+from itertools import chain
 from operator import methodcaller
 
 from .utils import EMPTY_MAPPING, compose, identity
+from ._async import execute_async, async_executor, async_sender  # noqa
 
 __all__ = [
     'Request',
     'Response',
     'Query',
     'executor',
-    'async_executor',
     'urllib_sender',
     'Sender',
-    'AsyncSender',
     'Executor',
-    'AsyncExecutor',
     'sender',
-    'async_sender',
     'header_adder',
     'prefix_adder',
     'execute',
-    'execute_async',
     'GET',
     'POST',
     'PUT',
@@ -32,6 +29,9 @@ __all__ = [
     'DELETE',
     'HEAD',
     'OPTIONS',
+    'async_sender',
+    'execute_async',
+    'async_executor',
 ]
 
 T = t.TypeVar('T')
@@ -77,7 +77,8 @@ class Request:
         headers
             the headers to add
         """
-        return self.replace(headers={**self.headers, **headers})
+        return self.replace(headers=dict(chain(self.headers.items(),
+                                               headers.items())))
 
     def with_prefix(self, prefix: str) -> 'Request':
         """new request with added url prefix
@@ -97,7 +98,8 @@ class Request:
         params
             the parameters to add
         """
-        return self.replace(params={**self.params, **params})
+        return self.replace(params=dict(chain(self.params.items(),
+                                              params.items())))
 
     def with_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
         """new request with "basic" authentication
@@ -124,7 +126,9 @@ class Request:
         return NotImplemented
 
     def replace(self, **kwargs):
-        return Request(**{**self._asdict(), **kwargs})
+        attrs = self._asdict()
+        attrs.update(kwargs)
+        return Request(**attrs)
 
     def __repr__(self):
         return ('<Request: {0.method} {0.url}, params={0.params!r}, '
@@ -172,7 +176,9 @@ class Response:
                 'headers={0.headers!r}>').format(self)
 
     def replace(self, **kwargs):
-        return Response(**{**self._asdict(), **kwargs})
+        attrs = self._asdict()
+        attrs.update(kwargs)
+        return Response(**attrs)
 
 
 class Query(t.Generic[T], t.Iterable[Request]):
@@ -186,9 +192,7 @@ class Query(t.Generic[T], t.Iterable[Request]):
 
 
 Sender = t.Callable[[Request], Response]
-AsyncSender = t.Callable[[Request], t.Awaitable[Response]]
 Executor = t.Callable[[Query[T]], T]
-AsyncExecutor = t.Callable[[Query[T]], t.Awaitable[T]]
 Authenticator = t.Callable[[T_auth], t.Callable[[Request], Request]]
 
 
@@ -231,36 +235,10 @@ def executor(auth: T_auth=None,
     return partial(execute, sender=compose(_sender, authenticator(auth)))
 
 
-def async_executor(
-        auth: T_auth=None,
-        client=None,
-        authenticator: Authenticator=_optional_basic_auth) -> AsyncExecutor:
-    """create an ascynchronous executor
-
-    Parameters
-    ----------
-    auth
-        the credentials
-    client
-        The (asynchronous) HTTP client to use.
-    authenticator
-        the authentication method to use
-    """
-    return partial(execute_async,
-                   sender=compose(async_sender(client), authenticator(auth)))
-
-
 @singledispatch
 def sender(client) -> Sender:
     """create a sender for the given client"""
     raise TypeError('no sender factory registered for {!r}'.format(client))
-
-
-@singledispatch
-def async_sender(client) -> AsyncSender:
-    """create an asynchronous sender from the given client"""
-    raise TypeError(
-        'no async sender factory registered for {!r}'.format(client))
 
 
 try:
@@ -291,35 +269,6 @@ else:
         return _req_send
 
 
-try:
-    import aiohttp
-except ImportError:  # pragma: no cover
-    pass
-else:
-    @async_sender.register(aiohttp.ClientSession)
-    def _aiohttp_sender(session: aiohttp.ClientSession) -> AsyncSender:
-        """create an asynchronous sender
-        for an `aiohttp` client session
-
-        Parameters
-        ----------
-        session
-            the aiohttp session
-        """
-        async def _aiohttp_sender(req: Request) -> Response:
-            async with session.request(req.method, req.url,
-                                       params=req.params,
-                                       data=req.data,
-                                       headers=req.headers) as response:
-                return Response(
-                    response.status,
-                    data=await response.read(),
-                    headers=response.headers,
-                )
-
-        return _aiohttp_sender
-
-
 # useful shortcuts
 prefix_adder = partial(methodcaller, 'with_prefix')
 prefix_adder.__doc__ = """
@@ -345,27 +294,7 @@ OPTIONS = partial(Request, 'OPTIONS')
 OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
 
 
-async def execute_async(query:  Query[T], sender: AsyncSender) -> T:
-    """execute a query asynchronously
-
-    Parameters
-    ----------
-    query
-        the query to resolve
-    sender
-        the sender to use
-    """
-    gen = iter(query)
-    request = next(gen)
-    while True:
-        response = await sender(request)
-        try:
-            request = gen.send(response)
-        except StopIteration as e:
-            return e.value
-
-
-def execute(query:  Query[T], sender: Sender) -> T:
+def execute(query:  Query[T], sender: Sender=urllib_sender) -> T:
     """execute a query
 
     Parameters

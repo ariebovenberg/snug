@@ -1,4 +1,3 @@
-import asyncio
 from functools import partial
 from operator import methodcaller
 from unittest import mock
@@ -22,20 +21,6 @@ def _sender(client):
     return client.send
 
 
-class MockAsyncClient:
-    def __init__(self, response):
-        self.response = response
-
-    async def send(self, req):
-        self.request = req
-        return self.response
-
-
-@snug.async_sender.register(MockAsyncClient)
-def _async_sender(client):
-    return client.send
-
-
 def test_execute():
     sender = {
         '/posts/latest': 'redirect:/posts/latest/',
@@ -51,26 +36,6 @@ def test_execute():
             return response.decode('ascii')
 
     assert snug.execute(MyQuery(), sender) == 'hello world'
-
-
-@pytest.mark.asyncio
-async def test_execute_async():
-
-    async def sender(req):
-        await asyncio.sleep(0)
-        if not req.endswith('/'):
-            return 'redirect:' + req + '/'
-        elif req == '/posts/latest/':
-            return 'hello world'
-
-    def myquery():
-        response = yield '/posts/latest'
-        while response.startswith('redirect:'):
-            response = yield response[9:]
-        return response.upper()
-
-    query = myquery()
-    assert await snug.execute_async(query, sender=sender) == 'HELLO WORLD'
 
 
 class TestRequest:
@@ -214,42 +179,6 @@ def test_sender_factory_unknown_client():
         snug.sender(MyClass())
 
 
-def test_async_sender_factory_unknown_client():
-    class MyClass:
-        pass
-    with pytest.raises(TypeError, match='MyClass'):
-        snug.async_sender(MyClass())
-
-
-class TestAsyncExecutor:
-
-    @pytest.mark.asyncio
-    async def test_custom_client(self):
-        client = MockAsyncClient(snug.Response(204))
-        exec = snug.async_executor(client=client)
-
-        def myquery():
-            return (yield snug.GET('my/url'))
-
-        assert await exec(myquery()) == snug.Response(204)
-        assert client.request == snug.GET('my/url')
-
-    @pytest.mark.asyncio
-    async def test_authentication(self):
-        client = MockAsyncClient(snug.Response(204))
-        exec = snug.async_executor(('user', 'pw'),
-                                   client=client,
-                                   authenticator=partial(methodcaller,
-                                                         'with_basic_auth'))
-
-        def myquery():
-            return (yield snug.GET('my/url'))
-
-        assert await exec(myquery()) == snug.Response(204)
-        assert client.request == snug.GET(
-            'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
-
-
 @mock.patch('urllib.request.Request', autospec=True)
 @mock.patch('urllib.request.urlopen', autospec=True)
 def test_urllib_sender(urlopen, urllib_request):
@@ -288,32 +217,3 @@ def test_requests_sender():
         'https://www.api.github.com/organizations',
         params={'since': 3043},
         headers={'Accept': 'application/vnd.github.v3+json'})
-
-
-@pytest.mark.asyncio
-async def test_aiohttp_sender():
-    req = snug.GET('https://test.com',
-                   data=b'{"foo": 4}',
-                   params={'bla': 99},
-                   headers={'Authorization': 'Basic ABC'})
-    aiohttp = pytest.importorskip('aiohttp')
-    from aioresponses import aioresponses
-
-    with aioresponses() as m:
-        m.get('https://test.com/?bla=99', body=b'{"my": "content"}',
-              status=201,
-              headers={'Content-Type': 'application/json'})
-
-        async with aiohttp.ClientSession() as session:
-            sender = snug.async_sender(session)
-            response = await sender(req)
-
-        assert response == snug.Response(
-            201,
-            data=b'{"my": "content"}',
-            headers={'Content-Type': 'application/json'})
-
-        call, = m.requests[('GET', 'https://test.com/?bla=99')]
-        assert call.kwargs['headers'] == {'Authorization': 'Basic ABC'}
-        assert call.kwargs['params'] == {'bla': 99}
-        assert call.kwargs['data'] == b'{"foo": 4}'

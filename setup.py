@@ -1,14 +1,17 @@
-import sys
-from pathlib import Path
+import os.path
 from setuptools import setup, find_packages
 
-local_path = Path(__file__).parent.joinpath
+
+def read_local_file(fname):
+    path = os.path.join(os.path.dirname(__file__), fname)
+    with open(path, 'r') as rfile:
+        return rfile.read()
+
 
 metadata = {}
-exec(local_path('snug/__about__.py').read_text(), metadata)
-
-readme = local_path('README.rst').read_text()
-history = local_path('HISTORY.rst').read_text()
+exec(read_local_file('snug/__about__.py'), metadata)
+readme = read_local_file('README.rst')
+history = read_local_file('HISTORY.rst')
 
 
 setup(
@@ -28,11 +31,12 @@ setup(
         'License :: OSI Approved :: MIT License',
 
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
     ],
     keywords=['api', 'wrapper', 'rest', 'http'],
-    python_requires='>=3.5',
+    python_requires='>=3.4',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))
 )

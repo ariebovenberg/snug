@@ -104,3 +104,4 @@ def test_empty_mapping():
     assert len(utils.EMPTY_MAPPING) == 0
     assert list(utils.EMPTY_MAPPING) == []
     assert repr(utils.EMPTY_MAPPING) == '{}'
+    assert not utils.EMPTY_MAPPING

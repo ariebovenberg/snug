@@ -92,6 +92,8 @@ class compose(CallableAsMethod):
 
 class _EmptyMapping(Mapping):
     """an empty mapping to use as a default value"""
+    __slots__ = ()
+
     def __iter__(self):
         yield from ()
 
