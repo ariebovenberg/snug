@@ -8,7 +8,6 @@ from itertools import chain
 from operator import methodcaller
 
 from .utils import EMPTY_MAPPING, compose, identity
-from ._async import execute_async, async_executor, async_sender  # noqa
 
 __all__ = [
     'Request',
@@ -16,8 +15,6 @@ __all__ = [
     'Query',
     'executor',
     'urllib_sender',
-    'Sender',
-    'Executor',
     'sender',
     'header_adder',
     'prefix_adder',
@@ -29,9 +26,6 @@ __all__ = [
     'DELETE',
     'HEAD',
     'OPTIONS',
-    'async_sender',
-    'execute_async',
-    'async_executor',
 ]
 
 T = t.TypeVar('T')
@@ -43,71 +37,87 @@ class Request:
 
     Parameters
     ----------
-    method
+    method: str
         the http method
-    url
+    url: str
         the requested url
-    data
+    data: ~typing.Optional[bytes]
         the request content
-    params
+    params: ~typing.Mapping[str, str]
         the query parameters
-    headers
+    headers: ~typing.Mapping[str, str]
         mapping of headers
     """
     __slots__ = 'method', 'url', 'data', 'params', 'headers'
     __hash__ = None
 
-    def __init__(self,
-                 method:  str,
-                 url:     str,
-                 data:    t.Optional[bytes]=None,
-                 params:  t.Mapping[str, str]=EMPTY_MAPPING,
-                 headers: t.Mapping[str, str]=EMPTY_MAPPING):
+    def __init__(self, method, url, data=None, params=EMPTY_MAPPING,
+                 headers=EMPTY_MAPPING):
         self.method = method
         self.url = url
         self.data = data
         self.params = params
         self.headers = headers
 
-    def with_headers(self, headers: t.Mapping[str, str]) -> 'Request':
+    def with_headers(self, headers):
         """new request with added headers
 
         Parameters
         ----------
-        headers
+        headers: ~typing.Mappping[str, str]
             the headers to add
+
+        Returns
+        -------
+        Request
+            a new request with added headers
         """
         return self.replace(headers=dict(chain(self.headers.items(),
                                                headers.items())))
 
-    def with_prefix(self, prefix: str) -> 'Request':
+    def with_prefix(self, prefix):
         """new request with added url prefix
 
         Parameters
         ----------
-        prefix
+        prefix: str
             the URL prefix
+
+        Returns
+        -------
+        Request
+            a new request with added prefix
         """
         return self.replace(url=prefix + self.url)
 
-    def with_params(self, params: t.Mapping[str, str]) -> 'Request':
+    def with_params(self, params):
         """new request with added params
 
         Parameters
         ----------
-        params
+        params: ~typing.Mapping[str, str]
             the parameters to add
+
+        Returns
+        -------
+        Request
+            a new request with added parameters
         """
         return self.replace(params=dict(chain(self.params.items(),
                                               params.items())))
 
-    def with_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
+    def with_basic_auth(self, credentials):
         """new request with "basic" authentication
 
         Parameters
         ----------
-        credentials
+        credentials: ~typing.Tuple[str, str]
             the username-password pair
+
+        Returns
+        -------
+        Request
+            a new request with added authentication
         """
         encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
         return self.with_headers({'Authorization': 'Basic ' + encoded})
@@ -126,6 +136,18 @@ class Request:
         return NotImplemented
 
     def replace(self, **kwargs):
+        """create a copy with replaced fields
+
+        Parameters
+        ----------
+        **kwargs
+            fields and values to replace
+
+        Returns
+        -------
+        Request
+            the new request
+        """
         attrs = self._asdict()
         attrs.update(kwargs)
         return Request(**attrs)
@@ -140,20 +162,17 @@ class Response:
 
     Parameters
     ----------
-    status_code
+    status_code: int
         the HTTP status code
-    data
+    data: ~typing.Optional[bytes]
         the response content
-    headers
+    headers: ~typing.Mapping[str, str]
         the headers of the response
     """
     __slots__ = 'status_code', 'data', 'headers'
     __hash__ = None
 
-    def __init__(self,
-                 status_code: int,
-                 data:        t.Optional[bytes]=None,
-                 headers:     t.Mapping[str, str]=EMPTY_MAPPING):
+    def __init__(self, status_code, data=None, headers=EMPTY_MAPPING):
         self.status_code = status_code
         self.data = data
         self.headers = headers
@@ -186,18 +205,32 @@ class Query(t.Generic[T], t.Iterable[Request]):
     Any object where ``__iter__`` returns a generator implements it"""
 
     @abc.abstractmethod
-    def __iter__(self) -> t.Generator[Request, Response, T]:
-        """a generator which resolves the query"""
+    def __iter__(self):
+        """resolve the query
+
+        Returns
+        -------
+        ~typing.Generator[Request, Response, T]
+            a generator which resolves the query
+        """
         raise NotImplementedError()
 
 
-Sender = t.Callable[[Request], Response]
-Executor = t.Callable[[Query[T]], T]
-Authenticator = t.Callable[[T_auth], t.Callable[[Request], Request]]
+def urllib_sender(req, **kwargs):
+    """simple sender which uses python's :mod:`urllib`
 
+    Parameters
+    ----------
+    req: Request
+        the request to send
+    **kwargs
+        keywords to use
 
-def urllib_sender(req: Request, **kwargs) -> Response:
-    """simple :class:`~snug.http.Sender` which uses python's :mod:`urllib`"""
+    Returns
+    -------
+    Response
+        the resulting response
+    """
     url = req.url + '?' + urllib.parse.urlencode(req.params)
     raw_request = urllib.request.Request(url, headers=req.headers,
                                          method=req.method)
@@ -209,35 +242,63 @@ def urllib_sender(req: Request, **kwargs) -> Response:
     )
 
 
-def _optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
-        t.Callable[[Request], Request]):
+def _optional_basic_auth(credentials):
+    """create an authenticator for optional credentials
+
+    Parameters
+    ----------
+    credentials: ~typing.Optional[~typing.Tuple[str, str]]
+        the username and password
+
+    Returns
+    -------
+    ~typing.Callable[[Request], Request]
+        a request authenticator
+
+    """
     if credentials is None:
         return identity
     else:
         return methodcaller('with_basic_auth', credentials)
 
 
-def executor(auth: T_auth=None,
+def executor(auth=None,
              client=None,
-             authenticator: Authenticator=_optional_basic_auth) -> Executor:
+             authenticator=_optional_basic_auth):
     """create an executor
 
     Parameters
     ----------
-    auth
+    auth: T_credentials
         the credentials
     client
         The HTTP client to use.
-    authenticator
+    authenticator: Authenticator[T_credentials]
         the authentication method to use
+
+    Returns
+    -------
+    Executor
+        an executor
     """
     _sender = urllib_sender if client is None else sender(client)
     return partial(execute, sender=compose(_sender, authenticator(auth)))
 
 
 @singledispatch
-def sender(client) -> Sender:
-    """create a sender for the given client"""
+def sender(client):
+    """create a sender for the given client
+
+    Parameters
+    ----------
+    client: any registered client type
+        the HTTP client to create a sender from
+
+    Returns
+    -------
+    Sender
+        a request sender
+    """
     raise TypeError('no sender factory registered for {!r}'.format(client))
 
 
@@ -247,13 +308,18 @@ except ImportError:  # pragma: no cover
     pass
 else:
     @sender.register(requests.Session)
-    def _requests_sender(session: requests.Session) -> Sender:
+    def _requests_sender(session: requests.Session):
         """create a :class:`~snug.Sender` for a :class:`requests.Session`
 
         Parameters
         ----------
         session
             a requests session
+
+        Returns
+        -------
+        Sender
+            a request sender
         """
 
         def _req_send(req: Request) -> Response:
@@ -294,15 +360,20 @@ OPTIONS = partial(Request, 'OPTIONS')
 OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
 
 
-def execute(query:  Query[T], sender: Sender=urllib_sender) -> T:
+def execute(query, sender=urllib_sender):
     """execute a query
 
     Parameters
     ----------
-    query
+    query: Query[T_return]
         the query to resolve
-    sender
+    sender: ~typing.Callable[[Request], Response]
         the sender to use
+
+    Returns
+    -------
+    T_return
+        the query return value
     """
     gen = iter(query)
     request = next(gen)
