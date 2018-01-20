@@ -1,5 +1,6 @@
 """the central abstractions"""
 import abc
+import asyncio
 import typing as t
 import urllib.request
 from base64 import b64encode
@@ -10,15 +11,18 @@ from operator import methodcaller
 from .utils import EMPTY_MAPPING, compose, identity
 
 __all__ = [
+    'Query',
+    'execute',
+    'execute_async',
     'Request',
     'Response',
-    'Query',
     'executor',
-    'urllib_sender',
+    'async_executor',
     'sender',
+    'urllib_sender',
+    'async_sender',
     'header_adder',
     'prefix_adder',
-    'execute',
     'GET',
     'POST',
     'PUT',
@@ -30,6 +34,7 @@ __all__ = [
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
+TextMapping = t.Mapping[str, str]
 
 
 class Request:
@@ -37,87 +42,68 @@ class Request:
 
     Parameters
     ----------
-    method: str
+    method
         the http method
-    url: str
+    url
         the requested url
-    data: ~typing.Optional[bytes]
+    data
         the request content
-    params: ~typing.Mapping[str, str]
+    params
         the query parameters
-    headers: ~typing.Mapping[str, str]
+    headers
         mapping of headers
     """
     __slots__ = 'method', 'url', 'data', 'params', 'headers'
     __hash__ = None
 
-    def __init__(self, method, url, data=None, params=EMPTY_MAPPING,
-                 headers=EMPTY_MAPPING):
+    def __init__(self, method: str, url: str, data: t.Optional[bytes]=None, *,
+                 params: TextMapping=EMPTY_MAPPING,
+                 headers: TextMapping=EMPTY_MAPPING):
         self.method = method
         self.url = url
         self.data = data
         self.params = params
         self.headers = headers
 
-    def with_headers(self, headers):
+    def with_headers(self, headers: TextMapping) -> 'Request':
         """new request with added headers
 
         Parameters
         ----------
-        headers: ~typing.Mappping[str, str]
+        headers
             the headers to add
-
-        Returns
-        -------
-        Request
-            a new request with added headers
         """
-        return self.replace(headers=dict(chain(self.headers.items(),
-                                               headers.items())))
+        merged = dict(chain(self.headers.items(), headers.items()))
+        return self.replace(headers=merged)
 
-    def with_prefix(self, prefix):
+    def with_prefix(self, prefix: str) -> 'Request':
         """new request with added url prefix
 
         Parameters
         ----------
-        prefix: str
+        prefix
             the URL prefix
-
-        Returns
-        -------
-        Request
-            a new request with added prefix
         """
         return self.replace(url=prefix + self.url)
 
-    def with_params(self, params):
+    def with_params(self, params: TextMapping) -> 'Request':
         """new request with added params
 
         Parameters
         ----------
-        params: ~typing.Mapping[str, str]
+        params
             the parameters to add
-
-        Returns
-        -------
-        Request
-            a new request with added parameters
         """
-        return self.replace(params=dict(chain(self.params.items(),
-                                              params.items())))
+        merged = dict(chain(self.params.items(), params.items()))
+        return self.replace(params=merged)
 
-    def with_basic_auth(self, credentials):
+    def with_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
         """new request with "basic" authentication
 
         Parameters
         ----------
-        credentials: ~typing.Tuple[str, str]
+        credentials
             the username-password pair
-
-        Returns
-        -------
-        Request
-            a new request with added authentication
         """
         encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
         return self.with_headers({'Authorization': 'Basic ' + encoded})
@@ -135,18 +121,13 @@ class Request:
             return self._asdict() != other._asdict()
         return NotImplemented
 
-    def replace(self, **kwargs):
+    def replace(self, **kwargs) -> 'Request':
         """create a copy with replaced fields
 
         Parameters
         ----------
         **kwargs
             fields and values to replace
-
-        Returns
-        -------
-        Request
-            the new request
         """
         attrs = self._asdict()
         attrs.update(kwargs)
@@ -162,17 +143,18 @@ class Response:
 
     Parameters
     ----------
-    status_code: int
+    status_code
         the HTTP status code
-    data: ~typing.Optional[bytes]
+    data
         the response content
-    headers: ~typing.Mapping[str, str]
+    headers
         the headers of the response
     """
     __slots__ = 'status_code', 'data', 'headers'
     __hash__ = None
 
-    def __init__(self, status_code, data=None, headers=EMPTY_MAPPING):
+    def __init__(self, status_code: int, data: t.Optional[bytes]=None, *,
+                 headers: TextMapping=EMPTY_MAPPING):
         self.status_code = status_code
         self.data = data
         self.headers = headers
@@ -194,7 +176,14 @@ class Response:
         return ('<Response: {0.status_code}, '
                 'headers={0.headers!r}>').format(self)
 
-    def replace(self, **kwargs):
+    def replace(self, **kwargs) -> 'Response':
+        """create a copy with replaced fields
+
+        Parameters
+        ----------
+        **kwargs
+            fields and values to replace
+        """
         attrs = self._asdict()
         attrs.update(kwargs)
         return Response(**attrs)
@@ -202,34 +191,33 @@ class Response:
 
 class Query(t.Generic[T], t.Iterable[Request]):
     """ABC for query-like objects.
-    Any object where ``__iter__`` returns a generator implements it"""
+    Any object where :meth:`~object.__iter__`
+    returns a :class:`Request`/:class:`Response` generator implements it.
+
+    Note
+    ----
+    :term:`Generator iterator`\\s themselves also implement this interface
+    (i.e. :meth:`~object.__iter__` returns the generator itself).
+    """
 
     @abc.abstractmethod
-    def __iter__(self):
-        """resolve the query
-
-        Returns
-        -------
-        ~typing.Generator[Request, Response, T]
-            a generator which resolves the query
-        """
+    def __iter__(self) -> t.Generator[Request, Response, T]:
+        """a generator which resolves the query"""
         raise NotImplementedError()
 
 
-def urllib_sender(req, **kwargs):
+Sender = t.Callable[[Request], Response]
+
+
+def urllib_sender(req: Request, **kwargs) -> Response:
     """simple sender which uses python's :mod:`urllib`
 
     Parameters
     ----------
-    req: Request
+    req
         the request to send
     **kwargs
         keywords to use
-
-    Returns
-    -------
-    Response
-        the resulting response
     """
     url = req.url + '?' + urllib.parse.urlencode(req.params)
     raw_request = urllib.request.Request(url, headers=req.headers,
@@ -242,12 +230,13 @@ def urllib_sender(req, **kwargs):
     )
 
 
-def _optional_basic_auth(credentials):
+def _optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
+        t.Callable[[Request], Request]):
     """create an authenticator for optional credentials
 
     Parameters
     ----------
-    credentials: ~typing.Optional[~typing.Tuple[str, str]]
+    credentials
         the username and password
 
     Returns
@@ -287,7 +276,8 @@ def executor(auth=None,
 
 @singledispatch
 def sender(client):
-    """create a sender for the given client
+    """Create a sender for the given client.
+    A :func:`~functools.singledispatch` function.
 
     Parameters
     ----------
@@ -329,7 +319,7 @@ else:
             return Response(
                 response.status_code,
                 response.content,
-                response.headers,
+                headers=response.headers,
             )
 
         return _req_send
@@ -383,3 +373,103 @@ def execute(query, sender=urllib_sender):
             request = gen.send(response)
         except StopIteration as e:
             return e.value
+
+
+@asyncio.coroutine
+def execute_async(query, sender):
+    """execute a query asynchronously
+
+    Parameters
+    ----------
+    query: Query[T]
+        the query to resolve
+    sender: AsyncSender
+        the sender to use
+
+    Returns
+    -------
+    T
+        the query result
+    """
+    gen = iter(query)
+    request = next(gen)
+    while True:
+        response = yield from sender(request)
+        try:
+            request = gen.send(response)
+        except StopIteration as e:
+            return e.value
+
+
+def async_executor(auth=None,
+                   client=None,
+                   authenticator=_optional_basic_auth):
+    """create an ascynchronous executor
+
+    Parameters
+    ----------
+    auth: T_auth
+        the credentials
+    client: a client registered with :func:`snug.async_sender`
+        The (asynchronous) HTTP client to use.
+    authenticator: Authenticator[T_auth]
+        the authentication method to use
+
+    Returns
+    -------
+    AsyncExecutor
+        an asynchronous executor
+    """
+    return partial(execute_async,
+                   sender=compose(async_sender(client), authenticator(auth)))
+
+
+@singledispatch
+def async_sender(client):
+    """create an asynchronous sender from the given client
+
+    Returns
+    -------
+    Callable[[Request], Awaitable[Response]]
+        the asynchronous sender
+    """
+    raise TypeError(
+        'no async sender factory registered for {!r}'.format(client))
+
+
+try:
+    import aiohttp
+except ImportError:  # pragma: no cover
+    pass
+else:
+    @async_sender.register(aiohttp.ClientSession)
+    def _aiohttp_sender(session: aiohttp.ClientSession):
+        """create an asynchronous sender
+        for an `aiohttp` client session
+
+        Parameters
+        ----------
+        session
+            the aiohttp session
+        """
+        from snug.core import Response
+
+        @asyncio.coroutine
+        def _aiohttp_sender(req):
+            response = yield from session.request(req.method, req.url,
+                                                  params=req.params,
+                                                  data=req.data,
+                                                  headers=req.headers)
+            try:
+                return Response(
+                    response.status,
+                    data=(yield from response.read()),
+                    headers=response.headers,
+                )
+            except Exception:  # pragma: no cover
+                response.close()
+                raise
+            finally:
+                yield from response.release()
+
+        return _aiohttp_sender
