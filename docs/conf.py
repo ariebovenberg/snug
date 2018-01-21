@@ -97,8 +97,11 @@ html_theme = 'alabaster'
 # documentation.
 #
 html_theme_options = {
-    # Set the name of the project to appear in the sidebar
-    # "project_nav_name": "Snug",
+    "description": snug.__description__,
+    "github_user": 'ariebovenberg',
+    "github_repo": 'snug',
+    "github_button": True,
+    'fixed_sidebar': True,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -169,4 +172,5 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
+    'gentools': ('http://gentools.readthedocs.org/en/latest/', None),
 }

@@ -7,28 +7,24 @@ from base64 import b64encode
 from http.client import HTTPResponse
 from io import BytesIO
 from functools import partial, singledispatch
+from itertools import chain
 from operator import methodcaller
 
 from .utils import EMPTY_MAPPING, compose, identity
 
 __all__ = [
+    'Query',
+    'execute',
+    'execute_async',
     'Request',
     'Response',
-    'Query',
     'executor',
     'async_executor',
-    'urllib_sender',
-    'asyncio_sender',
-    'Sender',
-    'AsyncSender',
-    'Executor',
-    'AsyncExecutor',
     'sender',
+    'urllib_sender',
     'async_sender',
     'header_adder',
     'prefix_adder',
-    'execute',
-    'execute_async',
     'GET',
     'POST',
     'PUT',
@@ -40,6 +36,7 @@ __all__ = [
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
+TextMapping = t.Mapping[str, str]
 
 
 class Request:
@@ -61,19 +58,16 @@ class Request:
     __slots__ = 'method', 'url', 'data', 'params', 'headers'
     __hash__ = None
 
-    def __init__(self,
-                 method:  str,
-                 url:     str,
-                 data:    t.Optional[bytes]=None,
-                 params:  t.Mapping[str, str]=EMPTY_MAPPING,
-                 headers: t.Mapping[str, str]=EMPTY_MAPPING):
+    def __init__(self, method: str, url: str, data: t.Optional[bytes]=None, *,
+                 params: TextMapping=EMPTY_MAPPING,
+                 headers: TextMapping=EMPTY_MAPPING):
         self.method = method
         self.url = url
         self.data = data
         self.params = params
         self.headers = headers
 
-    def with_headers(self, headers: t.Mapping[str, str]) -> 'Request':
+    def with_headers(self, headers: TextMapping) -> 'Request':
         """new request with added headers
 
         Parameters
@@ -81,7 +75,8 @@ class Request:
         headers
             the headers to add
         """
-        return self.replace(headers={**self.headers, **headers})
+        merged = dict(chain(self.headers.items(), headers.items()))
+        return self.replace(headers=merged)
 
     def with_prefix(self, prefix: str) -> 'Request':
         """new request with added url prefix
@@ -93,7 +88,7 @@ class Request:
         """
         return self.replace(url=prefix + self.url)
 
-    def with_params(self, params: t.Mapping[str, str]) -> 'Request':
+    def with_params(self, params: TextMapping) -> 'Request':
         """new request with added params
 
         Parameters
@@ -101,7 +96,8 @@ class Request:
         params
             the parameters to add
         """
-        return self.replace(params={**self.params, **params})
+        merged = dict(chain(self.params.items(), params.items()))
+        return self.replace(params=merged)
 
     def with_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
         """new request with "basic" authentication
@@ -127,8 +123,17 @@ class Request:
             return self._asdict() != other._asdict()
         return NotImplemented
 
-    def replace(self, **kwargs):
-        return Request(**{**self._asdict(), **kwargs})
+    def replace(self, **kwargs) -> 'Request':
+        """create a copy with replaced fields
+
+        Parameters
+        ----------
+        **kwargs
+            fields and values to replace
+        """
+        attrs = self._asdict()
+        attrs.update(kwargs)
+        return Request(**attrs)
 
     def __repr__(self):
         return ('<Request: {0.method} {0.url}, params={0.params!r}, '
@@ -150,10 +155,8 @@ class Response:
     __slots__ = 'status_code', 'data', 'headers'
     __hash__ = None
 
-    def __init__(self,
-                 status_code: int,
-                 data:        t.Optional[bytes]=None,
-                 headers:     t.Mapping[str, str]=EMPTY_MAPPING):
+    def __init__(self, status_code: int, data: t.Optional[bytes]=None, *,
+                 headers: TextMapping=EMPTY_MAPPING):
         self.status_code = status_code
         self.data = data
         self.headers = headers
@@ -175,13 +178,29 @@ class Response:
         return ('<Response: {0.status_code}, '
                 'headers={0.headers!r}>').format(self)
 
-    def replace(self, **kwargs):
-        return Response(**{**self._asdict(), **kwargs})
+    def replace(self, **kwargs) -> 'Response':
+        """create a copy with replaced fields
+
+        Parameters
+        ----------
+        **kwargs
+            fields and values to replace
+        """
+        attrs = self._asdict()
+        attrs.update(kwargs)
+        return Response(**attrs)
 
 
 class Query(t.Generic[T], t.Iterable[Request]):
     """ABC for query-like objects.
-    Any object where ``__iter__`` returns a generator implements it"""
+    Any object where :meth:`~object.__iter__`
+    returns a :class:`Request`/:class:`Response` generator implements it.
+
+    Note
+    ----
+    :term:`Generator iterator`\\s themselves also implement this interface
+    (i.e. :meth:`~object.__iter__` returns the generator itself).
+    """
 
     @abc.abstractmethod
     def __iter__(self) -> t.Generator[Request, Response, T]:
@@ -190,14 +209,10 @@ class Query(t.Generic[T], t.Iterable[Request]):
 
 
 Sender = t.Callable[[Request], Response]
-AsyncSender = t.Callable[[Request], t.Awaitable[Response]]
-Executor = t.Callable[[Query[T]], T]
-AsyncExecutor = t.Callable[[Query[T]], t.Awaitable[T]]
-Authenticator = t.Callable[[T_auth], t.Callable[[Request], Request]]
 
 
 def urllib_sender(req: Request, **kwargs) -> Response:
-    """simple :class:`~snug.http.Sender` which uses python's :mod:`urllib`
+    """simple sender which uses python's :mod:`urllib`
 
     Parameters
     ----------
@@ -258,60 +273,64 @@ async def asyncio_sender(req: Request) -> Response:
 
 def _optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
         t.Callable[[Request], Request]):
+    """create an authenticator for optional credentials
+
+    Parameters
+    ----------
+    credentials
+        the username and password
+
+    Returns
+    -------
+    ~typing.Callable[[Request], Request]
+        a request authenticator
+
+    """
     if credentials is None:
         return identity
     else:
         return methodcaller('with_basic_auth', credentials)
 
 
-def executor(auth: T_auth=None,
+def executor(auth=None,
              client=None,
-             authenticator: Authenticator=_optional_basic_auth) -> Executor:
+             authenticator=_optional_basic_auth):
     """create an executor
 
     Parameters
     ----------
-    auth
+    auth: T_credentials
         the credentials
     client
         The HTTP client to use.
-    authenticator
+    authenticator: Authenticator[T_credentials]
         the authentication method to use
+
+    Returns
+    -------
+    Executor
+        an executor
     """
     _sender = urllib_sender if client is None else sender(client)
     return partial(execute, sender=compose(_sender, authenticator(auth)))
 
 
-def async_executor(
-        auth: T_auth=None,
-        client=None,
-        authenticator: Authenticator=_optional_basic_auth) -> AsyncExecutor:
-    """create an ascynchronous executor
+@singledispatch
+def sender(client):
+    """Create a sender for the given client.
+    A :func:`~functools.singledispatch` function.
 
     Parameters
     ----------
-    auth
-        the credentials
-    client
-        The (asynchronous) HTTP client to use.
-    authenticator
-        the authentication method to use
+    client: any registered client type
+        the HTTP client to create a sender from
+
+    Returns
+    -------
+    Sender
+        a request sender
     """
-    return partial(execute_async,
-                   sender=compose(async_sender(client), authenticator(auth)))
-
-
-@singledispatch
-def sender(client) -> Sender:
-    """create a sender for the given client"""
     raise TypeError('no sender factory registered for {!r}'.format(client))
-
-
-@singledispatch
-def async_sender(client) -> AsyncSender:
-    """create an asynchronous sender from the given client"""
-    raise TypeError(
-        'no async sender factory registered for {!r}'.format(client))
 
 
 try:
@@ -320,13 +339,18 @@ except ImportError:  # pragma: no cover
     pass
 else:
     @sender.register(requests.Session)
-    def _requests_sender(session: requests.Session) -> Sender:
+    def _requests_sender(session: requests.Session):
         """create a :class:`~snug.Sender` for a :class:`requests.Session`
 
         Parameters
         ----------
         session
             a requests session
+
+        Returns
+        -------
+        Sender
+            a request sender
         """
 
         def _req_send(req: Request) -> Response:
@@ -336,39 +360,10 @@ else:
             return Response(
                 response.status_code,
                 response.content,
-                response.headers,
+                headers=response.headers,
             )
 
         return _req_send
-
-
-try:
-    import aiohttp
-except ImportError:  # pragma: no cover
-    pass
-else:
-    @async_sender.register(aiohttp.ClientSession)
-    def _aiohttp_sender(session: aiohttp.ClientSession) -> AsyncSender:
-        """create an asynchronous sender
-        for an `aiohttp` client session
-
-        Parameters
-        ----------
-        session
-            the aiohttp session
-        """
-        async def _aiohttp_sender(req: Request) -> Response:
-            async with session.request(req.method, req.url,
-                                       params=req.params,
-                                       data=req.data,
-                                       headers=req.headers) as response:
-                return Response(
-                    response.status,
-                    data=await response.read(),
-                    headers=response.headers,
-                )
-
-        return _aiohttp_sender
 
 
 # useful shortcuts
@@ -396,35 +391,20 @@ OPTIONS = partial(Request, 'OPTIONS')
 OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
 
 
-async def execute_async(query:  Query[T], sender: AsyncSender) -> T:
-    """execute a query asynchronously
-
-    Parameters
-    ----------
-    query
-        the query to resolve
-    sender
-        the sender to use
-    """
-    gen = iter(query)
-    request = next(gen)
-    while True:
-        response = await sender(request)
-        try:
-            request = gen.send(response)
-        except StopIteration as e:
-            return e.value
-
-
-def execute(query:  Query[T], sender: Sender) -> T:
+def execute(query, sender=urllib_sender):
     """execute a query
 
     Parameters
     ----------
-    query
+    query: Query[T_return]
         the query to resolve
-    sender
+    sender: ~typing.Callable[[Request], Response]
         the sender to use
+
+    Returns
+    -------
+    T_return
+        the query return value
     """
     gen = iter(query)
     request = next(gen)
@@ -434,3 +414,103 @@ def execute(query:  Query[T], sender: Sender) -> T:
             request = gen.send(response)
         except StopIteration as e:
             return e.value
+
+
+@asyncio.coroutine
+def execute_async(query, sender):
+    """execute a query asynchronously
+
+    Parameters
+    ----------
+    query: Query[T]
+        the query to resolve
+    sender: AsyncSender
+        the sender to use
+
+    Returns
+    -------
+    T
+        the query result
+    """
+    gen = iter(query)
+    request = next(gen)
+    while True:
+        response = yield from sender(request)
+        try:
+            request = gen.send(response)
+        except StopIteration as e:
+            return e.value
+
+
+def async_executor(auth=None,
+                   client=None,
+                   authenticator=_optional_basic_auth):
+    """create an ascynchronous executor
+
+    Parameters
+    ----------
+    auth: T_auth
+        the credentials
+    client: a client registered with :func:`snug.async_sender`
+        The (asynchronous) HTTP client to use.
+    authenticator: Authenticator[T_auth]
+        the authentication method to use
+
+    Returns
+    -------
+    AsyncExecutor
+        an asynchronous executor
+    """
+    return partial(execute_async,
+                   sender=compose(async_sender(client), authenticator(auth)))
+
+
+@singledispatch
+def async_sender(client):
+    """create an asynchronous sender from the given client
+
+    Returns
+    -------
+    Callable[[Request], Awaitable[Response]]
+        the asynchronous sender
+    """
+    raise TypeError(
+        'no async sender factory registered for {!r}'.format(client))
+
+
+try:
+    import aiohttp
+except ImportError:  # pragma: no cover
+    pass
+else:
+    @async_sender.register(aiohttp.ClientSession)
+    def _aiohttp_sender(session: aiohttp.ClientSession):
+        """create an asynchronous sender
+        for an `aiohttp` client session
+
+        Parameters
+        ----------
+        session
+            the aiohttp session
+        """
+        from snug.core import Response
+
+        @asyncio.coroutine
+        def _aiohttp_sender(req):
+            response = yield from session.request(req.method, req.url,
+                                                  params=req.params,
+                                                  data=req.data,
+                                                  headers=req.headers)
+            try:
+                return Response(
+                    response.status,
+                    data=(yield from response.read()),
+                    headers=response.headers,
+                )
+            except Exception:  # pragma: no cover
+                response.close()
+                raise
+            finally:
+                yield from response.release()
+
+        return _aiohttp_sender

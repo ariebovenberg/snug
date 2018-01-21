@@ -1,6 +1,6 @@
 import json
 import snug
-from gentools import reusable, map_yield, map_send
+from gentools import reusable, map_yield, map_send, map_return, pipe
 
 add_prefix = snug.http.prefix_adder('https://api.github.com')
 add_headers = snug.https.header_adder({
@@ -21,7 +21,18 @@ def load_json_content(resp):
     """get the response body as JSON"""
     return json.loads(resp.data)
 
+def follow_redirects(req):
+    resp = yield req
+    while resp.status_code in (301, 302, 307):
+        resp = yield req.replace(url=resp.headers['Location'])
+    return resp
+
+def load_repo(jsondata):
+    ...  # deserialization logic
+
 @reusable
+@pipe(follow_redirects)
+@map_return(load_repo)
 @map_send(load_json_content, handle_errors)
 @map_yield(add_headers, add_prefix, snug.http.GET)
 def repo(name: str, owner: str):
@@ -31,6 +42,6 @@ def repo(name: str, owner: str):
 @reusable
 @map_send(handle_errors)
 @map_yield(add_headers, add_prefix, snug.http.PUT)
-def follow(username: str):
+def follow_user(name: str):
     """follow a user"""
-    return (yield f'/user/following/{username}').status_code == 204
+    return (yield f'/user/following/{name}').status_code == 204
