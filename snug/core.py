@@ -22,6 +22,7 @@ __all__ = [
     'async_executor',
     'sender',
     'urllib_sender',
+    'asyncio_sender',
     'async_sender',
     'header_adder',
     'prefix_adder',
@@ -240,27 +241,29 @@ class _IoAsSocket():
         return self._file
 
 
-async def asyncio_sender(req: Request) -> Response:
+@asyncio.coroutine
+def asyncio_sender(req: Request) -> Response:
+    if 'User-Agent' not in req.headers:
+        req = req.with_headers({'User-Agent': 'python/asyncio'})
     url = urllib.parse.urlsplit(
         req.url + '?' + urllib.parse.urlencode(req.params))
     if url.scheme == 'https':
         connect = asyncio.open_connection(url.hostname, 443, ssl=True)
     else:
         connect = asyncio.open_connection(url.hostname, 80)
-    reader, writer = await connect
+    reader, writer = yield from connect
 
     writer.write(b'\r\n'.join([
-        b'%b %b HTTP/1.1' % (req.method.encode(), url.path.encode('latin-1')),
+        '{} {} HTTP/1.1'.format(req.method, url.path).encode(),
         b'Host: %b' % url.hostname.encode('latin-1'),
         b'Connection: close',
-        b'User-Agent: python/asyncio',
-        *[
+        b'\r\n'.join([
             '{}: {}'.format(name, value).encode()
             for name, value in req.headers.items()
-        ],
+        ]),
         b'', req.data or b''
     ]))
-    response_bytes = BytesIO(await reader.read())
+    response_bytes = BytesIO((yield from reader.read()))
     writer.close()
     raw_response = HTTPResponse(_IoAsSocket(response_bytes))
     raw_response.begin()

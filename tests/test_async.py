@@ -1,3 +1,5 @@
+import json
+from unittest import mock
 from functools import partial
 from operator import methodcaller
 
@@ -55,6 +57,18 @@ def test_execute_async(loop):
     query = myquery()
     result = loop.run_until_complete(snug.execute_async(query, sender=sender))
     assert result == 'HELLO WORLD'
+
+
+class TestAsyncioSender:
+
+    def test_asyncio_sender(self, loop):
+        req = snug.Request('GET', 'https://api.github.com/organizations',
+                           params={'since': 119},
+                           headers={
+                               'Accept': 'application/vnd.github.v3+json'})
+        response = loop.run_until_complete(snug.asyncio_sender(req))
+        assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
+        assert isinstance(json.loads(response.data), list)
 
 
 class TestAsyncExecutor:
