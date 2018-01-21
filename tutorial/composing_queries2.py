@@ -1,8 +1,6 @@
 import json
 import snug
-from collections import namedtuple
-
-Repository = namedtuple(...)
+from gentools import reusable, map_yield, map_send
 
 add_prefix = snug.http.prefix_adder('https://api.github.com')
 add_headers = snug.https.header_adder({
@@ -23,18 +21,16 @@ def load_json_content(resp):
     """get the response body as JSON"""
     return json.loads(resp.data)
 
-@snug.querytype()
-@snug.sendmapped(load_json_content, handle_errors)
-@snug.yieldmapped(add_headers, add_prefix, snug.http.GET)
+@reusable
+@map_send(load_json_content, handle_errors)
+@map_yield(add_headers, add_prefix, snug.http.GET)
 def repo(name: str, owner: str):
     """a repository lookup by owner and name"""
-    return Repository(**(yield f'/repos/{owner}/{name}'))
+    return (yield f'/repos/{owner}/{name}')
 
-@snug.querytype()
-@snug.sendmapped(handle_errors)
-@snug.yieldmapped(add_headers, add_prefix, snug.http.PUT)
+@reusable
+@map_send(handle_errors)
+@map_yield(add_headers, add_prefix, snug.http.PUT)
 def follow(username: str):
     """follow a user"""
     return (yield f'/user/following/{username}').status_code == 204
-
-exec = snug.http.authed_exec

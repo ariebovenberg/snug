@@ -4,70 +4,89 @@ Tutorial
 This guide explains how to use the building-blocks that ``snug`` provides.
 In this example, we will be wrapping the github v3 REST API.
 
+.. warning::
+
+   this tutorial is unfinished
+
 Hello query
 -----------
 
 The basic building block we'll be working with is the *query*,
 A query represents an interaction with the API which may be executed.
-At the heart of a query is a :term:`generator function <generator>`.
+The simplest way to create a query is through a
+:term:`generator function <generator>`.
 
 Let's start by creating a lookup query for repositories.
 
 .. literalinclude:: ../tutorial/hello_query.py
-   :linenos:
 
 We can see from the example that a query:
 
-* yields requests
-* recieves responses
+* yields :class:`Requests<snug.core.Request>`
+* recieves :class:`Responses<snug.core.Response>`
 * returns an outcome
 
-Our module is now usable as follows:
+We can now import our module, and execture the query as follows:
 
 .. code-block:: python
 
    >>> import tutorial.hello_query as ghub
    >>> query = ghub.repo('Hello-World', owner='octocat')
-   >>> repo = ghub.exec(query)
+   >>> repo = snug.execute(query)
    >>> repo['description']
    'My first repository on GitHub!'
 
-Why generators?
-^^^^^^^^^^^^^^^
+.. admonition:: why generators
 
-Expressing queries as generators has two main advantages:
+    Expressing queries as generators has two main advantages:
 
-1. as built-in concepts of the language, generators can be easily
-   :ref:`composed and extended<composing>`.
-2. decoupling of networking logic allows
-   the :ref:`use different and asynchronous HTTP clients<executors>`.
+    1. as built-in concepts of the language, generators can be easily
+       :ref:`composed and extended<composing>`.
+    2. decoupling of networking logic allows
+       the :ref:`use different and asynchronous HTTP clients<executors>`.
 
-We will explore these features in the following sections.
+    We will explore these features in the following sections.
 
-.. admonition:: What's in a query?
+What's in a query?
+------------------
 
-   Any object whose :meth:`~collections.abc.Iterable.__iter__` returns a generator
-   may be considered a :class:`~snug.core.Query`.
-   (This includes any :term:`generator iterator` created by
-   a :term:`generator function <generator>`.)
-   The :class:`~snug.core.querytype` decorator simply makes the query reusable
-   by creating a class around the generator function;
-   the example below shows a query class roughly equivalent
-   to our previously defined ``repo``.
+Any object whose :meth:`~object.__iter__` returns a generator
+may be considered a :class:`~snug.core.Query`.
+(This includes :term:`generators <generator iterator>` themselves.)
+The example below shows a query class equivalent
+to our previously defined ``repo``.
 
-   .. code-block:: python
-   
-      class repo(snug.Query):
-          """a repository lookup by owner and name"""
-          def __init__(self, name: str, owner: str):
-              self.name, self.owner = name, owner
+.. code-block:: python
 
-          def __iter__(self):
-              request = snug.http.GET(
-                  f'https://api.github.com/repos/{self.owner}/{self.name}')
-              response = yield request
-              return json.loads(response.data)
+  class repo(snug.Query):
+      """a repository lookup by owner and name"""
+      def __init__(self, name: str, owner: str):
+          self.name, self.owner = name, owner
 
+      def __iter__(self):
+          request = snug.GET('https://api.github.com/repos/'
+                              f'{self.owner}/{self.name}')
+          response = yield request
+          return json.loads(response.data)
+
+The main difference is that the class-based version is reusable:
+
+>>> lookup = repo('Hello-World', owner='octocat')
+>>> snug.execute(lookup)
+>>> # not possible if `repo` was just a generator function
+>>> snug.execute(lookup)
+
+You can use :func:`~gentools.core.reusable`
+(from the `gentools <https://github.com/ariebovenberg/gentools>`_ package)
+to create reusable classes from generator functions automatically:
+
+.. code-block:: python
+
+  from gentools import reusable
+
+  @reusable
+  def repo(...):
+      ...
 
 .. _executors:
 
@@ -75,12 +94,13 @@ Ways to execute your query
 --------------------------
 
 Queries can be executed by different executors.
+Executors are callables which take a query
+and return its outcome.
+We've already seen a basic executor: :func:`~snug.core.execute`.
 Lets add another query, and see the different ways it may be executed.
 
 .. literalinclude:: ../tutorial/executors.py
-   :lines: 11-23
-   :linenos:
-   :emphasize-lines: 10,12
+   :lines: 2,4,12-18
 
 We can make use of the module as follows:
 
@@ -92,8 +112,8 @@ We can make use of the module as follows:
    >>> follow_the_octocat = ghub.follow('octocat')
 
    >>> # using different credentials
-   >>> exec_as_me = ghub.authed_exec(('me', 'password'))
-   >>> exec_as_other = ghub.authed_exec(('other', 'hunter2'))
+   >>> exec_as_me = snug.executor(auth=('me', 'password'))
+   >>> exec_as_other = snug.executor(('other', 'hunter2'))
    >>> exec_as_me(follow_the_octocat)
    True
    >>> exec_as_other(follow_the_octocat)
@@ -101,23 +121,17 @@ We can make use of the module as follows:
 
    >>> # using another HTTP client, for example `requests`
    >>> import requests
-   >>> exec = ghub.authed_exec(
-   ...     ('me', 'password'),
+   >>> exec = snug.executor(
+   ...     auth=('me', 'password'),
    ...     sender=snug.http.requests_sender(requests.Session()))
    >>> exec(follow_the_octocat)
    True
 
-   >>> # the same query may also be executed asynchronously with `aiohttp`
+   >>> # the same query may also be executed asynchronously:
    >>> import asyncio
-   >>> import aiohttp
-   >>> async def main():
-   ...     async with aiohttp.ClientSession() as session:
-   ...         aexec = ghub.authed_aexec(
-   ...             ('me', 'password'),
-   ...             sender=snug.http.aiohttp_sender(session)
-   ...         return await aexec(follow_the_octocat)
+   >>> exec_async = ghub.async_executor(auth=('me', 'password'))
    >>> loop = asyncio.get_event_loop()
-   >>> loop.run_until_complete(main())
+   >>> loop.run_until_complete(exec_async(follow_the_octocat))
    True
 
 .. _composing:
@@ -135,63 +149,53 @@ In our github API example, we may wish to define common logic for:
 * raising descriptive exceptions from responses
 * following redirects
 
+We can use a functional approach with 
+`gentools <https://github.com/ariebovenberg/gentools>`_,
+or a more object-oriented approach by subclassing :class:`~snug.core.Query`.
+We'll explore the functional style first.
+
+
 Preparing requests
 ^^^^^^^^^^^^^^^^^^
 
 Outgoing requests of a query can be modified with
-the :class:`~snug.core.yieldmapped` decorator.
+the :class:`~gentools.core.map_yield` decorator.
 
 .. literalinclude:: ../tutorial/composing_queries.py
-   :linenos:
-   :lines: 7-23
-   :emphasize-lines: 8,14
-
-:class:`~snug.core.yieldmapped` may take several callables,
-which are then applied right-to-left to everything the generator yields.
-
+   :lines: 3-4,11-21
+   :emphasize-lines: 4,10
 
 Parsing responses
 ^^^^^^^^^^^^^^^^^
 
 Responses being sent to a query can be modified with
-the :class:`~snug.core.sendmapped` decorator.
+the :class:`~gentools.core.map_send` decorator.
 
 .. literalinclude:: ../tutorial/composing_queries2.py
-   :lines: 13-38
-   :linenos:
-   :emphasize-lines: 15,22
+   :lines: 3-4,11-36
+   :emphasize-lines: 17,24
 
-
-Nesting queries
+Piping queries
 ^^^^^^^^^^^^^^^
 
-For advanced cases, queries may also be nested.
+For advanced cases, requests and response from queries may be piped
+through other generators.
 The following example shows how this can be used to implement redirects.
-Since most HTTP clients automatically handle redirects for us,
-this is a bit of a contrived example.
 
 .. literalinclude:: ../tutorial/composing_queries3.py
-   :lines: 26-38
-   :linenos:
-   :emphasize-lines: 8
+   :lines: 3-4,24-36
+   :emphasize-lines: 10
 
 
 Loading return values
 ^^^^^^^^^^^^^^^^^^^^^
 
 To modify the return value of a generator,
-use the :class:`~snug.core.returnmapped` decorator.
+use the :class:`~gentools.core.map_return` decorator.
 
-.. literalinclude:: ../tutorial/composing_queries3.py
-   :linenos:
-
-
-Combining decorators
-^^^^^^^^^^^^^^^^^^^^
-
-The decorators mentioned in the section
-may be combined in any number of ways.
-See the examples.
+.. literalinclude:: ../tutorial/composing_queries4.py
+   :lines: 3-4,30-40
+   :emphasize-lines: 8
 
 
 Related queries
@@ -230,9 +234,3 @@ The related queries allow us to write:
    the query.
 
 .. _customizing-loaders:
-
-Deserialization tools
----------------------
-
-.. todo::
-   write this section
