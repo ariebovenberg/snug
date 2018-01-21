@@ -25,7 +25,7 @@ Snug
    :alt: Maintainability
 
 
-Wrap web APIs to fit nicely into your python code.
+A microframework for HTTP clients.
 
 Quickstart
 ----------
