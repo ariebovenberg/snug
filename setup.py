@@ -37,7 +37,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
     ],
-    install_requires=[] if sys.version_info > (3, 5) else ['typing==3.6.2'],
+    install_requires=[] if sys.version_info > (3, 5) else ['typing>=3.6.2'],
     keywords=['api', 'wrapper', 'rest', 'http'],
     python_requires='>=3.4',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))
