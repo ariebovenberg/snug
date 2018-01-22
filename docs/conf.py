@@ -174,4 +174,5 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'gentools': ('http://gentools.readthedocs.org/en/latest/', None),
     'aiohttp': ('http://aiohttp.readthedocs.org/en/latest/', None),
+    'requests': ('http://docs.python-requests.org/en/master/', None),
 }
