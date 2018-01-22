@@ -150,8 +150,8 @@ class TestExecutor:
         client = MockClient(snug.Response(204))
         exec = snug.executor(('user', 'pw'),
                              client=client,
-                             authenticator=partial(methodcaller,
-                                                   'with_basic_auth'))
+                             auth_factory=partial(methodcaller,
+                                                  'with_basic_auth'))
 
         def myquery():
             return (yield snug.GET('my/url'))
