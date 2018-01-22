@@ -9,5 +9,5 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture(scope='module')
-def loop():
+def event_loop():
     return asyncio.get_event_loop()

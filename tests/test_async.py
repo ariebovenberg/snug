@@ -1,13 +1,14 @@
+import asyncio
 import json
-from unittest import mock
 from functools import partial
 from operator import methodcaller
+from unittest import mock
 
 import pytest
 
 import snug
 
-asyncio = pytest.importorskip('asyncio')
+live = pytest.config.getoption('--live')
 
 
 @pytest.fixture
@@ -59,16 +60,30 @@ def test_execute_async(loop):
     assert result == 'HELLO WORLD'
 
 
+@pytest.mark.skipif(not live, reason='skip live data test')
 class TestAsyncioSender:
 
-    def test_asyncio_sender(self, loop):
-        req = snug.Request('GET', 'https://api.github.com/organizations',
-                           params={'since': 119},
-                           headers={
-                               'Accept': 'application/vnd.github.v3+json'})
+    def test_https(self, loop):
+        req = snug.Request('GET', 'https://httpbin.org/get',
+                           params={'param1': 'foo'},
+                           headers={'Accept': 'application/json'})
         response = loop.run_until_complete(snug.asyncio_sender(req))
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
-        assert isinstance(json.loads(response.data), list)
+        data = json.loads(response.data.decode())
+        assert data['args'] == {'param1': 'foo'}
+        assert data['headers']['Accept'] == 'application/json'
+        assert data['headers']['User-Agent'].startswith('Python-asyncio/')
+
+    def test_http(self, loop):
+        req = snug.Request('POST', 'http://httpbin.org/post',
+                           data=json.dumps({"foo": 4}).encode(),
+                           headers={'User-Agent': 'snug/dev'})
+        response = loop.run_until_complete(snug.asyncio_sender(req))
+        assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
+        data = json.loads(response.data.decode())
+        assert data['args'] == {}
+        assert json.loads(data['data']) == {'foo': 4}
+        assert data['headers']['User-Agent'] == 'snug/dev'
 
 
 class TestAsyncExecutor:

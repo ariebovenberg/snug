@@ -1,13 +1,14 @@
 """the central abstractions"""
 import abc
 import asyncio
+import sys
 import typing as t
 import urllib.request
 from base64 import b64encode
+from functools import partial, singledispatch
 from http.client import HTTPResponse
 from io import BytesIO
-from functools import partial, singledispatch
-from itertools import chain
+from itertools import chain, starmap
 from operator import methodcaller
 
 from .utils import EMPTY_MAPPING, compose, identity
@@ -241,10 +242,13 @@ class _IoAsSocket():
         return self._file
 
 
+_ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
+
+
 @asyncio.coroutine
 def asyncio_sender(req: Request) -> Response:
     if 'User-Agent' not in req.headers:
-        req = req.with_headers({'User-Agent': 'python/asyncio'})
+        req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
     url = urllib.parse.urlsplit(
         req.url + '?' + urllib.parse.urlencode(req.params))
     if url.scheme == 'https':
@@ -253,16 +257,14 @@ def asyncio_sender(req: Request) -> Response:
         connect = asyncio.open_connection(url.hostname, 80)
     reader, writer = yield from connect
 
-    writer.write(b'\r\n'.join([
-        '{} {} HTTP/1.1'.format(req.method, url.path).encode(),
-        b'Host: %b' % url.hostname.encode('latin-1'),
-        b'Connection: close',
-        b'\r\n'.join([
-            '{}: {}'.format(name, value).encode()
-            for name, value in req.headers.items()
-        ]),
-        b'', req.data or b''
-    ]))
+    headers = '\r\n'.join([
+        '{} {} HTTP/1.1'.format(req.method, url.path + '?' + url.query),
+        'Host: ' + url.hostname,
+        'Connection: close',
+        'Content-Length: {}'.format(len(req.data or b'')),
+        '\r\n'.join(starmap('{}: {}'.format, req.headers.items())),
+    ])
+    writer.write(b'\r\n'.join([headers.encode(), b'', req.data or b'']))
     response_bytes = BytesIO((yield from reader.read()))
     writer.close()
     raw_response = HTTPResponse(_IoAsSocket(response_bytes))
