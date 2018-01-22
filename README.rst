@@ -167,7 +167,7 @@ Features
       basic_interaction = compose(map_send(my_error_checker),
                                   map_yield(my_preparer))
 
-      @mapreturn(my_repo_loader)
+      @map_return(my_repo_loader)
       @basic_interaction
       @map_yield(snug.GET)
       @oneyield
