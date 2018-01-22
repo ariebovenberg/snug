@@ -21,12 +21,12 @@ __all__ = [
     'Response',
     'executor',
     'async_executor',
-    'sender',
-    'urllib_sender',
-    'asyncio_sender',
-    'async_sender',
     'header_adder',
     'prefix_adder',
+    'make_sender',
+    'make_async_sender',
+    'asyncio_sender',
+    'urllib_sender',
     'GET',
     'POST',
     'PUT',
@@ -39,6 +39,9 @@ __all__ = [
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
 TextMapping = t.Mapping[str, str]
+
+Awaitable = (t.Awaitable.__getitem__ if sys.version_info > (3, 5)
+             else lambda x: t.Generator[t.Any, t.Any, x])
 
 
 class Request:
@@ -211,6 +214,9 @@ class Query(t.Generic[T], t.Iterable[Request]):
 
 
 Sender = t.Callable[[Request], Response]
+AsyncSender = t.Callable[[Request], Awaitable(Response)]
+Executor = t.Callable[[Query[T]], T]
+AsyncExecutor = t.Callable[[Query[T]], Awaitable(T)]
 
 
 def urllib_sender(req: Request, **kwargs) -> Response:
@@ -246,7 +252,7 @@ _ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
 
 
 @asyncio.coroutine
-def asyncio_sender(req: Request) -> Response:
+def asyncio_sender(req: Request) -> Awaitable(Response):
     if 'User-Agent' not in req.headers:
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
     url = urllib.parse.urlsplit(
@@ -284,12 +290,6 @@ def _optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
     ----------
     credentials
         the username and password
-
-    Returns
-    -------
-    ~typing.Callable[[Request], Request]
-        a request authenticator
-
     """
     if credentials is None:
         return identity
@@ -299,7 +299,8 @@ def _optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
 
 def executor(auth=None,
              client=None,
-             authenticator=_optional_basic_auth):
+             authenticator=_optional_basic_auth) -> (
+                 t.Callable[[Query[T]], T]):
     """create an executor
 
     Parameters
@@ -310,18 +311,13 @@ def executor(auth=None,
         The HTTP client to use.
     authenticator: Authenticator[T_credentials]
         the authentication method to use
-
-    Returns
-    -------
-    Executor
-        an executor
     """
-    _sender = urllib_sender if client is None else sender(client)
+    _sender = urllib_sender if client is None else make_sender(client)
     return partial(execute, sender=compose(_sender, authenticator(auth)))
 
 
 @singledispatch
-def sender(client):
+def make_sender(client):
     """Create a sender for the given client.
     A :func:`~functools.singledispatch` function.
 
@@ -343,7 +339,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    @sender.register(requests.Session)
+    @make_sender.register(requests.Session)
     def _requests_sender(session: requests.Session):
         """create a :class:`~snug.Sender` for a :class:`requests.Session`
 
@@ -396,20 +392,15 @@ OPTIONS = partial(Request, 'OPTIONS')
 OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
 
 
-def execute(query, sender=urllib_sender):
+def execute(query: Query[T], sender: Sender=urllib_sender) -> T:
     """execute a query
 
     Parameters
     ----------
-    query: Query[T_return]
+    query
         the query to resolve
-    sender: ~typing.Callable[[Request], Response]
+    sender
         the sender to use
-
-    Returns
-    -------
-    T_return
-        the query return value
     """
     gen = iter(query)
     request = next(gen)
@@ -422,20 +413,22 @@ def execute(query, sender=urllib_sender):
 
 
 @asyncio.coroutine
-def execute_async(query, sender):
+def execute_async(query: Query[T],
+                  sender: AsyncSender=asyncio_sender) -> Awaitable(T):
     """execute a query asynchronously
 
     Parameters
     ----------
-    query: Query[T]
+    query
         the query to resolve
-    sender: AsyncSender
+    sender
         the sender to use
 
-    Returns
-    -------
-    T
-        the query result
+    Note
+    ----
+    The built-in HTTP sender is very rudimentary.
+    Consider using a sender constructed from a
+    :class:`aiohttp.ClientSession`.
     """
     gen = iter(query)
     request = next(gen)
@@ -454,11 +447,11 @@ def async_executor(auth=None,
 
     Parameters
     ----------
-    auth: T_auth
+    auth
         the credentials
-    client: a client registered with :func:`snug.async_sender`
+    client
         The (asynchronous) HTTP client to use.
-    authenticator: Authenticator[T_auth]
+    authenticator
         the authentication method to use
 
     Returns
@@ -467,11 +460,12 @@ def async_executor(auth=None,
         an asynchronous executor
     """
     return partial(execute_async,
-                   sender=compose(async_sender(client), authenticator(auth)))
+                   sender=compose(make_async_sender(client),
+                                  authenticator(auth)))
 
 
 @singledispatch
-def async_sender(client):
+def make_async_sender(client):
     """create an asynchronous sender from the given client
 
     Returns
@@ -488,7 +482,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    @async_sender.register(aiohttp.ClientSession)
+    @make_async_sender.register(aiohttp.ClientSession)
     def _aiohttp_sender(session: aiohttp.ClientSession):
         """create an asynchronous sender
         for an `aiohttp` client session

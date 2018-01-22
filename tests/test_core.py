@@ -16,7 +16,7 @@ class MockClient:
         return self.response
 
 
-@snug.sender.register(MockClient)
+@snug.make_sender.register(MockClient)
 def _sender(client):
     return client.send
 
@@ -176,7 +176,7 @@ def test_sender_factory_unknown_client():
     class MyClass:
         pass
     with pytest.raises(TypeError, match='MyClass'):
-        snug.sender(MyClass())
+        snug.make_sender(MyClass())
 
 
 @mock.patch('urllib.request.Request', autospec=True)
@@ -202,7 +202,7 @@ def test_urllib_sender(urlopen, urllib_request):
 def test_requests_sender():
     requests = pytest.importorskip("requests")
     session = mock.Mock(spec=requests.Session)
-    sender = snug.sender(session)
+    sender = snug.make_sender(session)
     req = snug.GET('https://www.api.github.com/organizations',
                    params={'since': 3043},
                    headers={'Accept': 'application/vnd.github.v3+json'})

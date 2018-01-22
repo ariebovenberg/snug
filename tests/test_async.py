@@ -27,7 +27,7 @@ class MockAsyncClient:
         return self.response
 
 
-@snug.async_sender.register(MockAsyncClient)
+@snug.make_async_sender.register(MockAsyncClient)
 def _async_sender(client):
     return client.send
 
@@ -36,7 +36,7 @@ def test_async_sender_factory_unknown_client():
     class MyClass:
         pass
     with pytest.raises(TypeError, match='MyClass'):
-        snug.async_sender(MyClass())
+        snug.make_async_sender(MyClass())
 
 
 def test_execute_async(loop):
@@ -125,7 +125,7 @@ def test_aiohttp_sender(loop):
     def do_test():
         session = aiohttp.ClientSession()
         try:
-            sender = snug.async_sender(session)
+            sender = snug.make_async_sender(session)
             return (yield from sender(req))
         finally:
             session.close()
