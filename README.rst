@@ -25,7 +25,7 @@ Snug
    :alt: Maintainability
 
 
-A microframework for HTTP clients.
+A microframework for web API clients.
 
 Quickstart
 ----------
@@ -39,8 +39,7 @@ Quickstart
 
     def repo(name: str, owner: str):
         """a repo lookup by owner and name"""
-        request = snug.GET(
-            f'https://api.github.com/repos/{owner}/{name}')
+        request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
         response = yield request
         return json.loads(response.data)
 
@@ -71,8 +70,8 @@ Features
          """lookup a user by their username"""
          if len(name) == 0:
              raise ValueError('username must have >0 characters')
-         req = snug.GET(f'https://api.github.com/users/{name}')
-         response = yield req
+         request = snug.GET(f'https://api.github.com/users/{name}')
+         response = yield request
          return UserSchema().load(json.loads(response.data))
 
 2. *Async out-of-the-box*. The same query can also be executed asynchronously:
@@ -112,9 +111,8 @@ Features
 
       def follow(name: str):
           """follow another user"""
-          request = snug.PUT(
-              'https://api.github.com/user/following/{name}')
-          return (yield request).status_code == 204
+          req = snug.PUT('https://api.github.com/user/following/{name}')
+          return (yield req).status_code == 204
 
       exec_as_me = snug.executor(auth=('me', 'password'))
       exec_as_bob = snug.executor(auth=('bob', 'password'))
@@ -161,11 +159,11 @@ Features
       def my_error_checker(...):
           ...  # e.g. raise descritive errors on HTTP 4xx responses
 
-      def my_preparer(...):
+      def my_request_preparer(...):
           ...  # e.g. add headers, url prefix, etc
 
       basic_interaction = compose(map_send(my_error_checker),
-                                  map_yield(my_preparer))
+                                  map_yield(my_request_preparer))
 
       @map_return(my_repo_loader)
       @basic_interaction
