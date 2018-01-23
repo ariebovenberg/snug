@@ -74,7 +74,7 @@ Features
          response = yield request
          return UserSchema().load(json.loads(response.data))
 
-2. *Async out-of-the-box*. The same query can also be executed asynchronously:
+2. *Effortless async*. The same query can also be executed asynchronously:
 
    .. code-block:: python
 
