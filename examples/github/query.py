@@ -6,13 +6,13 @@ from functools import partial
 from operator import attrgetter
 
 from dataclasses import dataclass
+from gentools import map_return, map_send, map_yield, oneyield, reusable
+from toolz import compose, valfilter
 
 import snug
-from gentools import map_yield, map_send, map_return, oneyield, reusable
-from toolz import valfilter, compose
 
-from .load import registry
 from . import types
+from .load import registry
 
 API_PREFIX = 'https://api.github.com/'
 HEADERS = {'Accept': 'application/vnd.github.v3+json'}

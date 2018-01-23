@@ -2,8 +2,8 @@ import typing as t
 from datetime import datetime
 from functools import partial
 
-from valuable import load
 from toolz import flip
+from valuable import load
 
 from . import types
 
