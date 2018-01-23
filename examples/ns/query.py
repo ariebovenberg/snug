@@ -3,9 +3,10 @@ import xml.etree.ElementTree
 from datetime import datetime
 from operator import attrgetter
 
+from gentools import map_return, map_send, map_yield, oneyield, reusable
+from toolz import compose, valfilter
+
 import snug
-from toolz import valfilter, compose
-from gentools import oneyield, reusable, map_return, map_send, map_yield
 
 from .load import registry as loads
 from .types import Departure, Journey, Station

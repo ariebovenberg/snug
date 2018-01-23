@@ -2,8 +2,8 @@ import typing as t
 from datetime import datetime
 from functools import partial
 
-from valuable import load, xml
 from toolz import compose, flip, valmap
+from valuable import load, xml
 
 from . import types
 

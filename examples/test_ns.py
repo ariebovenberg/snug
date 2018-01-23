@@ -3,10 +3,10 @@ from pathlib import Path
 
 import aiohttp
 import pytest
-
-import snug
-import ns
 from gentools import sendreturn
+
+import ns
+import snug
 
 live = pytest.config.getoption('--live')
 CRED_PATH = Path('~/.snug/ns.json').expanduser()
