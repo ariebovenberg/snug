@@ -4,6 +4,12 @@ Release history
 development
 +++++++++++
 
+0.4.0 (2018-01-24)
+++++++++++++++++++
+
+- removed generator utils and serialization logic (now seperate libraries)
+- improvements to docs
+
 0.3.0 (2018-01-14)
 ++++++++++++++++++
 

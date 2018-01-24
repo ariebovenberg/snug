@@ -2,12 +2,12 @@ import typing as t
 from datetime import datetime
 from functools import partial
 
-import snug
-from snug.utils import flip
+from toolz import flip
+from valuable import load
 
 from . import types
 
-registry = snug.load.PrimitiveRegistry({
+registry = load.PrimitiveRegistry({
     datetime: partial(flip(datetime.strptime),  '%Y-%m-%dT%H:%M:%SZ'),
     **{
         c: c for c in [
@@ -18,6 +18,6 @@ registry = snug.load.PrimitiveRegistry({
             types.Issue.State
         ]
     }
-}) | snug.load.GenericRegistry({
-    t.List: snug.load.list_loader
-}) | snug.load.get_optional_loader | snug.load.AutoDataclassRegistry()
+}) | load.GenericRegistry({
+    t.List: load.list_loader
+}) | load.get_optional_loader | load.AutoDataclassRegistry()

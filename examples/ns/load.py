@@ -2,15 +2,12 @@ import typing as t
 from datetime import datetime
 from functools import partial
 
-import snug
-from snug.utils import compose, flip, valmap
+from toolz import compose, flip, valmap
+from valuable import load, xml
 
 from . import types
 
-xml = snug.xml
-
-
-registry = snug.load.PrimitiveRegistry({
+registry = load.PrimitiveRegistry({
     bool:     dict(true=True, false=False).__getitem__,
     datetime: partial(flip(datetime.strptime), '%Y-%m-%dT%H:%M:%S%z'),
     str:      str.strip,
@@ -22,9 +19,9 @@ registry = snug.load.PrimitiveRegistry({
             types.Journey.Component.Status
         ]
     }
-}) | snug.load.GenericRegistry({
-    t.List: snug.load.list_loader,
-}) | snug.load.get_optional_loader | snug.load.DataclassRegistry({
+}) | load.GenericRegistry({
+    t.List: load.list_loader,
+}) | load.get_optional_loader | load.DataclassRegistry({
     types.Station: {**valmap(xml.textgetter, {
         'code':       'Code',
         'type':       'Type',
@@ -46,25 +43,27 @@ registry = snug.load.PrimitiveRegistry({
         'actual_duration':   'ActueleReisTijd',
         'actual_departure':  'ActueleVertrekTijd',
         'actual_arrival':    'ActueleAankomstTijd',
-        'optimal':           'Optimaal',
         'status':            'Status',
     }), **{
         'components':        xml.elemsgetter('ReisDeel'),
         'notifications':     xml.elemsgetter('Melding'),
+    }, **{
+        'optimal':           xml.textgetter('Optimaal', default='false')
     }},
     types.Departure: {**valmap(xml.textgetter, {
         'ride_number':      'RitNummer',
         'time':             'VertrekTijd',
-        'delay':            'VertrekVertragingTekst',
         'destination':      'EindBestemming',
         'train_type':       'TreinSoort',
-        'route_text':       'RouteTekst',
         'carrier':          'Vervoerder',
         'platform':         'VertrekSpoor',
-        'travel_tip':       'ReisTip',
     }), **{
         'platform_changed': xml.attribgetter('VertrekSpoor', 'wijziging'),
         'comments':         xml.textsgetter('Opmerkingen/Opmerking'),
+        'delay':            xml.textgetter('VertrekVertragingTekst',
+                                           default=None),
+        'travel_tip':       xml.textgetter('ReisTip', default=None),
+        'route_text':       xml.textgetter('RouteTekst', default=None),
     }},
     types.Journey.Component: {**valmap(xml.textgetter, {
         'carrier':     'Vervoerder',
@@ -76,15 +75,15 @@ registry = snug.load.PrimitiveRegistry({
         'kind':        xml.attribgetter('.', 'reisSoort'),
         'stops':       xml.elemsgetter('ReisStop'),
     }},
-    types.Journey.Component.Stop: {**valmap(xml.textgetter, {
-        'name':             'Naam',
-        'delay':            'VertrekVertraging',
-        'platform':         'Spoor',
-    }), **{
+    types.Journey.Component.Stop: {
+        'name':             xml.textgetter('Naam'),
         'time':             compose(lambda x: x or None,
                                     xml.textgetter('Tijd')),
-        'platform_changed': xml.attribgetter('Spoor', 'wijziging'),
-    }},
+        'platform_changed': xml.attribgetter('Spoor', 'wijziging',
+                                             default=None),
+        'delay':            xml.textgetter('VertrekVertraging', default=None),
+        'platform':         xml.textgetter('Spoor', default=None)
+    },
     types.Journey.Notification: valmap(xml.textgetter, {
         'id':      'Id',
         'serious': 'Ernstig',

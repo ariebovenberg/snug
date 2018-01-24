@@ -1,9 +1,10 @@
 import enum
 import typing as t
-from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
 from operator import attrgetter
+
+from dataclasses import dataclass
 
 import snug
 

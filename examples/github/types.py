@@ -1,9 +1,10 @@
 import enum
 import reprlib
 import typing as t
-from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
+
+from dataclasses import dataclass
 
 import snug
 
@@ -83,13 +84,18 @@ class Repo(RepoSummary):
 
 
 @dclass()
-class Organization:
+class OrganizationSummary:
+    """basic details of a github organization"""
+    id:          int
+    description: t.Optional[str]
+    login:       str
+
+
+@dclass()
+class Organization(OrganizationSummary):
     """a github organization"""
     blog:        t.Optional[str]
     created_at:  t.Optional[datetime]
-    description: t.Optional[str]
-    id:          int
-    login:       str
     name:        t.Optional[str]
     repos_url:   str
     type:        t.Optional[str]
