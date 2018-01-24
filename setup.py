@@ -1,4 +1,3 @@
-import sys
 import os.path
 from setuptools import setup, find_packages
 
@@ -37,7 +36,9 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
     ],
-    install_requires=[] if sys.version_info > (3, 5) else ['typing>=3.6.2'],
+    install_requires=[
+        'typing>=3.6.2;python_version<"3.5"'
+    ],
     keywords=['api', 'wrapper', 'rest', 'http'],
     python_requires='>=3.4',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))
