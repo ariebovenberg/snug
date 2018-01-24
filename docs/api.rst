@@ -1,8 +1,6 @@
 API reference
 =============
 
-core
-----
 
 .. automodule:: snug.core
    :members:
@@ -16,10 +14,3 @@ core
 .. autodata:: snug.DELETE
 .. autodata:: snug.HEAD
 .. autodata:: snug.OPTIONS
-
-
-utils
------
-
-.. automodule:: snug.utils
-   :members:
