@@ -25,7 +25,9 @@ Snug
    :alt: Maintainability
 
 
-A microframework for web API clients.
+**Snug** is a compact toolkit for wrapping web APIs.
+Architecture agnostic, pluggable, and interchangeably sync/async:
+write API interactions as regular python code.
 
 Quickstart
 ----------
@@ -34,16 +36,16 @@ Quickstart
 
   .. code-block:: python
 
-    import json
-    import snug
+   import json
+   import snug
 
-    def repo(name: str, owner: str):
-        """a repo lookup by owner and name"""
-        request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
-        response = yield request
-        return json.loads(response.data)
+   def repo(name: str, owner: str) -> snug.Query[dict]:
+       """a repo lookup by owner and name"""
+       request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
+       response = yield request
+       return json.loads(response.data)
 
-2. Queries can be executed
+2. Queries can be executed:
 
   .. code-block:: python
 
@@ -58,15 +60,14 @@ Features
 --------
 
 1. *Simplicity*. If you understand generators, you understand queries.
-   Customizing your query requires no special glue-code.
-   For example: add your own validation logic,
-   or use any serializer you like:
+   Customizing a query requires no special glue-code.
+   For example: add validation logic, or use any serialization method:
 
    .. code-block:: python
 
-     from my_serializers import UserSchema
+     from my_types import User, UserSchema
 
-     def user(name: str):
+     def user(name: str) -> snug.Query[User]:
          """lookup a user by their username"""
          if len(name) == 0:
              raise ValueError('username must have >0 characters')
@@ -74,7 +75,7 @@ Features
          response = yield request
          return UserSchema().load(json.loads(response.data))
 
-2. *Effortless async*. The same query can also be executed asynchronously:
+2. *Async out-of-the-box*. The same query can also be executed asynchronously:
 
    .. code-block:: python
 
@@ -89,6 +90,7 @@ Features
       >>> import requests
       >>> execute = snug.executor(client=requests.Session())
       >>> execute(repo('Hello-World', owner='octocat'))
+      {"description": "My first repository on Github!", ...}
 
 4. *Testable*. Since queries are just generators, we can run them
    just fine without touching the network.
@@ -96,20 +98,18 @@ Features
 
    .. code-block:: python
 
-      query = repo('Hello-World', owner='octocat')
-      assert next(query).url.endswith('/repos/octocat/Hello-World')
-      try:
-          query.send(snug.Response(200, b'...'))
-      except StopIteration as e:
-          result = e.value
-      assert result['name'] == 'Hello-World'
+      >>> query = iiter(epo('Hello-World', owner='octocat'))
+      >>> next(query).url.endswith('/repos/octocat/Hello-World')
+      True
+      >>> query.send(snug.Response(200, ...))
+      StopIteration({"description": "My first repository on Github!", ...})
 
 5. *Swappable authentication*. Different credentials can be used to execute
    the same query.
 
    .. code-block:: python
 
-      def follow(name: str):
+      def follow(name: str) -> snug.Query[bool]:
           """follow another user"""
           req = snug.PUT('https://api.github.com/user/following/{name}')
           return (yield req).status_code == 204
@@ -120,7 +120,7 @@ Features
       exec_as_me(follow('octocat'))
       exec_as_bob(follow('octocat'))
 
-6. *Related queries*. Create a chained API for related objects:
+6. *Related queries*. Use class-based queries to create a chained API for related objects:
 
    .. code-block:: python
 
@@ -130,21 +130,22 @@ Features
               ...
 
           def __iter__(self):
-              ...
+              ...  # query for the repo itself
 
-          def issue(self, num):
-              """an issue in this repository by its number"""
-              url = f'/repos/{self.owner}/{self.name}/issues/{num}'
-              return json.loads((yield snug.GET(url)).data)
+          def issue(self, num: int) -> snug.Query[dict]:
+              """retrieve an issue in this repository by its number"""
+              req = snug.GET(f'/repos/{self.owner}/{self.name}/issues/{num}')
+              return json.loads((yield req).data)
 
       # the `repo` query works as before
       hello_world_repo = repo('Hello-World', owner='octocat')
       # ...but now we can make a related query
       issue_lookup = hello_world_repo.issue(348)
       snug.execute(issue_lookup)
+      # {"title": "Testing comments", ...}
 
 7. *Composable*. If you're comfortable with high-order functions and decorators,
-   make use of the ``gentools`` library to create generators
+   make use of `gentools <http://gentools.readthedocs.io/>`_ to create generators
    and apply functions to a generator's
    ``yield``, ``send``, and ``return`` values.
 
@@ -153,8 +154,11 @@ Features
       from gentools import (map_return, map_yield, map_send,
                             compose, oneyield)
 
+      class Repository:
+          ...
+
       def my_repo_loader(...):
-          ...  # e.g. create a nice Respository object
+          ...  # e.g. create a nice `Repository` object
 
       def my_error_checker(...):
           ...  # e.g. raise descritive errors on HTTP 4xx responses
@@ -167,18 +171,52 @@ Features
 
       @map_return(my_repo_loader)
       @basic_interaction
-      @map_yield(snug.GET)
       @oneyield
-      def repo(owner: str, name: str):
+      def repo(owner: str, name: str) -> snug.Query[Repository]:
           """get a repo by owner and name"""
-          return f'/repos/{owner}/{name}'
+          return snug.GET(f'/repos/{owner}/{name}')
 
       @basic_interaction
-      @map_yield(snug.PUT)
-      def follow(username):
+      def follow(name: str) -> snug.Query[bool]:
           """follow another user"""
-          response = yield f'/user/following/{name}'
+          response = yield snug.PUT(f'/user/following/{name}')
           return response.status_code == 204
+
+   Alternatively, use a class-based approach:
+
+   .. code-block:: python
+
+      class BaseQuery(snug.Query):
+          """base github query"""
+
+          def prepare(self, request):
+              ...  # e.g. add headers, url prefix, etc
+
+          def __iter__(self):
+              return parse_result((yield self.prepare(self.request)))
+
+          def parse_result(self, result):
+              ...  # e.g. error checking
+
+
+      class repo(BaseQuery):
+          """get a repo by owner and name"""
+          def __init__(self, name, owner):
+              self.request = snug.GET(f'/repos/{owner}/{name}')
+
+          def parse_result(self, result):
+              result = super().parse_result(result)
+              return my_repo_loader(result.data)
+
+
+      class follow(BaseQuery):
+          """follow another user"""
+          def __init__(self, name):
+              self.request = snug.PUT(f'/user/following/{name}')
+
+          def parse_result(self, result):
+              result = super().parse_result(result)
+              return result.status_code == 204
 
 
 Check the ``examples/`` directory for some samples.
