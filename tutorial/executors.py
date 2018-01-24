@@ -10,9 +10,8 @@ def repo(name: str, owner: str) -> snug.Query[dict]:
     return json.loads(response.data)
 
 @reusable
-def follow(username: str) -> snug.Query[bool]:
+def follow(name: str) -> snug.Query[bool]:
     """follow another user"""
-    request = snug.PUT(
-        f'https://api.github.com/user/following/{username}')
+    request = snug.PUT(f'https://api.github.com/user/following/{name}')
     response = yield request
     return response.status_code == 204

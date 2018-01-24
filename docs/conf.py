@@ -77,6 +77,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 #
 html_theme = 'alabaster'
 
+highlight_language = 'python3'
+
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
@@ -90,9 +92,12 @@ html_theme_options = {
     "github_type": 'star',
     'fixed_sidebar': True,
     'code_font_size': '0.8em',
-    'warn_bg': '#FFC',
-    'warn_border': '#EEE',
     'travis_button': True,
+    'pre_bg': '#FFF6E5',
+    'note_bg': '#E5EEFF',
+    'note_border': '#E5EEFF',
+    'warn_bg': '#FFE8E8',
+    'warn_border': '#FFE8E8',
 }
 
 html_sidebars = {

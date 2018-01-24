@@ -1,9 +1,9 @@
 import json
 import snug
-from gentools import reusable, map_yield, map_send, pipe
+from gentools import reusable, map_yield, map_send, relay
 
-add_prefix = snug.http.prefix_adder('https://api.github.com')
-add_headers = snug.https.header_adder({
+add_prefix = snug.prefix_adder('https://api.github.com')
+add_headers = snug.header_adder({
     'Accept': 'application/vnd.github.v3+json',
     'User-Agent': 'my awesome app',
 })
@@ -28,7 +28,7 @@ def follow_redirects(req):
     return resp
 
 @reusable
-@pipe(follow_redirects)
+@relay(follow_redirects)
 @map_send(load_json_content, handle_errors)
 @map_yield(add_headers, add_prefix, snug.http.GET)
 def repo(name: str, owner: str) -> snug.Query[dict]:

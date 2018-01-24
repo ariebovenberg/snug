@@ -28,15 +28,14 @@ We can see from the example that a query:
 
 We can now import our module, and execture the query as follows:
 
-.. code-block:: python
+.. code-block:: python3
 
    >>> import tutorial.hello_query as ghub
    >>> query = ghub.repo('Hello-World', owner='octocat')
    >>> repo = snug.execute(query)
-   >>> repo['description']
-   'My first repository on GitHub!'
+   {"description": "My first repository on Github!", ...}
 
-.. admonition:: why generators
+.. Note::
 
     Expressing queries as generators has two main advantages:
 
@@ -56,16 +55,16 @@ may be considered a :class:`~snug.core.Query`.
 The example below shows a query class equivalent
 to our previously defined ``repo``.
 
-.. code-block:: python
+.. code-block:: python3
 
-  class repo(snug.Query):
+  class repo(snug.Query[dict]):
       """a repository lookup by owner and name"""
       def __init__(self, name: str, owner: str):
           self.name, self.owner = name, owner
 
       def __iter__(self):
-          request = snug.GET('https://api.github.com/repos/'
-                              f'{self.owner}/{self.name}')
+          owner, name = self.owner, self.name
+          request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
           response = yield request
           return json.loads(response.data)
 
@@ -80,7 +79,7 @@ You can use :func:`~gentools.core.reusable`
 (from the `gentools <https://github.com/ariebovenberg/gentools>`_ package)
 to create reusable classes from generator functions automatically:
 
-.. code-block:: python
+.. code-block:: python3
 
   from gentools import reusable
 
@@ -97,14 +96,14 @@ Queries can be executed by different executors.
 Executors are callables which take a query
 and return its outcome.
 We've already seen a basic executor: :func:`~snug.core.execute`.
-Lets add another query, and see the different ways it may be executed.
+Lets add another query, and see the different ways it can be executed.
 
 .. literalinclude:: ../tutorial/executors.py
    :lines: 2,4,12-18
 
 We can make use of the module as follows:
 
-.. code-block:: python
+.. code-block:: python3
 
    >>> import snug
    >>> import tutorial.executors as ghub
@@ -121,9 +120,7 @@ We can make use of the module as follows:
 
    >>> # using another HTTP client, for example `requests`
    >>> import requests
-   >>> exec = snug.executor(
-   ...     auth=('me', 'password'),
-   ...     sender=snug.http.requests_sender(requests.Session()))
+   >>> exec = snug.executor(('me', 'password'), client=requests.Session())
    >>> exec(follow_the_octocat)
    True
 
@@ -175,11 +172,12 @@ the :class:`~gentools.core.map_send` decorator.
    :lines: 3-4,11-36
    :emphasize-lines: 17,24
 
-Piping queries
-^^^^^^^^^^^^^^^
+Relaying queries
+^^^^^^^^^^^^^^^^
 
-For advanced cases, requests and response from queries may be piped
-through other generators.
+For advanced cases, each requests/response interaction of a query
+can be relayed through other generators.
+This can be done with the :class:`~gentools.core.relay` decorator.
 The following example shows how this can be used to implement redirects.
 
 .. literalinclude:: ../tutorial/composing_queries3.py
@@ -217,20 +215,17 @@ The ``repo`` query behaves the same as in the previous examples,
 only it now has two related queries ``new_issue`` and ``star``.
 The related queries allow us to write:
 
-.. code-block:: python
+.. code-block:: python3
 
    >>> import tutorial.relations as ghub
+   >>> execute = snug.executor(auth=('me', 'password'))
    >>> hello_repo = ghub.repo('Hello-World', owner='octocat')
    >>> new_issue = hello_repo.new_issue('found a bug')
    >>> star_repo = hello_repo.star()
-   >>> ghub.exec(new_issue)
+   >>> execute(new_issue)
    Issue(...)
-   >>> ghub.exec(star_repo)
+   >>> execute(star_repo)
    True
 
-.. admonition:: what's in a related query?
-
-   passing the ``related=True`` ensures the ``self`` argument is passed to
-   the query.
 
 .. _customizing-loaders:

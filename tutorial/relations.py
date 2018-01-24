@@ -3,8 +3,8 @@ import snug
 from collections import namedtuple
 from gentools import reusable, map_send, map_yield, map_return
 
-add_prefix = snug.http.prefix_adder('https://api.github.com')
-add_headers = snug.https.header_adder({
+add_prefix = snug.prefix_adder('https://api.github.com')
+add_headers = snug.header_adder({
     'Accept': 'application/vnd.github.v3+json',
     'User-Agent': 'my awesome app',
 })
@@ -38,7 +38,7 @@ class repo(snug.Query[Repository]):
         self.name, self.owner = name, owner
 
     @map_send(load_json_content, handle_errors)
-    @map_yield(add_headers, add_prefix, snug.http.GET)
+    @map_yield(add_headers, add_prefix, snug.GET)
     def __iter__(self):
         return Repository(**(yield f'/repos/{self.owner}/{self.name}'))
 
@@ -47,14 +47,14 @@ class repo(snug.Query[Repository]):
     @map_yield(add_headers, add_prefix)
     def new_issue(self, title: str, body: str='') -> snug.Query[Issue]:
         """create a new issue in this repo"""
-        request = snug.http.POST(
+        request = snug.POST(
             f'/repos/{self.owner}/{self.name}/issues',
             data=json.dumps({'title': title, 'body': body}))
         return Issue(**(yield request))
 
     @reusable
     @map_send(handle_errors)
-    @map_yield(add_headers, add_prefix, snug.http.PUT)
+    @map_yield(add_headers, add_prefix, snug.PUT)
     def star(self) -> snug.Query[bool]:
         """star this repo"""
         response = yield f'/user/starred/{self.owner}/{self.name}'
@@ -67,13 +67,13 @@ class user(snug.Query[User]):
         self.username = username
 
     @map_send(load_json_content, handle_errors)
-    @map_yield(add_headers, add_prefix, snug.http.GET)
+    @map_yield(add_headers, add_prefix, snug.GET)
     def __iter__(self):
         return User(**(yield f'/users/{self.username}'))
 
     @snug.query(related=True)
     @map_send(handle_errors)
-    @map_yield(add_headers, add_prefix, snug.http.PUT)
+    @map_yield(add_headers, add_prefix, snug.PUT)
     def follow(self) -> snug.Query[bool]:
         """follow this user"""
         return (yield f'/user/following/{self.username}').status_code == 204
