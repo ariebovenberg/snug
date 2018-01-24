@@ -10,12 +10,12 @@ add_headers = snug.https.header_adder({
 
 @reusable
 @map_yield(add_headers, add_prefix, snug.http.GET)
-def repo(name: str, owner: str):
+def repo(name: str, owner: str) -> snug.Query[dict]:
     """a repository lookup by owner and name"""
     return json.loads((yield f'/repos/{owner}/{name}').data)
 
 @reusable
 @map_yield(add_headers, add_prefix, snug.http.PUT)
-def follow(username: str):
+def follow(username: str) -> snug.Query[bool]:
     """follow a user"""
     return (yield f'/user/following/{username}').status_code == 204

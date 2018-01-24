@@ -1,7 +1,7 @@
 import json
 import snug
 
-def repo(name: str, owner: str):
+def repo(name: str, owner: str) -> snug.Query[dict]:
     """a repo lookup by owner and name"""
     request = snug.GET(
         f'https://api.github.com/repos/{owner}/{name}')

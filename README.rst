@@ -56,6 +56,15 @@ Quickstart
 3. That's it
 
 
+Installation
+------------
+
+There are no required dependencies. Installation is easy as:
+
+.. code-block:: bash
+
+   pip install snug
+
 Features
 --------
 

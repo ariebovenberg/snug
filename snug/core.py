@@ -242,7 +242,7 @@ def urllib_sender(req: Request, **kwargs) -> Response:
     )
 
 
-class _IoAsSocket():
+class _SocketAdapter:
     def __init__(self, io):
         self._file = io
 
@@ -252,6 +252,7 @@ class _IoAsSocket():
 
 @asyncio.coroutine
 def asyncio_sender(req: Request) -> Awaitable(Response):
+    """a very rudimentary HTTP client using asyncio"""
     if 'User-Agent' not in req.headers:
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
     url = urllib.parse.urlsplit(
@@ -272,7 +273,7 @@ def asyncio_sender(req: Request) -> Awaitable(Response):
     writer.write(b'\r\n'.join([headers.encode(), b'', req.data or b'']))
     response_bytes = BytesIO((yield from reader.read()))
     writer.close()
-    raw_response = HTTPResponse(_IoAsSocket(response_bytes))
+    raw_response = HTTPResponse(_SocketAdapter(response_bytes))
     raw_response.begin()
     return Response(
         raw_response.getcode(),
