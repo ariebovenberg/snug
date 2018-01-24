@@ -26,8 +26,8 @@ Snug
 
 
 **Snug** is a compact toolkit for wrapping web APIs.
-Architecture agnostic, pluggable, and interchangeably sync/async:
-write API interactions as regular python code.
+Architecture agnostic, pluggable, and interchangeably sync/async.
+Write API interactions as regular python code.
 
 Quickstart
 ----------
@@ -65,7 +65,7 @@ There are no required dependencies on python 3.5+. Installation is easy as:
 
    pip install snug
 
-Although snug includes basic sync/async HTTP clients,
+Although snug includes basic sync and async HTTP clients,
 you may wish to install `requests <http://docs.python-requests.org/>`_
 and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
 
@@ -116,7 +116,7 @@ Features
 
    .. code-block:: python
 
-      >>> query = iiter(epo('Hello-World', owner='octocat'))
+      >>> query = iter(epo('Hello-World', owner='octocat'))
       >>> next(query).url.endswith('/repos/octocat/Hello-World')
       True
       >>> query.send(snug.Response(200, ...))
@@ -142,7 +142,7 @@ Features
 
    .. code-block:: python
 
-      class repo(snug.Query):
+      class repo(snug.Query[dict]):
           """a repo lookup by owner and name"""
           def __init__(self, name, owner):
               ...
