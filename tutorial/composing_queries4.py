@@ -11,7 +11,6 @@ add_headers = snug.header_adder({
 
 Repository = namedtuple(...)
 
-
 class ApiException(Exception):
     """an error from the github API"""
 

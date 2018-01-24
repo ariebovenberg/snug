@@ -99,7 +99,7 @@ We've already seen a basic executor: :func:`~snug.core.execute`.
 Lets add another query, and see the different ways it can be executed.
 
 .. literalinclude:: ../tutorial/executors.py
-   :lines: 2,4,12-18
+   :lines: 2,4,12-
 
 We can make use of the module as follows:
 
@@ -192,8 +192,8 @@ To modify the return value of a generator,
 use the :class:`~gentools.core.map_return` decorator.
 
 .. literalinclude:: ../tutorial/composing_queries4.py
-   :lines: 3-4,30-40
-   :emphasize-lines: 8
+   :lines: 3-5,12-13,33-43
+   :emphasize-lines: 11
 
 
 Related queries
@@ -207,9 +207,7 @@ We can make use of query classes to express these relations.
 
 
 .. literalinclude:: ../tutorial/relations.py
-   :lines: 12-13,33-60
-   :linenos:
-   :emphasize-lines: 14,24
+   :lines: 12-15,35-
 
 The ``repo`` query behaves the same as in the previous examples,
 only it now has two related queries ``new_issue`` and ``star``.
@@ -226,6 +224,3 @@ The related queries allow us to write:
    Issue(...)
    >>> execute(star_repo)
    True
-
-
-.. _customizing-loaders:
