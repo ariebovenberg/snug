@@ -59,11 +59,20 @@ Quickstart
 Installation
 ------------
 
-There are no required dependencies. Installation is easy as:
+There are no required dependencies on python 3.5+. Installation is easy as:
 
 .. code-block:: bash
 
    pip install snug
+
+Although snug includes basic sync/async HTTP clients,
+you may wish to install `requests <http://docs.python-requests.org/>`_
+and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
+
+.. code-block:: bash
+
+   pip install requests
+   pip install aiohttp
 
 Features
 --------
