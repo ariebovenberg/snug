@@ -34,20 +34,20 @@ Quickstart
 
 1. API interactions ("queries") are request/response generators:
 
-  .. code-block:: python
+   .. code-block:: python
 
-   import json
-   import snug
+    import json
+    import snug
 
-   def repo(name: str, owner: str) -> snug.Query[dict]:
-       """a repo lookup by owner and name"""
-       request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
-       response = yield request
-       return json.loads(response.data)
+    def repo(name: str, owner: str) -> snug.Query[dict]:
+        """a repo lookup by owner and name"""
+        request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
+        response = yield request
+        return json.loads(response.data)
 
 2. Queries can be executed:
 
-  .. code-block:: python
+   .. code-block:: python
 
     >>> query = repo('Hello-World', owner='octocat')
     >>> snug.execute(query)
