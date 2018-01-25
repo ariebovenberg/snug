@@ -30,14 +30,14 @@ def follow_redirects(req):
 @reusable
 @relay(follow_redirects)
 @map_send(load_json_content, handle_errors)
-@map_yield(add_headers, add_prefix, snug.http.GET)
+@map_yield(add_headers, add_prefix, snug.GET)
 def repo(name: str, owner: str) -> snug.Query[dict]:
     """a repository lookup by owner and name"""
     return (yield f'/repos/{owner}/{name}')
 
 @reusable
 @map_send(handle_errors)
-@map_yield(add_headers, add_prefix, snug.http.PUT)
+@map_yield(add_headers, add_prefix, snug.PUT)
 def follow_user(name: str) -> snug.Query[bool]:
     """follow a user"""
     return (yield f'/user/following/{name}').status_code == 204

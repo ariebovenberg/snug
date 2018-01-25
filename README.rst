@@ -56,6 +56,16 @@ Quickstart
 3. That's it
 
 
+Why another library?
+--------------------
+
+There are plenty of tools for wrapping web APIs.
+However, these generally make far-reaching design decisions for you,
+which can make it awkward to tailor to the needs of your specific API.
+**Snug** aims only to provide a versatile base,
+so you can focus on what makes your API unique.
+
+
 Installation
 ------------
 
@@ -93,7 +103,7 @@ Features
          response = yield request
          return UserSchema().load(json.loads(response.data))
 
-2. *Async out-of-the-box*. The same query can also be executed asynchronously:
+2. *Effortlessly async*. The same query can also be executed asynchronously:
 
    .. code-block:: python
 
@@ -101,14 +111,15 @@ Features
       repo = await snug.execute_async(query)
 
 3. *Pluggable clients*. Queries are fully agnostic of the HTTP client.
-   For example, to use ``requests`` instead of the built-in ``urllib``:
+   For example, to use `requests <http://docs.python-requests.org/>`_
+   instead of the standard library:
 
    .. code-block:: python
 
-      >>> import requests
-      >>> execute = snug.executor(client=requests.Session())
-      >>> execute(repo('Hello-World', owner='octocat'))
-      {"description": "My first repository on Github!", ...}
+      import requests
+      execute = snug.executor(client=requests.Session())
+      execute(repo('Hello-World', owner='octocat'))
+      # {"description": "My first repository on Github!", ...}
 
 4. *Testable*. Since queries are just generators, we can run them
    just fine without touching the network.
@@ -116,10 +127,10 @@ Features
 
    .. code-block:: python
 
-      >>> query = iter(epo('Hello-World', owner='octocat'))
+      >>> query = iter(repo('Hello-World', owner='octocat'))
       >>> next(query).url.endswith('/repos/octocat/Hello-World')
       True
-      >>> query.send(snug.Response(200, ...))
+      >>> query.send(snug.Response(200, b'...'))
       StopIteration({"description": "My first repository on Github!", ...})
 
 5. *Swappable authentication*. Different credentials can be used to execute
@@ -162,6 +173,12 @@ Features
       snug.execute(issue_lookup)
       # {"title": "Testing comments", ...}
 
+      # we could take this as far as we like, eventually being able to write:
+      new_comments = (repo('Hello-World', owner='octocat')
+                      .issue(348)
+                      .comments(since=datetime(2018, 1, 1)))
+
+
 7. *Composable*. If you're comfortable with high-order functions and decorators,
    make use of `gentools <http://gentools.readthedocs.io/>`_ to create generators
    and apply functions to a generator's
@@ -200,7 +217,7 @@ Features
           response = yield snug.PUT(f'/user/following/{name}')
           return response.status_code == 204
 
-   Alternatively, use a class-based approach:
+   Alternatively, use a class-based approach with inheritance:
 
    .. code-block:: python
 
