@@ -9,6 +9,7 @@ from http.client import HTTPResponse
 from io import BytesIO
 from itertools import chain, starmap
 from operator import methodcaller
+from types import MethodType
 
 from .utils import EMPTY_MAPPING, compose, identity
 
@@ -20,6 +21,7 @@ __all__ = [
     'async_executor',
     'Request',
     'Response',
+    'related',
     'header_adder',
     'prefix_adder',
     'make_sender',
@@ -279,6 +281,15 @@ def asyncio_sender(req: Request) -> Awaitable(Response):
         data=raw_response.read(),
         headers=raw_response.headers,
     )
+
+
+class related:
+    """decorate a nested class to inject its parent into its constructor"""
+    def __init__(self, cls):
+        self._cls = cls
+
+    def __get__(self, obj, objtype=None):
+        return self._cls if obj is None else MethodType(self._cls, obj)
 
 
 def _basic_auth_factory(auth):

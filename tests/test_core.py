@@ -203,3 +203,20 @@ def test_requests_sender():
         'https://www.api.github.com/organizations',
         params={'since': 3043},
         headers={'Accept': 'application/vnd.github.v3+json'})
+
+
+def test_related():
+
+    class Foo:
+
+        @snug.related
+        class Bar:
+            def __init__(self, a, b):
+                self.a, self.b = a, b
+
+    f = Foo()
+    bar = f.Bar(4)
+    assert isinstance(bar, Foo.Bar)
+
+    bar2 = Foo.Bar(f, 4)
+    assert isinstance(bar2, Foo.Bar)
