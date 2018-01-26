@@ -21,7 +21,6 @@ __all__ = [
     'async_executor',
     'Request',
     'Response',
-    'related',
     'header_adder',
     'prefix_adder',
     'make_sender',
@@ -198,7 +197,17 @@ class Response:
         return Response(**attrs)
 
 
-class Query(t.Generic[T], t.Iterable[Request]):
+class _CallableAsMethod:
+    """mixin for callables to be callable as methods when bound to a class"""
+    def __get__(self, obj, objtype=None):
+        return self if obj is None else MethodType(self, obj)
+
+
+class QueryMeta(type(t.Generic), _CallableAsMethod):
+    pass
+
+
+class Query(t.Generic[T], t.Iterable[Request], metaclass=QueryMeta):
     """ABC for query-like objects.
     Any object where :meth:`~object.__iter__`
     returns a :class:`Request`/:class:`Response` generator implements it.
@@ -281,15 +290,6 @@ def asyncio_sender(req: Request) -> Awaitable(Response):
         content=raw_response.read(),
         headers=raw_response.headers,
     )
-
-
-class related:
-    """decorate a nested class to inject its parent into its constructor"""
-    def __init__(self, cls):
-        self._cls = cls
-
-    def __get__(self, obj, objtype=None):
-        return self._cls if obj is None else MethodType(self._cls, obj)
 
 
 def _basic_auth_factory(auth):
