@@ -24,7 +24,11 @@ We can see from the example that a query:
 
 * yields :class:`Requests<snug.core.Request>`
 * recieves :class:`Responses<snug.core.Response>`
-* returns an outcome
+* returns an outcome (in this case, a :class:`dict`)
+
+.. Note::
+
+   You can ignore the type annotations if you like, they are not required.
 
 We can now import our module, and execture the query as follows:
 
@@ -35,16 +39,14 @@ We can now import our module, and execture the query as follows:
    >>> repo = snug.execute(query)
    {"description": "My first repository on Github!", ...}
 
-.. Note::
+Expressing queries as generators has two main advantages:
 
-    Expressing queries as generators has two main advantages:
+1. as built-in concepts of the language, they can be easily
+   :ref:`composed and extended<composing>`.
+2. decoupling networking logic allows
+   the :ref:`use different and async HTTP clients<executors>`.
 
-    1. as built-in concepts of the language, generators can be easily
-       :ref:`composed and extended<composing>`.
-    2. decoupling of networking logic allows
-       the :ref:`use different and asynchronous HTTP clients<executors>`.
-
-    We will explore these features in the following sections.
+We will explore these features in the following sections.
 
 What's in a query?
 ------------------
@@ -176,7 +178,7 @@ Relaying queries
 ^^^^^^^^^^^^^^^^
 
 For advanced cases, each requests/response interaction of a query
-can be relayed through other generators.
+can be relayed through another generator.
 This can be done with the :class:`~gentools.core.relay` decorator.
 The following example shows how this can be used to implement redirects.
 
