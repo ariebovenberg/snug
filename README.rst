@@ -39,7 +39,7 @@ Quickstart
     import json
     import snug
 
-    def repo(name: str, owner: str) -> snug.Query[dict]:
+    def repo(name, owner):
         """a repo lookup by owner and name"""
         request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
         response = yield request
@@ -251,4 +251,5 @@ Features
               return response.status_code == 204
 
 
-Check the ``examples/`` directory for some samples.
+Check the `tutorial <http://snug.readthedocs.io/en/latest/tutorial.html>`_,
+or the ``examples/`` directory for some samples.
