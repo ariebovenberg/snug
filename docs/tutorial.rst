@@ -4,10 +4,6 @@ Tutorial
 This guide explains how to use the building-blocks that ``snug`` provides.
 In this example, we will be wrapping the github v3 REST API.
 
-.. warning::
-
-   this tutorial is still work-in-progress
-
 Hello query
 -----------
 

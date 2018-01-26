@@ -177,7 +177,7 @@ Features
                       .comments(since=datetime(2018, 1, 1)))
 
 
-7. *Functional or object-oriented? You decide*. If you're comfortable with high-order functions and decorators,
+7. *Function- or class-based? You decide*. If you're comfortable with high-order functions and decorators,
    make use of `gentools <http://gentools.readthedocs.io/>`_ to create generators
    and apply functions to a generator's
    ``yield``, ``send``, and ``return`` values.
@@ -251,5 +251,5 @@ Features
               return response.status_code == 204
 
 
-Check the `tutorial <http://snug.readthedocs.io/en/latest/tutorial.html>`_,
+Check out the `tutorial <http://snug.readthedocs.io/en/latest/tutorial.html>`_,
 or the ``examples/`` directory for some samples.

@@ -13,7 +13,7 @@ def load_repo(jsondata: dict) -> Repository:
 
 T = t.TypeVar('T')
 
-# typevar not needed. Allows us to subclass `BaseQuery` as a generic
+# typevar allows us to subclass `BaseQuery` as a generic, not required
 class BaseQuery(snug.Query[T]):
     """base class for github queries"""
 
