@@ -4,10 +4,11 @@ Release history
 development
 +++++++++++
 
-0.4.1 (2018-01-??)
+0.5.0 (2018-01-??)
 ++++++++++++++++++
 
 - improvements to docs
+- rename Request/Response data->content
 
 0.4.0 (2018-01-24)
 ++++++++++++++++++
