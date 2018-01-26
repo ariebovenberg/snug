@@ -153,6 +153,8 @@ We can use a functional approach with
 or a more object-oriented approach by subclassing :class:`~snug.core.Query`.
 We'll explore the functional style first.
 
+Functional approach
+~~~~~~~~~~~~~~~~~~~
 
 Preparing requests
 ^^^^^^^^^^^^^^^^^^
@@ -160,7 +162,7 @@ Preparing requests
 Outgoing requests of a query can be modified with
 the :class:`~gentools.core.map_yield` decorator.
 
-.. literalinclude:: ../tutorial/composing_queries.py
+.. literalinclude:: ../tutorial/composed0.py
    :lines: 3-4,11-21
    :emphasize-lines: 4,10
 
@@ -170,7 +172,7 @@ Parsing responses
 Responses being sent to a query can be modified with
 the :class:`~gentools.core.map_send` decorator.
 
-.. literalinclude:: ../tutorial/composing_queries2.py
+.. literalinclude:: ../tutorial/composed2.py
    :lines: 3-4,11-36
    :emphasize-lines: 17,24
 
@@ -182,7 +184,7 @@ can be relayed through another generator.
 This can be done with the :class:`~gentools.core.relay` decorator.
 The following example shows how this can be used to implement redirects.
 
-.. literalinclude:: ../tutorial/composing_queries3.py
+.. literalinclude:: ../tutorial/composed3.py
    :lines: 3-4,24-36
    :emphasize-lines: 10
 
@@ -193,9 +195,16 @@ Loading return values
 To modify the return value of a generator,
 use the :class:`~gentools.core.map_return` decorator.
 
-.. literalinclude:: ../tutorial/composing_queries4.py
+.. literalinclude:: ../tutorial/composed4.py
    :lines: 3-5,12-13,33-43
    :emphasize-lines: 11
+
+Object-oriented approach
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Below is a roughly equivalent, object-oriented approach:
+
+.. literalinclude:: ../tutorial/composed_oop.py
 
 
 Related queries

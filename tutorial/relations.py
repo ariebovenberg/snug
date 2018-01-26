@@ -1,7 +1,7 @@
 import json
 import snug
 from collections import namedtuple
-from gentools import reusable, map_send, map_yield, map_return
+from gentools import reusable, map_send, map_yield
 
 add_prefix = snug.prefix_adder('https://api.github.com')
 add_headers = snug.header_adder({
@@ -71,7 +71,7 @@ class user(snug.Query[User]):
     def __iter__(self):
         return User(**(yield f'/users/{self.username}'))
 
-    @snug.query(related=True)
+    @reusable
     @map_send(handle_errors)
     @map_yield(add_headers, add_prefix, snug.PUT)
     def follow(self) -> snug.Query[bool]:
