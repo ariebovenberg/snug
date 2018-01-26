@@ -20,7 +20,7 @@ _repr = reprlib.Repr()
 _repr.maxstring = 45
 basic_interaction = compose(
     map_yield(snug.prefix_adder(API_PREFIX), snug.header_adder(HEADERS)),
-    map_send(compose(json.loads, attrgetter('data'))),
+    map_send(compose(json.loads, attrgetter('content'))),
     oneyield,
 )
 

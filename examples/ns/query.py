@@ -12,7 +12,8 @@ from .load import registry as loads
 from .types import Departure, Journey, Station
 
 API_PREFIX = 'https://webservices.ns.nl/ns-api-'
-parse_request = compose(xml.etree.ElementTree.fromstring, attrgetter('data'))
+parse_request = compose(xml.etree.ElementTree.fromstring,
+                        attrgetter('content'))
 
 
 def basic_query(returns):
