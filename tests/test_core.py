@@ -1,5 +1,3 @@
-from functools import partial
-from operator import methodcaller
 from unittest import mock
 
 import pytest
