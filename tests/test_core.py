@@ -148,10 +148,7 @@ class TestExecutor:
 
     def test_authentication(self):
         client = MockClient(snug.Response(204))
-        exec = snug.executor(('user', 'pw'),
-                             client=client,
-                             auth_factory=partial(methodcaller,
-                                                  'with_basic_auth'))
+        exec = snug.executor(('user', 'pw'), client=client)
 
         def myquery():
             return (yield snug.GET('my/url'))
@@ -159,17 +156,6 @@ class TestExecutor:
         assert exec(myquery()) == snug.Response(204)
         assert client.request == snug.GET(
             'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
-
-
-def test_optional_basic_auth():
-    from snug.core import _optional_basic_auth
-    no_auth = _optional_basic_auth(None)
-    assert no_auth(snug.GET('foo')) == snug.GET('foo')
-
-    authed = _optional_basic_auth(('user', 'pw'))
-    assert authed(snug.GET('foo')) == snug.GET('foo', headers={
-        'Authorization': 'Basic dXNlcjpwdw=='
-    })
 
 
 def test_sender_factory_unknown_client():

@@ -2,7 +2,6 @@ import json
 import reprlib
 import typing as t
 from datetime import datetime
-from functools import partial
 from operator import attrgetter
 
 from dataclasses import dataclass
@@ -19,38 +18,34 @@ HEADERS = {'Accept': 'application/vnd.github.v3+json'}
 
 _repr = reprlib.Repr()
 _repr.maxstring = 45
-dclass = partial(dataclass, frozen=True)
 basic_interaction = compose(
     map_yield(snug.prefix_adder(API_PREFIX), snug.header_adder(HEADERS)),
     map_send(compose(json.loads, attrgetter('data'))),
     oneyield,
 )
-loads = compose(map_return, registry)
 
 
-def inspect(x):
-    import pdb; pdb.set_trace()
-    return x
+def retrieves(rtype):
+    """decorator factory for simple retrieval queries"""
+    return compose(map_return(registry(rtype)), basic_interaction)
 
 
 def notnone(x):
     return x is not None
 
 
-@dclass
+@dataclass
 class repo(snug.Query):
     """repository lookup by owner & name"""
     owner: str
     name:  str
 
-    @loads(types.Repo)
-    @basic_interaction
+    @retrieves(types.Repo)
     def __iter__(self):
         return snug.GET(f'repos/{self.owner}/{self.name}')
 
     @reusable
-    @loads(t.List[types.Issue])
-    @basic_interaction
+    @retrieves(t.List[types.Issue])
     def issues(repo: 'repo',
                labels: t.Optional[str]=None,
                state:  t.Optional[str]=None):
@@ -63,8 +58,7 @@ class repo(snug.Query):
             }))
 
     @reusable
-    @loads(types.Issue)
-    @basic_interaction
+    @retrieves(types.Issue)
     def issue(repo: 'repo', number: int):
         """get a specific issue in the repo"""
         return snug.GET(
@@ -73,32 +67,28 @@ class repo(snug.Query):
 
 
 @reusable
-@loads(t.List[types.RepoSummary])
-@basic_interaction
+@retrieves(t.List[types.RepoSummary])
 def repos():
     """recent repositories"""
     return snug.GET('repositories')
 
 
 @reusable
-@loads(types.Organization)
-@basic_interaction
+@retrieves(types.Organization)
 def org(login: str):
     """Organization lookup by login"""
     return snug.GET(f'orgs/{login}')
 
 
 @reusable
-@loads(t.List[types.OrganizationSummary])
-@basic_interaction
+@retrieves(t.List[types.OrganizationSummary])
 def orgs():
     """a selection of organizations"""
     return snug.GET('organizations')
 
 
 @reusable
-@loads(t.List[types.Issue])
-@basic_interaction
+@retrieves(t.List[types.Issue])
 def issues(filter: t.Optional[str]=None,
            state:  t.Optional[types.Issue.State]=None,
            labels: t.Optional[str]=None,
@@ -114,19 +104,17 @@ def issues(filter: t.Optional[str]=None,
     }))
 
 
-@dclass
+@dataclass
 class current_user(snug.Query):
     """a reference to the current user"""
 
-    @loads(types.User)
-    @basic_interaction
+    @retrieves(types.User)
     def __iter__(self):
         return snug.GET('user')
 
     @staticmethod
     @reusable
-    @loads(t.List[types.Issue])
-    @basic_interaction
+    @retrieves(t.List[types.Issue])
     def issues():
         return snug.GET('user/issues')
 

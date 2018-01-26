@@ -1,4 +1,3 @@
-"""the central abstractions"""
 import abc
 import asyncio
 import sys
@@ -282,24 +281,13 @@ def asyncio_sender(req: Request) -> Awaitable(Response):
     )
 
 
-def _optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
-        t.Callable[[Request], Request]):
-    """create an authenticator for optional basic auth.
-
-    Parameters
-    ----------
-    credentials
-        the username and password
-    """
-    if credentials is None:
-        return identity
-    else:
-        return methodcaller('with_basic_auth', credentials)
+def _basic_auth_factory(auth):
+    return methodcaller('with_basic_auth', auth)
 
 
 def executor(auth: T_auth=None,
              client=None,
-             auth_factory: AuthenticatorFactory=_optional_basic_auth) -> (
+             auth_factory: AuthenticatorFactory=_basic_auth_factory) -> (
                  t.Callable[[Query[T]], T]):
     """create an executor
 
@@ -315,7 +303,8 @@ def executor(auth: T_auth=None,
         the authentication method to use
     """
     _sender = urllib_sender if client is None else make_sender(client)
-    return partial(execute, sender=compose(_sender, auth_factory(auth)))
+    authenticator = identity if auth is None else auth_factory(auth)
+    return partial(execute, sender=compose(_sender, authenticator))
 
 
 @singledispatch
@@ -431,7 +420,7 @@ def execute_async(query: Query[T],
 def async_executor(
         auth: T_auth=None,
         client=None,
-        auth_factory: AuthenticatorFactory=_optional_basic_auth) -> (
+        auth_factory: AuthenticatorFactory=_basic_auth_factory) -> (
             AsyncExecutor):
     """create an ascynchronous executor
 
@@ -444,9 +433,9 @@ def async_executor(
     auth_factory
         the authentication method to use
     """
+    authenticator = identity if auth is None else auth_factory(auth)
     return partial(execute_async,
-                   sender=compose(make_async_sender(client),
-                                  auth_factory(auth)))
+                   sender=compose(make_async_sender(client), authenticator))
 
 
 try:
