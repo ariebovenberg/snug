@@ -61,7 +61,7 @@ Why another library?
 
 There are plenty of tools for wrapping web APIs.
 However, these generally make far-reaching design decisions for you,
-which can make it awkward to tailor to the needs of your specific API.
+making it awkward to tailor to the needs of your specific API.
 **Snug** aims only to provide a versatile base,
 so you can focus on what makes your API unique.
 
@@ -166,9 +166,7 @@ Features
               req = snug.GET(f'/repos/{self.owner}/{self.name}/issues/{num}')
               return json.loads((yield req).data)
 
-      # the `repo` query works as before
       hello_world_repo = repo('Hello-World', owner='octocat')
-      # ...but now we can make a related query
       issue_lookup = hello_world_repo.issue(348)
       snug.execute(issue_lookup)
       # {"title": "Testing comments", ...}
@@ -179,7 +177,7 @@ Features
                       .comments(since=datetime(2018, 1, 1)))
 
 
-7. *Composable*. If you're comfortable with high-order functions and decorators,
+7. *Functional or object-oriented? You decide*. If you're comfortable with high-order functions and decorators,
    make use of `gentools <http://gentools.readthedocs.io/>`_ to create generators
    and apply functions to a generator's
    ``yield``, ``send``, and ``return`` values.
@@ -217,7 +215,7 @@ Features
           response = yield snug.PUT(f'/user/following/{name}')
           return response.status_code == 204
 
-   Alternatively, use a class-based approach with inheritance:
+   Alternatively, use inheritance to keep everything DRY:
 
    .. code-block:: python
 
@@ -228,9 +226,10 @@ Features
               ...  # e.g. add headers, url prefix, etc
 
           def __iter__(self):
-              return parse_result((yield self.prepare(self.request)))
+              request = self.prepare(self.request)
+              return self.load(self.check_response((yield request)))
 
-          def parse_result(self, result):
+          def check_response(self, result):
               ...  # e.g. error checking
 
 
@@ -239,9 +238,8 @@ Features
           def __init__(self, name, owner):
               self.request = snug.GET(f'/repos/{owner}/{name}')
 
-          def parse_result(self, result):
-              result = super().parse_result(result)
-              return my_repo_loader(result.data)
+          def load(self, response):
+              return my_repo_loader(response.data)
 
 
       class follow(BaseQuery):
@@ -249,9 +247,8 @@ Features
           def __init__(self, name):
               self.request = snug.PUT(f'/user/following/{name}')
 
-          def parse_result(self, result):
-              result = super().parse_result(result)
-              return result.status_code == 204
+          def load(self, response):
+              return response.status_code == 204
 
 
 Check the ``examples/`` directory for some samples.
