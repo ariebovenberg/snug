@@ -27,7 +27,7 @@ Snug
 
 **Snug** is a compact toolkit for wrapping web APIs.
 Architecture agnostic, pluggable, and interchangeably sync/async.
-Write API interactions as regular python code.
+Write API interactions as you would write regular python code.
 
 Quickstart
 ----------
@@ -43,7 +43,7 @@ Quickstart
         """a repo lookup by owner and name"""
         request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
         response = yield request
-        return json.loads(response.data)
+        return json.loads(response.content)
 
 2. Queries can be executed:
 
@@ -101,7 +101,7 @@ Features
              raise ValueError('username must have >0 characters')
          request = snug.GET(f'https://api.github.com/users/{name}')
          response = yield request
-         return UserSchema().load(json.loads(response.data))
+         return UserSchema().load(json.loads(response.content))
 
 2. *Effortlessly async*. The same query can also be executed asynchronously:
 
@@ -164,7 +164,7 @@ Features
           def issue(self, num: int) -> snug.Query[dict]:
               """retrieve an issue in this repository by its number"""
               req = snug.GET(f'/repos/{self.owner}/{self.name}/issues/{num}')
-              return json.loads((yield req).data)
+              return json.loads((yield req).content)
 
       hello_world_repo = repo('Hello-World', owner='octocat')
       issue_lookup = hello_world_repo.issue(348)
@@ -239,7 +239,7 @@ Features
               self.request = snug.GET(f'/repos/{owner}/{name}')
 
           def load(self, response):
-              return my_repo_loader(response.data)
+              return my_repo_loader(response.content)
 
 
       class follow(BaseQuery):

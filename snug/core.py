@@ -55,22 +55,22 @@ class Request:
         the http method
     url
         the requested url
-    data
+    content
         the request content
     params
         the query parameters
     headers
         mapping of headers
     """
-    __slots__ = 'method', 'url', 'data', 'params', 'headers'
+    __slots__ = 'method', 'url', 'content', 'params', 'headers'
     __hash__ = None
 
-    def __init__(self, method: str, url: str, data: t.Optional[bytes]=None, *,
+    def __init__(self, method: str, url: str, content: bytes=None, *,
                  params: TextMapping=EMPTY_MAPPING,
                  headers: TextMapping=EMPTY_MAPPING):
         self.method = method
         self.url = url
-        self.data = data
+        self.content = content
         self.params = params
         self.headers = headers
 
@@ -154,18 +154,18 @@ class Response:
     ----------
     status_code
         the HTTP status code
-    data
+    content
         the response content
     headers
         the headers of the response
     """
-    __slots__ = 'status_code', 'data', 'headers'
+    __slots__ = 'status_code', 'content', 'headers'
     __hash__ = None
 
-    def __init__(self, status_code: int, data: t.Optional[bytes]=None, *,
+    def __init__(self, status_code: int, content: bytes=None, *,
                  headers: TextMapping=EMPTY_MAPPING):
         self.status_code = status_code
-        self.data = data
+        self.content = content
         self.headers = headers
 
     def _asdict(self):
@@ -238,7 +238,7 @@ def urllib_sender(req: Request, **kwargs) -> Response:
     raw_response = urllib.request.urlopen(raw_request, **kwargs)
     return Response(
         raw_response.getcode(),
-        data=raw_response.read(),
+        content=raw_response.read(),
         headers=raw_response.headers,
     )
 
@@ -268,17 +268,17 @@ def asyncio_sender(req: Request) -> Awaitable(Response):
         '{} {} HTTP/1.1'.format(req.method, url.path + '?' + url.query),
         'Host: ' + url.hostname,
         'Connection: close',
-        'Content-Length: {}'.format(len(req.data or b'')),
+        'Content-Length: {}'.format(len(req.content or b'')),
         '\r\n'.join(starmap('{}: {}'.format, req.headers.items())),
     ])
-    writer.write(b'\r\n'.join([headers.encode(), b'', req.data or b'']))
+    writer.write(b'\r\n'.join([headers.encode(), b'', req.content or b'']))
     response_bytes = BytesIO((yield from reader.read()))
     writer.close()
     raw_response = HTTPResponse(_SocketAdapter(response_bytes))
     raw_response.begin()
     return Response(
         raw_response.getcode(),
-        data=raw_response.read(),
+        content=raw_response.read(),
         headers=raw_response.headers,
     )
 
@@ -470,12 +470,12 @@ else:
         def _aiohttp_sender(req):
             response = yield from session.request(req.method, req.url,
                                                   params=req.params,
-                                                  data=req.data,
+                                                  data=req.content,
                                                   headers=req.headers)
             try:
                 return Response(
                     response.status,
-                    data=(yield from response.read()),
+                    content=(yield from response.read()),
                     headers=response.headers,
                 )
             except Exception:  # pragma: no cover

@@ -132,7 +132,7 @@ class TestExecutor:
 
         assert exec(myquery()) == snug.Response(
             status_code=urlopen.return_value.getcode.return_value,
-            data=urlopen.return_value.read.return_value,
+            content=urlopen.return_value.read.return_value,
             headers=urlopen.return_value.headers,
         )
 
@@ -174,7 +174,7 @@ def test_urllib_sender(urlopen, urllib_request):
     response = snug.urllib_sender(req, timeout=10)
     assert response == snug.Response(
         status_code=urlopen.return_value.getcode.return_value,
-        data=urlopen.return_value.read.return_value,
+        content=urlopen.return_value.read.return_value,
         headers=urlopen.return_value.headers,
     )
     urlopen.assert_called_once_with(urllib_request.return_value, timeout=10)
@@ -195,7 +195,7 @@ def test_requests_sender():
     response = sender(req)
     assert response == snug.Response(
         status_code=session.request.return_value.status_code,
-        data=session.request.return_value.content,
+        content=session.request.return_value.content,
         headers=session.request.return_value.headers,
     )
     session.request.assert_called_once_with(

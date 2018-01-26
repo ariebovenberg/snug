@@ -66,7 +66,7 @@ to our previously defined ``repo``.
           owner, name = self.owner, self.name
           request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
           response = yield request
-          return json.loads(response.data)
+          return json.loads(response.content)
 
 The main difference is that the class-based version is reusable:
 
