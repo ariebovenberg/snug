@@ -322,28 +322,6 @@ def _basic_auth_factory(auth):
     return methodcaller('with_basic_auth', auth)
 
 
-def executor(auth: T_auth=None,
-             client=None,
-             auth_factory: AuthenticatorFactory=_basic_auth_factory) -> (
-                 t.Callable[[Query[T]], T]):
-    """create an executor
-
-    Parameters
-    ----------
-    auth
-        the credentials
-    client
-        The HTTP client to use.
-        Its type must have been registered
-        with the :func:`~snug.core.make_sender` function.
-    auth_factory
-        the authentication method to use
-    """
-    _sender = urllib_sender if client is None else make_sender(client)
-    authenticator = identity if auth is None else auth_factory(auth)
-    return partial(execute, sender=compose(_sender, authenticator))
-
-
 @singledispatch
 def make_sender(client) -> Sender:
     """Create a sender for the given client.
@@ -454,6 +432,28 @@ def execute_async(query: Query[T],
             return e.value
 
 
+def executor(auth: T_auth=None,
+             client=None,
+             auth_factory: AuthenticatorFactory=_basic_auth_factory) -> (
+                 t.Callable[[Query[T]], T]):
+    """create an executor
+
+    Parameters
+    ----------
+    auth
+        the credentials
+    client
+        The HTTP client to use.
+        Its type must have been registered
+        with the :func:`~snug.core.make_sender` function.
+    auth_factory
+        the authentication method to use
+    """
+    _sender = urllib_sender if client is None else make_sender(client)
+    authenticator = identity if auth is None else auth_factory(auth)
+    return partial(execute, sender=compose(_sender, authenticator))
+
+
 def async_executor(
         auth: T_auth=None,
         client=None,
@@ -467,12 +467,14 @@ def async_executor(
         the credentials
     client
         The (asynchronous) HTTP client to use.
+        Its type must have been registered
+        with the :func:`~snug.core.make_async_sender` function.
     auth_factory
         the authentication method to use
     """
+    _sender = asyncio_sender if client is None else make_async_sender(client)
     authenticator = identity if auth is None else auth_factory(auth)
-    return partial(execute_async,
-                   sender=compose(make_async_sender(client), authenticator))
+    return partial(execute_async, sender=compose(_sender, authenticator))
 
 
 try:

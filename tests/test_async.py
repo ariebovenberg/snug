@@ -88,6 +88,10 @@ class TestAsyncioSender:
 
 class TestAsyncExecutor:
 
+    def test_defaults_to_asyncio_sender(self):
+        exec = snug.async_executor()
+        assert exec.keywords['sender'].funcs[0] is snug.asyncio_sender
+
     def test_custom_client(self, loop):
         client = MockAsyncClient(snug.Response(204))
         exec = snug.async_executor(client=client)
