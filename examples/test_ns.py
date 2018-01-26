@@ -79,6 +79,8 @@ async def test_journey_options(exec):
     assert next(query).params == {'fromStation': 'Breda',
                                   'toStation': 'Amsterdam'}
     result = sendreturn(query, snug.Response(200, content=JOURNEYS_SAMPLE))
+    assert len(result) == 3
+    assert result[0].components[1].stops[-1].platform == '8a'
 
     assert next(iter(travel_options_no_hsl)).params == {
         'fromStation': 'Breda',
