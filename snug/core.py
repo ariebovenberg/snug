@@ -21,6 +21,7 @@ __all__ = [
     'async_executor',
     'Request',
     'Response',
+    'Relation',
     'header_adder',
     'prefix_adder',
     'make_sender',
@@ -203,11 +204,7 @@ class _CallableAsMethod:
         return self if obj is None else MethodType(self, obj)
 
 
-class QueryMeta(type(t.Generic), _CallableAsMethod):
-    pass
-
-
-class Query(t.Generic[T], t.Iterable[Request], metaclass=QueryMeta):
+class Query(t.Generic[T], t.Iterable[Request]):
     """ABC for query-like objects.
     Any object where :meth:`~object.__iter__`
     returns a :class:`Request`/:class:`Response` generator implements it.
@@ -222,6 +219,35 @@ class Query(t.Generic[T], t.Iterable[Request], metaclass=QueryMeta):
     def __iter__(self) -> t.Generator[Request, Response, T]:
         """a generator which resolves the query"""
         raise NotImplementedError()
+
+
+class RelationMeta(type(Query), _CallableAsMethod):
+    pass
+
+
+class Relation(Query[T], metaclass=RelationMeta):
+    """:class:`Relation` subclasses act like a method
+    when bound to a class. This means the parent instance is passed
+    as a first argument when calling the class.
+
+    This can be used to implement related queries
+
+    Example
+    -------
+
+    >>> class Parent:
+    ...     class child(Relation):
+    ...         def __init__(self, parent, bar):
+    ...             self.parent, self.bar = parent, bar
+    ...         ...
+    ...
+    >>> p = Parent()
+    >>> c = p.child(bar=5)
+    >>> isinstance(c, Parent.child)
+    True
+    >>> c.parent is p
+    True
+    """
 
 
 Sender = t.Callable[[Request], Response]

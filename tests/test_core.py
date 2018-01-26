@@ -203,17 +203,16 @@ def test_requests_sender():
         headers={'Accept': 'application/vnd.github.v3+json'})
 
 
-def test_related_query():
+def test_relation():
 
     class Foo:
 
-        class Bar(snug.Query):
+        class Bar(snug.Relation):
             def __iter__(self): pass
 
             def __init__(self, a, b):
                 self.a, self.b = a, b
 
-        @staticmethod
         class Qux(snug.Query):
             def __iter__(self): pass
 
@@ -221,10 +220,12 @@ def test_related_query():
                 self.a, self.b = a, b
 
     f = Foo()
-    bar = f.Bar(4)
+    bar = f.Bar(b=4)
     assert isinstance(bar, Foo.Bar)
+    assert bar.a is f
     bar2 = Foo.Bar(f, 4)
     assert isinstance(bar2, Foo.Bar)
+    assert bar.a is f
 
     # staticmethod opts out
     qux = f.Qux(1, 2)
