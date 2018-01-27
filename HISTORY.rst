@@ -9,6 +9,7 @@ development
 
 - improvements to docs
 - rename Request/Response data->content
+- ``Relation`` query class
 
 0.4.0 (2018-01-24)
 ++++++++++++++++++
