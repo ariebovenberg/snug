@@ -25,6 +25,7 @@ my_issues = current_user.issues()
 repo_issues = one_repo.issues()
 one_repo_issue = one_repo.issue(123)
 one_repos_fixed_bugs = repo_issues.replace(labels='bug', state='closed')
+one_repo_issue_comments = one_repo_issue.comments
 
 
 @pytest.fixture(scope='module')

@@ -132,3 +132,10 @@ class Issue:
         MENTIONED = 'mentioned'
         SUBSCRIBED = 'subscribed'
         ALL = 'all'
+
+
+@dclass
+class Comment:
+    """an issue comment"""
+    id: int
+    user: UserSummary

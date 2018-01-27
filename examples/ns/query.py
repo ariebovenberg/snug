@@ -1,10 +1,11 @@
 import typing as t
 import xml.etree.ElementTree
 from datetime import datetime
-from operator import attrgetter
+from operator import attrgetter, methodcaller
+from functools import singledispatch
 
-from gentools import map_return, map_send, map_yield, oneyield, reusable
-from toolz import compose, valfilter
+from gentools import (map_return, map_send, map_yield, oneyield, reusable,
+                      compose)
 
 import snug
 
@@ -16,12 +17,28 @@ parse_request = compose(xml.etree.ElementTree.fromstring,
                         attrgetter('content'))
 
 
+@singledispatch
+def dump_param(val):
+    """dump a query param value"""
+    return str(val)
+
+
+dump_param.register(datetime, methodcaller('strftime', '%Y-%m-%dT%H:%M'))
+
+
+def prepare_params(req: snug.Request) -> snug.Request:
+    """prepare request parameters"""
+    return req.replace(
+        params={key: dump_param(val) for key, val in req.params.items()
+                if val is not None})
+
+
 def basic_query(returns):
     """decorator factory for NS queries"""
     return compose(
         reusable,
         map_send(parse_request),
-        map_yield(snug.prefix_adder(API_PREFIX)),
+        map_yield(prepare_params, snug.prefix_adder(API_PREFIX)),
         map_return(loads(returns)),
         oneyield,
     )
@@ -50,7 +67,7 @@ def journey_options(origin:      str,
                     year_card:   t.Optional[bool]=None):
     """journey recommendations from an origin to a destination station"""
     return snug.GET('treinplanner',
-                    params=valfilter(lambda x: x is not None, {
+                    params={
                         'fromStation':     origin,
                         'toStation':       destination,
                         'viaStation':      via,
@@ -59,4 +76,4 @@ def journey_options(origin:      str,
                         'dateTime':        time,
                         'hslAllowed':      hsl,
                         'yearCard':        year_card,
-                    }))
+                    })

@@ -2,11 +2,12 @@ import json
 import reprlib
 import typing as t
 from datetime import datetime
-from operator import attrgetter
+from functools import singledispatch
+from operator import attrgetter, methodcaller
 
 from dataclasses import dataclass
-from gentools import map_return, map_send, map_yield, oneyield, reusable
-from toolz import compose, valfilter
+from gentools import (map_return, map_send, map_yield, oneyield, reusable,
+                      compose)
 
 import snug
 
@@ -18,8 +19,28 @@ HEADERS = {'Accept': 'application/vnd.github.v3+json'}
 
 _repr = reprlib.Repr()
 _repr.maxstring = 45
+
+
+@singledispatch
+def dump_param(val):
+    """dump a query param value"""
+    return str(val)
+
+
+dump_param.register(datetime, methodcaller('strftime', '%Y-%m-%dT%H:%M:%SZ'))
+
+
+def prepare_params(request):
+    """prepare request parameters"""
+    return request.replace(
+        params={key: dump_param(val) for key, val in request.params.items()
+                if val is not None})
+
+
 basic_interaction = compose(
-    map_yield(snug.prefix_adder(API_PREFIX), snug.header_adder(HEADERS)),
+    map_yield(prepare_params,
+              snug.prefix_adder(API_PREFIX),
+              snug.header_adder(HEADERS)),
     map_send(compose(json.loads, attrgetter('content'))),
     oneyield,
 )
@@ -28,10 +49,6 @@ basic_interaction = compose(
 def retrieves(rtype):
     """decorator factory for simple retrieval queries"""
     return compose(map_return(registry(rtype)), basic_interaction)
-
-
-def notnone(x):
-    return x is not None
 
 
 @dataclass
@@ -52,18 +69,30 @@ class repo(snug.Query):
         """get the issues for this repo"""
         return snug.GET(
             f'repos/{repo.owner}/{repo.name}/issues',
-            params=valfilter(notnone, {
+            params={
                 'labels': labels,
                 'state':  state,
-            }))
+            })
 
-    @reusable
-    @retrieves(types.Issue)
-    def issue(repo: 'repo', number: int):
+    @dataclass
+    class issue(snug.Relation):
         """get a specific issue in the repo"""
-        return snug.GET(
-            f'repos/{repo.owner}/'
-            f'{repo.name}/issues/{number}')
+        repo: 'repo'
+        number: int
+
+        @retrieves(types.Issue)
+        def __iter__(self):
+            return snug.GET(
+                f'repos/{self.repo.owner}/'
+                f'{self.repo.name}/issues/{self.number}')
+
+        @reusable
+        @retrieves(t.List[types.Comment])
+        def comments(issue, since=None):
+            return snug.GET(
+                f'repos/{issue.repo.owner}/{issue.repo.owner}/'
+                f'issues/{issue.number}/comments',
+                params={'since': since})
 
 
 @reusable
@@ -95,13 +124,13 @@ def issues(filter: t.Optional[str]=None,
            sort:   t.Optional[types.Issue.Sort]=None,
            since:  t.Optional[datetime]=None):
     """a selection of assigned issues"""
-    return snug.GET('issues', params=valfilter(notnone, {
+    return snug.GET('issues', params={
         'filter': filter,
         'state':  state,
         'labels': labels,
         'sort':   sort,
         'since':  since,
-    }))
+    })
 
 
 @dataclass
