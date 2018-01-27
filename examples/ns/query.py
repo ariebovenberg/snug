@@ -45,13 +45,13 @@ def basic_query(returns):
 
 
 @basic_query(t.List[Station])
-def stations():
+def stations() -> snug.Query[t.List[Station]]:
     """a list of all stations"""
     return snug.GET('stations-v2')
 
 
 @basic_query(t.List[Departure])
-def departures(station: str):
+def departures(station: str) -> snug.Query[t.List[Departure]]:
     """departures for a station"""
     return snug.GET('avt', params={'station': station})
 
@@ -64,16 +64,16 @@ def journey_options(origin:      str,
                     after:       t.Optional[int]=None,
                     time:        t.Optional[datetime]=None,
                     hsl:         t.Optional[bool]=None,
-                    year_card:   t.Optional[bool]=None):
+                    year_card:   t.Optional[bool]=None) -> (
+                        snug.Query[t.List[Journey]]):
     """journey recommendations from an origin to a destination station"""
-    return snug.GET('treinplanner',
-                    params={
-                        'fromStation':     origin,
-                        'toStation':       destination,
-                        'viaStation':      via,
-                        'previousAdvices': before,
-                        'nextAdvices':     after,
-                        'dateTime':        time,
-                        'hslAllowed':      hsl,
-                        'yearCard':        year_card,
-                    })
+    return snug.GET('treinplanner', params={
+        'fromStation':     origin,
+        'toStation':       destination,
+        'viaStation':      via,
+        'previousAdvices': before,
+        'nextAdvices':     after,
+        'dateTime':        time,
+        'hslAllowed':      hsl,
+        'yearCard':        year_card,
+    })
