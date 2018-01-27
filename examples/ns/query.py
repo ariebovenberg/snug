@@ -1,11 +1,11 @@
 import typing as t
 import xml.etree.ElementTree
 from datetime import datetime
-from operator import attrgetter, methodcaller
 from functools import singledispatch
+from operator import attrgetter, methodcaller
 
-from gentools import (map_return, map_send, map_yield, oneyield, reusable,
-                      compose)
+from gentools import (compose, map_return, map_send, map_yield, oneyield,
+                      reusable)
 
 import snug
 

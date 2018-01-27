@@ -6,8 +6,8 @@ from functools import singledispatch
 from operator import attrgetter, methodcaller
 
 from dataclasses import dataclass
-from gentools import (map_return, map_send, map_yield, oneyield, reusable,
-                      compose)
+from gentools import (compose, map_return, map_send, map_yield, oneyield,
+                      reusable)
 
 import snug
 
