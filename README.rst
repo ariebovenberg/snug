@@ -26,8 +26,10 @@ Snug
 
 
 **Snug** is a compact toolkit for wrapping web APIs.
-Architecture agnostic, pluggable, and interchangeably sync/async.
-Write API interactions as you would write regular python code.
+
+* Architecture agnostic (REST, RPC, GraphQL, ...)
+* Interchangeable HTTP clients (urllib, requests, aiohttp, ...)
+* Async and sync out-of-the-box
 
 Quickstart
 ----------
@@ -134,7 +136,7 @@ Features
       StopIteration({"description": "My first repository on Github!", ...})
 
 5. *Swappable authentication*. Different credentials can be used to execute
-   the same query.
+   the same query:
 
    .. code-block:: python
 
@@ -155,23 +157,21 @@ Features
 
       class repo(snug.Query[dict]):
           """a repo lookup by owner and name"""
-          def __init__(self, name, owner):
-              ...
+          def __init__(self, name, owner): ...
 
-          def __iter__(self):
-              ...  # query for the repo itself
+          def __iter__(self): ...  # query of the repo itself
 
           def issue(self, num: int) -> snug.Query[dict]:
               """retrieve an issue in this repository by its number"""
-              req = snug.GET(f'/repos/{self.owner}/{self.name}/issues/{num}')
-              return json.loads((yield req).content)
+              r = snug.GET(f'/repos/{self.owner}/{self.name}/issues/{num}')
+              return json.loads((yield r).content)
 
       hello_world_repo = repo('Hello-World', owner='octocat')
-      issue_lookup = hello_world_repo.issue(348)
-      snug.execute(issue_lookup)
+      issue_348 = hello_world_repo.issue(348)
+      snug.execute(issue_348)
       # {"title": "Testing comments", ...}
 
-      # we could take this as far as we like, eventually being able to write:
+      # we could take this as far as we like, eventually:
       new_comments = (repo('Hello-World', owner='octocat')
                       .issue(348)
                       .comments(since=datetime(2018, 1, 1)))
@@ -187,17 +187,13 @@ Features
       from gentools import (map_return, map_yield, map_send,
                             compose, oneyield)
 
-      class Repository:
-          ...
+      class Repository: ...
 
-      def my_repo_loader(...):
-          ...  # e.g. create a nice `Repository` object
+      def my_repo_loader(...): ...
 
-      def my_error_checker(...):
-          ...  # e.g. raise descritive errors on HTTP 4xx responses
+      def my_error_checker(...): ...
 
-      def my_request_preparer(...):
-          ...  # e.g. add headers, url prefix, etc
+      def my_request_preparer(...): ...  # add url prefix, headers, etc.
 
       basic_interaction = compose(map_send(my_error_checker),
                                   map_yield(my_request_preparer))
@@ -222,16 +218,13 @@ Features
       class BaseQuery(snug.Query):
           """base github query"""
 
-          def prepare(self, request):
-              ...  # e.g. add headers, url prefix, etc
+          def prepare(self, request): ...  # add url prefix, headers, etc.
 
           def __iter__(self):
               request = self.prepare(self.request)
               return self.load(self.check_response((yield request)))
 
-          def check_response(self, result):
-              ...  # e.g. error checking
-
+          def check_response(self, result): ...
 
       class repo(BaseQuery):
           """get a repo by owner and name"""
@@ -240,7 +233,6 @@ Features
 
           def load(self, response):
               return my_repo_loader(response.content)
-
 
       class follow(BaseQuery):
           """follow another user"""
