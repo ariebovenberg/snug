@@ -11,6 +11,7 @@
    :caption: Contents:
 
    tutorial.rst
+   recipes.rst
    api.rst
 
 .. include:: ../HISTORY.rst

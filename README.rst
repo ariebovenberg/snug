@@ -28,8 +28,8 @@ Snug
 **Snug** is a compact toolkit for wrapping web APIs.
 
 * Architecture agnostic (REST, RPC, GraphQL, ...)
-* Interchangeable HTTP clients (urllib, requests, aiohttp, ...)
-* Async and sync out-of-the-box
+* Swappable HTTP clients (urllib, requests, aiohttp, ...)
+* Interchangeably sync/async
 
 Quickstart
 ----------
@@ -63,7 +63,7 @@ Why another library?
 
 There are plenty of tools for wrapping web APIs.
 However, these generally make far-reaching design decisions for you,
-making it awkward to tailor to the needs of your specific API.
+making it awkward to tailor to the needs of a specific API.
 **Snug** aims only to provide a versatile base,
 so you can focus on what makes your API unique.
 
@@ -89,8 +89,8 @@ and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
 Features
 --------
 
-1. *Simplicity*. If you understand generators, you understand queries.
-   Customizing a query requires no special glue-code.
+1. *Flexibility*. Since queries are just generators,
+   customizing them requires no special glue-code.
    For example: add validation logic, or use any serialization method:
 
    .. code-block:: python
@@ -177,41 +177,8 @@ Features
                       .comments(since=datetime(2018, 1, 1)))
 
 
-7. *Function- or class-based? You decide*. If you're comfortable with high-order functions and decorators,
-   make use of `gentools <http://gentools.readthedocs.io/>`_ to create generators
-   and apply functions to a generator's
-   ``yield``, ``send``, and ``return`` values.
-
-   .. code-block:: python
-
-      from gentools import (map_return, map_yield, map_send,
-                            compose, oneyield)
-
-      class Repository: ...
-
-      def my_repo_loader(...): ...
-
-      def my_error_checker(...): ...
-
-      def my_request_preparer(...): ...  # add url prefix, headers, etc.
-
-      basic_interaction = compose(map_send(my_error_checker),
-                                  map_yield(my_request_preparer))
-
-      @map_return(my_repo_loader)
-      @basic_interaction
-      @oneyield
-      def repo(owner: str, name: str) -> snug.Query[Repository]:
-          """get a repo by owner and name"""
-          return snug.GET(f'/repos/{owner}/{name}')
-
-      @basic_interaction
-      def follow(name: str) -> snug.Query[bool]:
-          """follow another user"""
-          response = yield snug.PUT(f'/user/following/{name}')
-          return response.status_code == 204
-
-   Alternatively, use inheritance to keep everything DRY:
+7. *Function- or class-based? You decide*.
+   Use class-based queries and inheritance to keep everything DRY:
 
    .. code-block:: python
 
@@ -242,6 +209,40 @@ Features
           def load(self, response):
               return response.status_code == 204
 
+   Or, if you're comfortable with high-order functions and decorators,
+   make use of `gentools <http://gentools.readthedocs.io/>`_
+   to modify query ``yield``, ``send``, and ``return`` values:
 
-Check out the `tutorial <http://snug.readthedocs.io/en/latest/tutorial.html>`_,
-or the ``examples/`` directory for some samples.
+   .. code-block:: python
+
+      from gentools import (map_return, map_yield, map_send,
+                            compose, oneyield)
+
+      class Repository: ...
+
+      def my_repo_loader(...): ...
+
+      def my_error_checker(...): ...
+
+      def my_request_preparer(...): ...  # add url prefix, headers, etc.
+
+      basic_interaction = compose(map_send(my_error_checker),
+                                  map_yield(my_request_preparer))
+
+      @map_return(my_repo_loader)
+      @basic_interaction
+      @oneyield
+      def repo(owner: str, name: str) -> snug.Query[Repository]:
+          """get a repo by owner and name"""
+          return snug.GET(f'/repos/{owner}/{name}')
+
+      @basic_interaction
+      def follow(name: str) -> snug.Query[bool]:
+          """follow another user"""
+          response = yield snug.PUT(f'/user/following/{name}')
+          return response.status_code == 204
+
+
+For more info, check out the `tutorial <http://snug.readthedocs.io/en/latest/tutorial.html>`_,
+`recipes <http://snug.readthedocs.io/en/latest/recipes.html>`_,
+or the examples (in the ``examples/`` directory)
