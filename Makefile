@@ -22,5 +22,6 @@ publish: clean
 	twine upload dist/*
 
 clean:
+	make -C docs/ clean
 	find . | grep -E "(__pycache__|\.pyc|\.pyo$$)" | xargs rm -rf
 	python setup.py clean --all
