@@ -41,7 +41,7 @@ async def test_all_stations(exec):
     # offline test
     query = iter(all_stations)
     assert next(query).url.endswith('stations-v2')
-    result = sendreturn(query, snug.Response(200, data=STATIONS_SAMPLE))
+    result = sendreturn(query, snug.Response(200, content=STATIONS_SAMPLE))
     assert len(result) == 4
     assert result[3].full_name == 'Aachen Hbf'
 
@@ -61,7 +61,7 @@ async def test_departures(exec):
     req = next(query)
     assert req.url.endswith('avt')
     assert req.params == {'station': 'Amsterdam'}
-    result = sendreturn(query, snug.Response(200, data=DEPARTURES_SAMPLE))
+    result = sendreturn(query, snug.Response(200, content=DEPARTURES_SAMPLE))
     assert len(result)
     assert result[1].platform_changed
 
@@ -78,7 +78,9 @@ async def test_journey_options(exec):
     query = iter(travel_options)
     assert next(query).params == {'fromStation': 'Breda',
                                   'toStation': 'Amsterdam'}
-    result = sendreturn(query, snug.Response(200, data=JOURNEY_OPTIONS_SAMPLE))
+    result = sendreturn(query, snug.Response(200, content=JOURNEYS_SAMPLE))
+    assert len(result) == 3
+    assert result[0].components[1].stops[-1].platform == '8a'
 
     assert next(iter(travel_options_no_hsl)).params == {
         'fromStation': 'Breda',
@@ -158,46 +160,46 @@ STATIONS_SAMPLE = b'''\
 
 DEPARTURES_SAMPLE = b'''\
 <ActueleVertrekTijden>
-	<VertrekkendeTrein>
-		<RitNummer>2187</RitNummer>
-		<VertrekTijd>2018-01-22T21:49:00+0100</VertrekTijd>
-		<EindBestemming>Den Haag Centraal</EindBestemming>
-		<TreinSoort>Intercity</TreinSoort>
-			<RouteTekst>A'dam Sloterdijk, Haarlem, Leiden C.</RouteTekst>
-			<Vervoerder>NS</Vervoerder>
-		<VertrekSpoor wijziging="false">2a</VertrekSpoor>
-	</VertrekkendeTrein>
-	<VertrekkendeTrein>
-		<RitNummer>4083</RitNummer>
-		<VertrekTijd>2018-01-22T21:49:00+0100</VertrekTijd>
-		<EindBestemming>Rotterdam Centraal</EindBestemming>
-		<TreinSoort>Sprinter</TreinSoort>
-			<RouteTekst>Duivendrecht, Bijlmer ArenA, Breukelen</RouteTekst>
-			<Vervoerder>NS</Vervoerder>
-		<VertrekSpoor wijziging="true">4b</VertrekSpoor>
-	</VertrekkendeTrein>
-	<VertrekkendeTrein>
-		<RitNummer>2974</RitNummer>
-		<VertrekTijd>2018-01-22T21:53:00+0100</VertrekTijd>
-		<EindBestemming>Enkhuizen</EindBestemming>
-		<TreinSoort>Intercity</TreinSoort>
-			<RouteTekst>A'dam Sloterdijk, Hoorn</RouteTekst>
-			<Vervoerder>NS</Vervoerder>
-		<VertrekSpoor wijziging="false">8a</VertrekSpoor>
-	</VertrekkendeTrein>
-	<VertrekkendeTrein>
-		<RitNummer>14681</RitNummer>
-		<VertrekTijd>2018-01-22T21:53:00+0100</VertrekTijd>
-		<EindBestemming>Zwolle</EindBestemming>
-		<TreinSoort>Sprinter</TreinSoort>
-			<RouteTekst>Weesp, Lelystad C.</RouteTekst>
-			<Vervoerder>NS</Vervoerder>
-		<VertrekSpoor wijziging="false">10b</VertrekSpoor>
-	</VertrekkendeTrein>
+    <VertrekkendeTrein>
+        <RitNummer>2187</RitNummer>
+        <VertrekTijd>2018-01-22T21:49:00+0100</VertrekTijd>
+        <EindBestemming>Den Haag Centraal</EindBestemming>
+        <TreinSoort>Intercity</TreinSoort>
+            <RouteTekst>A'dam Sloterdijk, Haarlem, Leiden C.</RouteTekst>
+            <Vervoerder>NS</Vervoerder>
+        <VertrekSpoor wijziging="false">2a</VertrekSpoor>
+    </VertrekkendeTrein>
+    <VertrekkendeTrein>
+        <RitNummer>4083</RitNummer>
+        <VertrekTijd>2018-01-22T21:49:00+0100</VertrekTijd>
+        <EindBestemming>Rotterdam Centraal</EindBestemming>
+        <TreinSoort>Sprinter</TreinSoort>
+            <RouteTekst>Duivendrecht, Bijlmer ArenA, Breukelen</RouteTekst>
+            <Vervoerder>NS</Vervoerder>
+        <VertrekSpoor wijziging="true">4b</VertrekSpoor>
+    </VertrekkendeTrein>
+    <VertrekkendeTrein>
+        <RitNummer>2974</RitNummer>
+        <VertrekTijd>2018-01-22T21:53:00+0100</VertrekTijd>
+        <EindBestemming>Enkhuizen</EindBestemming>
+        <TreinSoort>Intercity</TreinSoort>
+            <RouteTekst>A'dam Sloterdijk, Hoorn</RouteTekst>
+            <Vervoerder>NS</Vervoerder>
+        <VertrekSpoor wijziging="false">8a</VertrekSpoor>
+    </VertrekkendeTrein>
+    <VertrekkendeTrein>
+        <RitNummer>14681</RitNummer>
+        <VertrekTijd>2018-01-22T21:53:00+0100</VertrekTijd>
+        <EindBestemming>Zwolle</EindBestemming>
+        <TreinSoort>Sprinter</TreinSoort>
+            <RouteTekst>Weesp, Lelystad C.</RouteTekst>
+            <Vervoerder>NS</Vervoerder>
+        <VertrekSpoor wijziging="false">10b</VertrekSpoor>
+    </VertrekkendeTrein>
 </ActueleVertrekTijden>
 '''
 
-JOURNEY_OPTIONS_SAMPLE = b'''\
+JOURNEYS_SAMPLE = b'''\
 <ReisMogelijkheden>
   <ReisMogelijkheid>
     <AantalOverstappen>1</AantalOverstappen>

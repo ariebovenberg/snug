@@ -1,7 +1,7 @@
 import json
 import snug
 from collections import namedtuple
-from gentools import reusable, map_send, map_yield, map_return
+from gentools import reusable, map_send, map_yield, compose, relay
 
 add_prefix = snug.prefix_adder('https://api.github.com')
 add_headers = snug.header_adder({
@@ -22,7 +22,8 @@ def handle_errors(resp):
         raise ApiException(json.loads(resp.data).get('message'))
     return resp
 
-def load_json_content(resp):
+@map_send
+def loads_json_content(resp):
     """get the response body as JSON"""
     return json.loads(resp.data)
 
@@ -32,19 +33,24 @@ def follow_redirects(req):
         resp = yield req.replace(url=resp.headers['Location'])
     return resp
 
+basic_interaction = compose(relay(follow_redirects),
+                            map_send(handle_errors),
+                            map_yield(add_headers, add_prefix))
+
 class repo(snug.Query[Repository]):
     """a repository lookup by owner and name"""
     def __init__(self, name, owner):
         self.name, self.owner = name, owner
 
-    @map_send(load_json_content, handle_errors)
-    @map_yield(add_headers, add_prefix, snug.GET)
+    @loads_json_content
+    @basic_interaction
+    @map_yield(snug.GET)
     def __iter__(self):
         return Repository(**(yield f'/repos/{self.owner}/{self.name}'))
 
     @reusable
-    @map_send(load_json_content, handle_errors)
-    @map_yield(add_headers, add_prefix)
+    @loads_json_content
+    @basic_interaction
     def new_issue(self, title: str, body: str='') -> snug.Query[Issue]:
         """create a new issue in this repo"""
         request = snug.POST(
@@ -53,8 +59,8 @@ class repo(snug.Query[Repository]):
         return Issue(**(yield request))
 
     @reusable
-    @map_send(handle_errors)
-    @map_yield(add_headers, add_prefix, snug.PUT)
+    @basic_interaction
+    @map_yield(snug.PUT)
     def star(self) -> snug.Query[bool]:
         """star this repo"""
         response = yield f'/user/starred/{self.owner}/{self.name}'
@@ -66,14 +72,15 @@ class user(snug.Query[User]):
     def __init__(self, username):
         self.username = username
 
-    @map_send(load_json_content, handle_errors)
-    @map_yield(add_headers, add_prefix, snug.GET)
+    @loads_json_content
+    @basic_interaction
+    @map_yield(snug.GET)
     def __iter__(self):
         return User(**(yield f'/users/{self.username}'))
 
-    @snug.query(related=True)
-    @map_send(handle_errors)
-    @map_yield(add_headers, add_prefix, snug.PUT)
+    @reusable
+    @basic_interaction
+    @map_yield(snug.PUT)
     def follow(self) -> snug.Query[bool]:
         """follow this user"""
         return (yield f'/user/following/{self.username}').status_code == 204

@@ -1,3 +1,4 @@
+"""datastructures and type definitions"""
 import enum
 import typing as t
 from datetime import datetime
@@ -5,8 +6,6 @@ from functools import partial
 from operator import attrgetter
 
 from dataclasses import dataclass
-
-import snug
 
 dclass = partial(dataclass, frozen=True, repr=False)
 

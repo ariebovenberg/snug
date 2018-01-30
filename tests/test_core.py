@@ -1,5 +1,3 @@
-from functools import partial
-from operator import methodcaller
 from unittest import mock
 
 import pytest
@@ -132,7 +130,7 @@ class TestExecutor:
 
         assert exec(myquery()) == snug.Response(
             status_code=urlopen.return_value.getcode.return_value,
-            data=urlopen.return_value.read.return_value,
+            content=urlopen.return_value.read.return_value,
             headers=urlopen.return_value.headers,
         )
 
@@ -148,10 +146,7 @@ class TestExecutor:
 
     def test_authentication(self):
         client = MockClient(snug.Response(204))
-        exec = snug.executor(('user', 'pw'),
-                             client=client,
-                             auth_factory=partial(methodcaller,
-                                                  'with_basic_auth'))
+        exec = snug.executor(('user', 'pw'), client=client)
 
         def myquery():
             return (yield snug.GET('my/url'))
@@ -159,17 +154,6 @@ class TestExecutor:
         assert exec(myquery()) == snug.Response(204)
         assert client.request == snug.GET(
             'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
-
-
-def test_optional_basic_auth():
-    from snug.core import _optional_basic_auth
-    no_auth = _optional_basic_auth(None)
-    assert no_auth(snug.GET('foo')) == snug.GET('foo')
-
-    authed = _optional_basic_auth(('user', 'pw'))
-    assert authed(snug.GET('foo')) == snug.GET('foo', headers={
-        'Authorization': 'Basic dXNlcjpwdw=='
-    })
 
 
 def test_sender_factory_unknown_client():
@@ -188,7 +172,7 @@ def test_urllib_sender(urlopen, urllib_request):
     response = snug.urllib_sender(req, timeout=10)
     assert response == snug.Response(
         status_code=urlopen.return_value.getcode.return_value,
-        data=urlopen.return_value.read.return_value,
+        content=urlopen.return_value.read.return_value,
         headers=urlopen.return_value.headers,
     )
     urlopen.assert_called_once_with(urllib_request.return_value, timeout=10)
@@ -209,7 +193,7 @@ def test_requests_sender():
     response = sender(req)
     assert response == snug.Response(
         status_code=session.request.return_value.status_code,
-        data=session.request.return_value.content,
+        content=session.request.return_value.content,
         headers=session.request.return_value.headers,
     )
     session.request.assert_called_once_with(
@@ -217,3 +201,34 @@ def test_requests_sender():
         'https://www.api.github.com/organizations',
         params={'since': 3043},
         headers={'Accept': 'application/vnd.github.v3+json'})
+
+
+def test_relation():
+
+    class Foo:
+
+        class Bar(snug.Relation):
+            def __iter__(self): pass
+
+            def __init__(self, a, b):
+                self.a, self.b = a, b
+
+        class Qux(snug.Query):
+            def __iter__(self): pass
+
+            def __init__(self, a, b):
+                self.a, self.b = a, b
+
+    f = Foo()
+    bar = f.Bar(b=4)
+    assert isinstance(bar, Foo.Bar)
+    assert bar.a is f
+    bar2 = Foo.Bar(f, 4)
+    assert isinstance(bar2, Foo.Bar)
+    assert bar.a is f
+
+    # staticmethod opts out
+    qux = f.Qux(1, 2)
+    assert isinstance(qux, f.Qux)
+    qux2 = Foo.Qux(1, 2)
+    assert isinstance(qux2, Foo.Qux)

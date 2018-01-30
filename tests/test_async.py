@@ -69,24 +69,28 @@ class TestAsyncioSender:
                            headers={'Accept': 'application/json'})
         response = loop.run_until_complete(snug.asyncio_sender(req))
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
-        data = json.loads(response.data.decode())
+        data = json.loads(response.content.decode())
         assert data['args'] == {'param1': 'foo'}
         assert data['headers']['Accept'] == 'application/json'
         assert data['headers']['User-Agent'].startswith('Python-asyncio/')
 
     def test_http(self, loop):
         req = snug.Request('POST', 'http://httpbin.org/post',
-                           data=json.dumps({"foo": 4}).encode(),
+                           content=json.dumps({"foo": 4}).encode(),
                            headers={'User-Agent': 'snug/dev'})
         response = loop.run_until_complete(snug.asyncio_sender(req))
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
-        data = json.loads(response.data.decode())
+        data = json.loads(response.content.decode())
         assert data['args'] == {}
         assert json.loads(data['data']) == {'foo': 4}
         assert data['headers']['User-Agent'] == 'snug/dev'
 
 
 class TestAsyncExecutor:
+
+    def test_defaults_to_asyncio_sender(self):
+        exec = snug.async_executor()
+        assert exec.keywords['sender'].funcs[0] is snug.asyncio_sender
 
     def test_custom_client(self, loop):
         client = MockAsyncClient(snug.Response(204))
@@ -115,7 +119,7 @@ class TestAsyncExecutor:
 
 def test_aiohttp_sender(loop):
     req = snug.GET('https://test.com',
-                   data=b'{"foo": 4}',
+                   content=b'{"foo": 4}',
                    params={'bla': 99},
                    headers={'Authorization': 'Basic ABC'})
     aiohttp = pytest.importorskip('aiohttp')
@@ -138,7 +142,7 @@ def test_aiohttp_sender(loop):
 
         assert response == snug.Response(
             201,
-            data=b'{"my": "content"}',
+            content=b'{"my": "content"}',
             headers={'Content-Type': 'application/json'})
 
         call, = m.requests[('GET', 'https://test.com/?bla=99')]

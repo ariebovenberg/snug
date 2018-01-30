@@ -4,10 +4,6 @@ Tutorial
 This guide explains how to use the building-blocks that ``snug`` provides.
 In this example, we will be wrapping the github v3 REST API.
 
-.. warning::
-
-   this tutorial is still work-in-progress
-
 Hello query
 -----------
 
@@ -24,7 +20,11 @@ We can see from the example that a query:
 
 * yields :class:`Requests<snug.core.Request>`
 * recieves :class:`Responses<snug.core.Response>`
-* returns an outcome
+* returns an outcome (in this case, a :class:`dict`)
+
+.. Note::
+
+   You can ignore the type annotations if you like, they are not required.
 
 We can now import our module, and execture the query as follows:
 
@@ -35,16 +35,14 @@ We can now import our module, and execture the query as follows:
    >>> repo = snug.execute(query)
    {"description": "My first repository on Github!", ...}
 
-.. Note::
+Expressing queries as generators has two main advantages:
 
-    Expressing queries as generators has two main advantages:
+1. as built-in concepts of the language, they can be easily
+   :ref:`composed and extended<composing>`.
+2. decoupling networking logic allows
+   the :ref:`use different and async HTTP clients<executors>`.
 
-    1. as built-in concepts of the language, generators can be easily
-       :ref:`composed and extended<composing>`.
-    2. decoupling of networking logic allows
-       the :ref:`use different and asynchronous HTTP clients<executors>`.
-
-    We will explore these features in the following sections.
+We will explore these features in the following sections.
 
 What's in a query?
 ------------------
@@ -66,7 +64,7 @@ to our previously defined ``repo``.
           owner, name = self.owner, self.name
           request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
           response = yield request
-          return json.loads(response.data)
+          return json.loads(response.content)
 
 The main difference is that the class-based version is reusable:
 
@@ -151,6 +149,8 @@ We can use a functional approach with
 or a more object-oriented approach by subclassing :class:`~snug.core.Query`.
 We'll explore the functional style first.
 
+Functional approach
+~~~~~~~~~~~~~~~~~~~
 
 Preparing requests
 ^^^^^^^^^^^^^^^^^^
@@ -158,7 +158,7 @@ Preparing requests
 Outgoing requests of a query can be modified with
 the :class:`~gentools.core.map_yield` decorator.
 
-.. literalinclude:: ../tutorial/composing_queries.py
+.. literalinclude:: ../tutorial/composed0.py
    :lines: 3-4,11-21
    :emphasize-lines: 4,10
 
@@ -168,7 +168,7 @@ Parsing responses
 Responses being sent to a query can be modified with
 the :class:`~gentools.core.map_send` decorator.
 
-.. literalinclude:: ../tutorial/composing_queries2.py
+.. literalinclude:: ../tutorial/composed2.py
    :lines: 3-4,11-36
    :emphasize-lines: 17,24
 
@@ -176,11 +176,11 @@ Relaying queries
 ^^^^^^^^^^^^^^^^
 
 For advanced cases, each requests/response interaction of a query
-can be relayed through other generators.
+can be relayed through another generator.
 This can be done with the :class:`~gentools.core.relay` decorator.
 The following example shows how this can be used to implement redirects.
 
-.. literalinclude:: ../tutorial/composing_queries3.py
+.. literalinclude:: ../tutorial/composed3.py
    :lines: 3-4,24-36
    :emphasize-lines: 10
 
@@ -191,9 +191,16 @@ Loading return values
 To modify the return value of a generator,
 use the :class:`~gentools.core.map_return` decorator.
 
-.. literalinclude:: ../tutorial/composing_queries4.py
+.. literalinclude:: ../tutorial/composed4.py
    :lines: 3-5,12-13,33-43
    :emphasize-lines: 11
+
+Object-oriented approach
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Below is a roughly equivalent, object-oriented approach:
+
+.. literalinclude:: ../tutorial/composed_oop.py
 
 
 Related queries

@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from datetime import datetime
 
 import aiohttp
 import pytest
@@ -12,20 +13,6 @@ live = pytest.config.getoption('--live')
 CRED_PATH = Path('~/.snug/github.json').expanduser()
 auth = tuple(json.loads(CRED_PATH.read_bytes()))
 
-all_orgs = gh.orgs()
-one_org = gh.org('github')
-one_repo = gh.repo(owner='github', name='hub')
-all_repos = gh.repos()
-
-assigned_issues = gh.issues()
-
-current_user = gh.current_user()
-my_issues = current_user.issues()
-
-repo_issues = one_repo.issues()
-one_repo_issue = one_repo.issue(123)
-one_repos_fixed_bugs = repo_issues.replace(labels='bug', state='closed')
-
 
 @pytest.fixture(scope='module')
 async def exec():
@@ -35,6 +22,7 @@ async def exec():
 
 @pytest.mark.asyncio
 async def test_all_orgs(exec):
+    all_orgs = gh.orgs()
 
     if live:
         orgs = await exec(all_orgs)
@@ -45,6 +33,7 @@ async def test_all_orgs(exec):
 
 @pytest.mark.asyncio
 async def test_one_org(exec):
+    one_org = gh.org('github')
 
     if live:
         org = await exec(one_org)
@@ -55,6 +44,7 @@ async def test_one_org(exec):
 
 @pytest.mark.asyncio
 async def test_all_repos(exec):
+    all_repos = gh.repos()
 
     if live:
         repos = await exec(all_repos)
@@ -66,6 +56,7 @@ async def test_all_repos(exec):
 
 @pytest.mark.asyncio
 async def test_one_repo(exec):
+    one_repo = gh.repo(owner='github', name='hub')
 
     if live:
         repo = await exec(one_repo)
@@ -76,6 +67,7 @@ async def test_one_repo(exec):
 
 @pytest.mark.asyncio
 async def test_assigned_issues(exec):
+    assigned_issues = gh.issues()
 
     if live:
         issues = await exec(assigned_issues)
@@ -87,15 +79,15 @@ async def test_assigned_issues(exec):
 
 @pytest.mark.asyncio
 async def test_current_user(exec):
-
     if live:
-        me = await exec(current_user)
+        me = await exec(gh.CURRENT_USER)
 
         assert isinstance(me, gh.User)
 
 
 @pytest.mark.asyncio
 async def test_current_user_issues(exec):
+    my_issues = gh.CURRENT_USER.issues()
 
     if live:
         issues = await exec(my_issues)
@@ -104,6 +96,7 @@ async def test_current_user_issues(exec):
 
 @pytest.mark.asyncio
 async def test_all_repo_issues(exec):
+    repo_issues = gh.repo('hub', owner='github').issues()
 
     if live:
         issues = await exec(repo_issues)
@@ -115,6 +108,7 @@ async def test_all_repo_issues(exec):
 
 @pytest.mark.asyncio
 async def test_one_repo_issue(exec):
+    one_repo_issue = gh.repo('hub', owner='github').issue(123)
     if live:
         issue = await exec(one_repo_issue)
 
@@ -123,10 +117,25 @@ async def test_one_repo_issue(exec):
 
 @pytest.mark.asyncio
 async def test_filtered_repo_issues(exec):
+    fixed_bugs = (gh.repo('hub', owner='github')
+                  .issues(labels='bug', state='closed'))
 
     if live:
-        issues = await exec(one_repos_fixed_bugs)
+        issues = await exec(fixed_bugs)
 
         assert isinstance(issues, list)
         assert len(issues) > 1
         assert isinstance(issues[0], gh.Issue)
+
+
+@pytest.mark.asyncio
+async def test_issue_comments(exec):
+    query = (gh.repo('Hello-World', owner='octocat')
+             .issue(348)
+             .comments(since=datetime(2018, 1, 1)))
+
+    if live:
+        comments = await exec(query)
+
+        assert isinstance(comments, list)
+        assert isinstance(comments[0], gh.Issue.Comment)

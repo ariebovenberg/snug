@@ -1,4 +1,3 @@
-"""the central abstractions"""
 import abc
 import asyncio
 import sys
@@ -10,6 +9,7 @@ from http.client import HTTPResponse
 from io import BytesIO
 from itertools import chain, starmap
 from operator import methodcaller
+from types import MethodType
 
 from .utils import EMPTY_MAPPING, compose, identity
 
@@ -21,6 +21,7 @@ __all__ = [
     'async_executor',
     'Request',
     'Response',
+    'Relation',
     'header_adder',
     'prefix_adder',
     'make_sender',
@@ -54,22 +55,22 @@ class Request:
         the http method
     url
         the requested url
-    data
+    content
         the request content
     params
         the query parameters
     headers
         mapping of headers
     """
-    __slots__ = 'method', 'url', 'data', 'params', 'headers'
+    __slots__ = 'method', 'url', 'content', 'params', 'headers'
     __hash__ = None
 
-    def __init__(self, method: str, url: str, data: t.Optional[bytes]=None, *,
+    def __init__(self, method: str, url: str, content: bytes=None, *,
                  params: TextMapping=EMPTY_MAPPING,
                  headers: TextMapping=EMPTY_MAPPING):
         self.method = method
         self.url = url
-        self.data = data
+        self.content = content
         self.params = params
         self.headers = headers
 
@@ -153,18 +154,18 @@ class Response:
     ----------
     status_code
         the HTTP status code
-    data
+    content
         the response content
     headers
         the headers of the response
     """
-    __slots__ = 'status_code', 'data', 'headers'
+    __slots__ = 'status_code', 'content', 'headers'
     __hash__ = None
 
-    def __init__(self, status_code: int, data: t.Optional[bytes]=None, *,
+    def __init__(self, status_code: int, content: bytes=None, *,
                  headers: TextMapping=EMPTY_MAPPING):
         self.status_code = status_code
-        self.data = data
+        self.content = content
         self.headers = headers
 
     def _asdict(self):
@@ -197,6 +198,12 @@ class Response:
         return Response(**attrs)
 
 
+class _CallableAsMethod:
+    """mixin for callables to be callable as methods when bound to a class"""
+    def __get__(self, obj, objtype=None):
+        return self if obj is None else MethodType(self, obj)
+
+
 class Query(t.Generic[T], t.Iterable[Request]):
     """ABC for query-like objects.
     Any object where :meth:`~object.__iter__`
@@ -212,6 +219,35 @@ class Query(t.Generic[T], t.Iterable[Request]):
     def __iter__(self) -> t.Generator[Request, Response, T]:
         """a generator which resolves the query"""
         raise NotImplementedError()
+
+
+class RelationMeta(type(Query), _CallableAsMethod):
+    pass
+
+
+class Relation(Query[T], metaclass=RelationMeta):
+    """:class:`Relation` subclasses act like a method
+    when bound to a class. This means the parent instance is passed
+    as a first argument when calling the class.
+
+    This can be used to implement related queries
+
+    Example
+    -------
+
+    >>> class Parent:
+    ...     class child(Relation):
+    ...         def __init__(self, parent, bar):
+    ...             self.parent, self.bar = parent, bar
+    ...         ...
+    ...
+    >>> p = Parent()
+    >>> c = p.child(bar=5)
+    >>> isinstance(c, Parent.child)
+    True
+    >>> c.parent is p
+    True
+    """
 
 
 Sender = t.Callable[[Request], Response]
@@ -237,7 +273,7 @@ def urllib_sender(req: Request, **kwargs) -> Response:
     raw_response = urllib.request.urlopen(raw_request, **kwargs)
     return Response(
         raw_response.getcode(),
-        data=raw_response.read(),
+        content=raw_response.read(),
         headers=raw_response.headers,
     )
 
@@ -267,55 +303,23 @@ def asyncio_sender(req: Request) -> Awaitable(Response):
         '{} {} HTTP/1.1'.format(req.method, url.path + '?' + url.query),
         'Host: ' + url.hostname,
         'Connection: close',
-        'Content-Length: {}'.format(len(req.data or b'')),
+        'Content-Length: {}'.format(len(req.content or b'')),
         '\r\n'.join(starmap('{}: {}'.format, req.headers.items())),
     ])
-    writer.write(b'\r\n'.join([headers.encode(), b'', req.data or b'']))
+    writer.write(b'\r\n'.join([headers.encode(), b'', req.content or b'']))
     response_bytes = BytesIO((yield from reader.read()))
     writer.close()
     raw_response = HTTPResponse(_SocketAdapter(response_bytes))
     raw_response.begin()
     return Response(
         raw_response.getcode(),
-        data=raw_response.read(),
+        content=raw_response.read(),
         headers=raw_response.headers,
     )
 
 
-def _optional_basic_auth(credentials: t.Optional[t.Tuple[str, str]]) -> (
-        t.Callable[[Request], Request]):
-    """create an authenticator for optional basic auth.
-
-    Parameters
-    ----------
-    credentials
-        the username and password
-    """
-    if credentials is None:
-        return identity
-    else:
-        return methodcaller('with_basic_auth', credentials)
-
-
-def executor(auth: T_auth=None,
-             client=None,
-             auth_factory: AuthenticatorFactory=_optional_basic_auth) -> (
-                 t.Callable[[Query[T]], T]):
-    """create an executor
-
-    Parameters
-    ----------
-    auth
-        the credentials
-    client
-        The HTTP client to use.
-        Its type must have been registered
-        with the :func:`~snug.core.make_sender` function.
-    auth_factory
-        the authentication method to use
-    """
-    _sender = urllib_sender if client is None else make_sender(client)
-    return partial(execute, sender=compose(_sender, auth_factory(auth)))
+def _basic_auth_factory(auth):
+    return methodcaller('with_basic_auth', auth)
 
 
 @singledispatch
@@ -428,10 +432,32 @@ def execute_async(query: Query[T],
             return e.value
 
 
+def executor(auth: T_auth=None,
+             client=None,
+             auth_factory: AuthenticatorFactory=_basic_auth_factory) -> (
+                 t.Callable[[Query[T]], T]):
+    """create an executor
+
+    Parameters
+    ----------
+    auth
+        the credentials
+    client
+        The HTTP client to use.
+        Its type must have been registered
+        with the :func:`~snug.core.make_sender` function.
+    auth_factory
+        the authentication method to use
+    """
+    _sender = urllib_sender if client is None else make_sender(client)
+    authenticator = identity if auth is None else auth_factory(auth)
+    return partial(execute, sender=compose(_sender, authenticator))
+
+
 def async_executor(
         auth: T_auth=None,
         client=None,
-        auth_factory: AuthenticatorFactory=_optional_basic_auth) -> (
+        auth_factory: AuthenticatorFactory=_basic_auth_factory) -> (
             AsyncExecutor):
     """create an ascynchronous executor
 
@@ -441,12 +467,14 @@ def async_executor(
         the credentials
     client
         The (asynchronous) HTTP client to use.
+        Its type must have been registered
+        with the :func:`~snug.core.make_async_sender` function.
     auth_factory
         the authentication method to use
     """
-    return partial(execute_async,
-                   sender=compose(make_async_sender(client),
-                                  auth_factory(auth)))
+    _sender = asyncio_sender if client is None else make_async_sender(client)
+    authenticator = identity if auth is None else auth_factory(auth)
+    return partial(execute_async, sender=compose(_sender, authenticator))
 
 
 try:
@@ -470,12 +498,12 @@ else:
         def _aiohttp_sender(req):
             response = yield from session.request(req.method, req.url,
                                                   params=req.params,
-                                                  data=req.data,
+                                                  data=req.content,
                                                   headers=req.headers)
             try:
                 return Response(
                     response.status,
-                    data=(yield from response.read()),
+                    content=(yield from response.read()),
                     headers=response.headers,
                 )
             except Exception:  # pragma: no cover
