@@ -4,7 +4,7 @@ Release history
 development
 +++++++++++
 
-0.5.0 (2018-01-26)
+0.5.0 (2018-01-30)
 ++++++++++++++++++
 
 - improvements to docs
