@@ -63,7 +63,7 @@ Why another library?
 
 There are plenty of tools for wrapping web APIs.
 However, these generally make far-reaching design decisions for you,
-making it awkward to tailor to the needs of a specific API.
+making it awkward to bend it to the needs of a specific API.
 **Snug** aims only to provide a versatile base,
 so you can focus on what makes your API unique.
 
