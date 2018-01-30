@@ -89,7 +89,7 @@ and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
 Features
 --------
 
-1. *Flexibility*. Since queries are just generators,
+1. **Flexibility**. Since queries are just generators,
    customizing them requires no special glue-code.
    For example: add validation logic, or use any serialization method:
 
@@ -105,14 +105,14 @@ Features
          response = yield request
          return UserSchema().load(json.loads(response.content))
 
-2. *Effortlessly async*. The same query can also be executed asynchronously:
+2. **Effortless async support**. The same query can also be executed asynchronously:
 
    .. code-block:: python
 
       query = repo('Hello-World', owner='octocat')
       repo = await snug.execute_async(query)
 
-3. *Pluggable clients*. Queries are fully agnostic of the HTTP client.
+3. **Pluggable clients**. Queries are fully agnostic of the HTTP client.
    For example, to use `requests <http://docs.python-requests.org/>`_
    instead of the standard library:
 
@@ -123,7 +123,7 @@ Features
       execute(repo('Hello-World', owner='octocat'))
       # {"description": "My first repository on Github!", ...}
 
-4. *Testable*. Since queries are just generators, we can run them
+4. **Testability**. Since queries are just generators, we can run them
    just fine without touching the network.
    No need for complex mocks or monkeypatching.
 
@@ -135,8 +135,8 @@ Features
       >>> query.send(snug.Response(200, b'...'))
       StopIteration({"description": "My first repository on Github!", ...})
 
-5. *Swappable authentication*. Different credentials can be used to execute
-   the same query:
+5. **Swappable authentication**. Queries aren't tied to a session or credentials.
+   Use different credetials to execute the same query:
 
    .. code-block:: python
 
@@ -151,7 +151,8 @@ Features
       exec_as_me(follow('octocat'))
       exec_as_bob(follow('octocat'))
 
-6. *Related queries*. Use class-based queries to create a chained API for related objects:
+6. **Related queries**. Use class-based queries to create an
+   intuitively chained API for related objects:
 
    .. code-block:: python
 
@@ -159,16 +160,15 @@ Features
           """a repo lookup by owner and name"""
           def __init__(self, name, owner): ...
 
-          def __iter__(self): ...  # query of the repo itself
+          def __iter__(self): ...  # query for the repo itself
 
           def issue(self, num: int) -> snug.Query[dict]:
               """retrieve an issue in this repository by its number"""
               r = snug.GET(f'/repos/{self.owner}/{self.name}/issues/{num}')
               return json.loads((yield r).content)
 
-      hello_world_repo = repo('Hello-World', owner='octocat')
-      issue_348 = hello_world_repo.issue(348)
-      snug.execute(issue_348)
+      hello_repo = repo('Hello-World', owner='octocat')
+      snug.execute(hello_repo.issue(348))
       # {"title": "Testing comments", ...}
 
       # we could take this as far as we like, eventually:
@@ -177,7 +177,7 @@ Features
                       .comments(since=datetime(2018, 1, 1)))
 
 
-7. *Function- or class-based? You decide*.
+7. **Function- or class-based? You decide**.
    Use class-based queries and inheritance to keep everything DRY:
 
    .. code-block:: python
@@ -188,10 +188,11 @@ Features
           def prepare(self, request): ...  # add url prefix, headers, etc.
 
           def __iter__(self):
+              """the base query routine"""
               request = self.prepare(self.request)
               return self.load(self.check_response((yield request)))
 
-          def check_response(self, result): ...
+          def check_response(self, result): ...  # raise nice errors
 
       class repo(BaseQuery):
           """get a repo by owner and name"""

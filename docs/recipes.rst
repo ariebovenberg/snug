@@ -69,12 +69,20 @@ The example below shows a reusable implementation using
 Pagination
 ----------
 
-One way of implementing pagination is to return a ``Page`` object
-with queries referencing the other pages:
+Pagination is one of the things that each API seems to do differently.
+A sensible way of implementing pagination is to return some sort
+of ``Page`` object with queries referencing the other pages.
+Below is an example of the github REST API:
 
 .. code-block:: python
+   :emphasize-lines: 3-6
 
    from requests.utils import parse_header_links
+
+   def repo_issues(owner, name):
+       """get a page of issues"""
+       response = yield snug.GET(f'/repos/{owner}/{name}/issues')
+       return _load_issue_page(response)
 
    class StaticQuery(snug.Query):
        """a static GET query to an URL"""
@@ -92,11 +100,6 @@ with queries referencing the other pages:
        def __iter__(self):
            return iter(self.objects)
 
-   def repo_issues(owner, name):
-       """get a page of issues"""
-       response = yield snug.GET(f'/repos/{owner}/{name}/issues')
-       return _load_issue_page(response)
-
    def _load_issue_page(response):
        links = {
            link['rel']: link['url']
@@ -109,3 +112,17 @@ with queries referencing the other pages:
            next=nexturl and StaticQuery(nexturl, loader=_load_issue_page)
            last=lasturl and StaticQuery(lasturl, loader=_load_issue_page)
        )
+
+The query is then usable as:
+
+.. code-block:: python3
+
+   >>> exec = snug.execute
+   >>> page1 = exec(repo_issues('Hello-World', owner='octocat'))
+   >>> list(page1)
+   [{"body": ...}, ...]
+   >>> page2 = exec(page1.next)
+   >>> list(page2)
+   [{"body": ...}, ...]
+   >>> exec(page2.last)
+   [{"body": ...}, ...]
