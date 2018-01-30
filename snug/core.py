@@ -230,7 +230,7 @@ class Relation(Query[T], metaclass=RelationMeta):
     when bound to a class. This means the parent instance is passed
     as a first argument when calling the class.
 
-    This can be used to implement related queries
+    This can be used to implement related queries.
 
     Example
     -------
@@ -288,7 +288,7 @@ class _SocketAdapter:
 
 @asyncio.coroutine
 def asyncio_sender(req: Request) -> Awaitable(Response):
-    """a very rudimentary HTTP client using asyncio"""
+    """a very rudimentary HTTP client using :mod:`asyncio`"""
     if 'User-Agent' not in req.headers:
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
     url = urllib.parse.urlsplit(
@@ -385,7 +385,7 @@ OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
 
 
 def execute(query: Query[T], sender: Sender=urllib_sender) -> T:
-    """execute a query
+    """execute a query, returning its result
 
     Parameters
     ----------
@@ -407,7 +407,7 @@ def execute(query: Query[T], sender: Sender=urllib_sender) -> T:
 @asyncio.coroutine
 def execute_async(query: Query[T],
                   sender: AsyncSender=asyncio_sender) -> Awaitable(T):
-    """execute a query asynchronously
+    """execute a query asynchronously, returning its result
 
     Parameters
     ----------

@@ -73,17 +73,19 @@ The main difference is that the class-based version is reusable:
 >>> # not possible if `repo` was just a generator function
 >>> snug.execute(lookup)
 
-You can use :func:`~gentools.core.reusable`
-(from the `gentools <https://github.com/ariebovenberg/gentools>`_ package)
-to create reusable classes from generator functions automatically:
+.. Note::
 
-.. code-block:: python3
+  You can use :func:`~gentools.core.reusable`
+  (from the `gentools <https://github.com/ariebovenberg/gentools>`_ package)
+  to create reusable classes from generator functions automatically:
 
-  from gentools import reusable
+  .. code-block:: python3
 
-  @reusable
-  def repo(...):
-      ...
+    from gentools import reusable
+
+    @reusable
+    def repo(...):
+        ...
 
 .. _executors:
 

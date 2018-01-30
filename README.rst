@@ -178,7 +178,7 @@ Features
 
 
 7. **Function- or class-based? You decide**.
-   Use class-based queries and inheritance to keep everything DRY:
+   Class-based queries and inheritance can be used to keep everything DRY:
 
    .. code-block:: python
 
