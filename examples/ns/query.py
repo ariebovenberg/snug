@@ -1,3 +1,4 @@
+"""the main API"""
 import typing as t
 import xml.etree.ElementTree
 from datetime import datetime

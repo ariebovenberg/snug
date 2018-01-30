@@ -1,3 +1,4 @@
+"""deserialization tools"""
 import typing as t
 from datetime import datetime
 from functools import partial

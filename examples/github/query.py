@@ -1,3 +1,4 @@
+"""the main API"""
 import json
 import reprlib
 import typing as t
@@ -21,6 +22,10 @@ _repr = reprlib.Repr()
 _repr.maxstring = 45
 
 
+class ApiError(Exception):
+    pass
+
+
 @singledispatch
 def dump_param(val):
     """dump a query param value"""
@@ -37,11 +42,23 @@ def prepare_params(request):
                 if val is not None})
 
 
+def check_errors(response):
+    if response.status_code >= 400:
+        try:
+            msg = json.loads(response.content)['message']
+        except (KeyError, ValueError):
+            pass
+        raise ApiError(response.status_code)
+    return response
+
+
 basic_interaction = compose(
     map_yield(prepare_params,
               snug.prefix_adder(API_PREFIX),
               snug.header_adder(HEADERS)),
-    map_send(compose(json.loads, attrgetter('content'))),
+    map_send(json.loads,
+             attrgetter('content'),
+             check_errors),
     oneyield,
 )
 
@@ -54,8 +71,8 @@ def retrieves(rtype):
 @dataclass
 class repo(snug.Query):
     """repository lookup by owner & name"""
-    owner: str
     name:  str
+    owner: str
 
     @retrieves(types.Repo)
     def __iter__(self):
@@ -87,10 +104,11 @@ class repo(snug.Query):
                 f'{self.repo.name}/issues/{self.number}')
 
         @reusable
-        @retrieves(t.List[types.Comment])
+        @retrieves(t.List[types.Issue.Comment])
         def comments(issue, since=None):
+            """retrieve comments for this issue"""
             return snug.GET(
-                f'repos/{issue.repo.owner}/{issue.repo.owner}/'
+                f'repos/{issue.repo.owner}/{issue.repo.name}/'
                 f'issues/{issue.number}/comments',
                 params={'since': since})
 

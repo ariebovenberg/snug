@@ -1,3 +1,4 @@
+"""datastructures and type definitions"""
 import enum
 import reprlib
 import typing as t
@@ -5,8 +6,6 @@ from datetime import datetime
 from functools import partial
 
 from dataclasses import dataclass
-
-import snug
 
 _repr = reprlib.Repr()
 _repr.maxstring = 45
@@ -133,9 +132,9 @@ class Issue:
         SUBSCRIBED = 'subscribed'
         ALL = 'all'
 
-
-@dclass
-class Comment:
-    """an issue comment"""
-    id: int
-    user: UserSummary
+    @dclass
+    class Comment:
+        """an issue comment"""
+        id:   int
+        user: UserSummary
+        body: str
