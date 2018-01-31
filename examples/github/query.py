@@ -43,12 +43,12 @@ def prepare_params(request):
 
 
 def check_errors(response):
-    if response.status_code >= 400:
+    if response.status_code == 400:
         try:
             msg = json.loads(response.content)['message']
         except (KeyError, ValueError):
-            pass
-        raise ApiError(response.status_code)
+            msg = ''
+        raise ApiError(msg)
     return response
 
 
@@ -56,20 +56,20 @@ basic_interaction = compose(
     map_yield(prepare_params,
               snug.prefix_adder(API_PREFIX),
               snug.header_adder(HEADERS)),
-    map_send(json.loads,
-             attrgetter('content'),
-             check_errors),
-    oneyield,
+    map_send(check_errors),
 )
 
 
 def retrieves(rtype):
     """decorator factory for simple retrieval queries"""
-    return compose(map_return(registry(rtype)), basic_interaction)
+    return compose(basic_interaction,
+                   map_return(registry(rtype)),
+                   map_send(json.loads, attrgetter('content')),
+                   oneyield)
 
 
 @dataclass
-class repo(snug.Query):
+class repo(snug.Query[types.Repo]):
     """repository lookup by owner & name"""
     name:  str
     owner: str
@@ -92,7 +92,7 @@ class repo(snug.Query):
             })
 
     @dataclass
-    class issue(snug.Relation):
+    class issue(snug.Relation[types.Issue]):
         """get a specific issue in the repo"""
         repo: 'repo'
         number: int
@@ -152,7 +152,7 @@ def issues(filter: t.Optional[str]=None,
 
 
 @dataclass
-class current_user(snug.Query):
+class current_user(snug.Query[types.User]):
     """a reference to the current user"""
 
     @retrieves(types.User)
@@ -167,3 +167,35 @@ class current_user(snug.Query):
 
 
 CURRENT_USER = current_user()
+
+
+@dataclass
+class user(snug.Query[types.User]):
+    """retrieve a user by username"""
+    username: str
+
+    @retrieves(types.User)
+    def __iter__(self):
+        return snug.GET(f'users/{self.username}')
+
+    @reusable
+    @basic_interaction
+    def follow(self):
+        """follow this user"""
+        response = yield snug.PUT(f'user/following/{self.username}',
+                                  headers={'Content-Length': '0'})
+        return response.status_code == 204
+
+    @reusable
+    @basic_interaction
+    def following(self):
+        """check if following this user"""
+        response = yield snug.GET(f'user/following/{self.username}')
+        return response.status_code == 204
+
+    @reusable
+    @basic_interaction
+    def unfollow(self):
+        """unfollow this user"""
+        response = yield snug.DELETE(f'user/following/{self.username}')
+        return response.status_code == 204

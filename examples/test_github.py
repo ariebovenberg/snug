@@ -139,3 +139,13 @@ async def test_issue_comments(exec):
 
         assert isinstance(comments, list)
         assert isinstance(comments[0], gh.Issue.Comment)
+
+
+@pytest.mark.asyncio
+async def test_follow_user(exec):
+    user = gh.user('octocat')
+
+    if live:
+        assert await exec(user.follow())
+        assert await exec(user.unfollow())
+        assert not await exec(user.following())
