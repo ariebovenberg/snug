@@ -105,7 +105,7 @@ Features
          response = yield request
          return UserSchema().load(json.loads(response.content))
 
-2. **Effortless async support**. The same query can also be executed asynchronously:
+2. **Effortlessly async**. The same query can also be executed asynchronously:
 
    .. code-block:: python
 
@@ -178,7 +178,8 @@ Features
 
 
 7. **Function- or class-based? You decide**.
-   Class-based queries and inheritance can be used to keep everything DRY:
+   One option to keep everything DRY is to use
+   class-based queries and inheritance:
 
    .. code-block:: python
 
@@ -210,7 +211,7 @@ Features
           def load(self, response):
               return response.status_code == 204
 
-   Or, if you're comfortable with high-order functions and decorators,
+   Alternatively, if you're comfortable with high-order functions and decorators,
    make use of `gentools <http://gentools.readthedocs.io/>`_
    to modify query ``yield``, ``send``, and ``return`` values:
 

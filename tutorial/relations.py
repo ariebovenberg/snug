@@ -83,4 +83,5 @@ class user(snug.Query[User]):
     @map_yield(snug.PUT)
     def follow(self) -> snug.Query[bool]:
         """follow this user"""
-        return (yield f'/user/following/{self.username}').status_code == 204
+        response = yield f'/user/following/{self.username}'
+        return response.status_code == 204

@@ -124,7 +124,7 @@ We can make use of the module as follows:
    >>> exec(follow_the_octocat)
    True
 
-   >>> # the same query may also be executed asynchronously:
+   >>> # the same query may also be executed asynchronously
    >>> import asyncio
    >>> exec_async = ghub.async_executor(auth=('me', 'password'))
    >>> loop = asyncio.get_event_loop()
@@ -146,13 +146,13 @@ In our github API example, we may wish to define common logic for:
 * raising descriptive exceptions from responses
 * following redirects
 
-We can use a functional approach with 
+We can use a function-based approach with
 `gentools <https://github.com/ariebovenberg/gentools>`_,
-or a more object-oriented approach by subclassing :class:`~snug.core.Query`.
+or a class-based approach by subclassing :class:`~snug.core.Query`.
 We'll explore the functional style first.
 
-Functional approach
-~~~~~~~~~~~~~~~~~~~
+Function-based approach
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Preparing requests
 ^^^^^^^^^^^^^^^^^^
