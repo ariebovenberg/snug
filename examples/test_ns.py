@@ -12,11 +12,6 @@ live = pytest.config.getoption('--live')
 CRED_PATH = Path('~/.snug/ns.json').expanduser()
 auth = json.loads(CRED_PATH.read_bytes())
 
-all_stations = ns.stations()
-departures = ns.departures(station='Amsterdam')
-travel_options = ns.journey_options(origin='Breda', destination='Amsterdam')
-travel_options_no_hsl = travel_options.replace(hsl='false')
-
 
 @pytest.fixture(scope='module')
 async def exec():
@@ -26,6 +21,7 @@ async def exec():
 
 @pytest.mark.asyncio
 async def test_all_stations(exec):
+    all_stations = ns.stations()
 
     if live:
         stations = await exec(all_stations)
@@ -48,6 +44,7 @@ async def test_all_stations(exec):
 
 @pytest.mark.asyncio
 async def test_departures(exec):
+    departures = ns.departures(station='Amsterdam')
 
     if live:
         deps = await exec(departures)
@@ -68,6 +65,9 @@ async def test_departures(exec):
 
 @pytest.mark.asyncio
 async def test_journey_options(exec):
+    travel_options = ns.journey_options(origin='Breda',
+                                        destination='Amsterdam')
+    travel_options_no_hsl = travel_options.replace(hsl='false')
 
     if live:
         options = await exec(travel_options)
