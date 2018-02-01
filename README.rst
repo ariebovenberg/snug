@@ -247,4 +247,4 @@ Features
 
 For more info, check out the `tutorial <http://snug.readthedocs.io/en/latest/tutorial.html>`_,
 `recipes <http://snug.readthedocs.io/en/latest/recipes.html>`_,
-or the examples (in the ``examples/`` directory)
+or `examples <http://snug.readthedocs.io/en/latest/examples.html>`_.
