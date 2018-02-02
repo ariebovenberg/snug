@@ -39,7 +39,8 @@ setup(
     install_requires=[
         'typing>=3.6.2;python_version<"3.5"'
     ],
-    keywords=['api', 'wrapper', 'rest', 'http'],
+    keywords=['api-wrapper', 'http', 'generators', 'async',
+              'graphql', 'rest', 'rpc'],
     python_requires='>=3.4',
     packages=find_packages(exclude=('tests', 'docs', 'examples'))
 )
