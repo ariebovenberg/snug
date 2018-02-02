@@ -211,7 +211,7 @@ Features
           def load(self, response):
               return response.status_code == 204
 
-   Alternatively, if you're comfortable with high-order functions and decorators,
+   Or, if you're comfortable with high-order functions and decorators,
    make use of `gentools <http://gentools.readthedocs.io/>`_
    to modify query ``yield``, ``send``, and ``return`` values:
 

@@ -208,12 +208,11 @@ Below is a roughly equivalent, object-oriented approach:
 Related queries
 ---------------
 
-The github API is full of related queries:
-for example, creating a new issue related to a repository,
+The github API is full of related queries.
+For example: creating a new issue related to a repository,
 or retrieving gists for a user.
 
 We can make use of query classes to express these relations.
-
 
 .. literalinclude:: ../tutorial/relations.py
    :lines: 12-15,35-
