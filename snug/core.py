@@ -319,7 +319,7 @@ def asyncio_sender(req: Request) -> Awaitable(Response):
     )
 
 
-def _basic_auth_factory(auth):
+def _basic_authenticator(auth):
     return methodcaller('with_basic_auth', auth)
 
 
@@ -435,7 +435,7 @@ def execute_async(query: Query[T],
 
 def executor(auth: T_auth=None,
              client=None,
-             auth_factory: AuthenticatorFactory=_basic_auth_factory) -> (
+             auth_method: AuthenticatorFactory=_basic_authenticator) -> (
                  t.Callable[[Query[T]], T]):
     """create an executor
 
@@ -447,18 +447,18 @@ def executor(auth: T_auth=None,
         The HTTP client to use.
         Its type must have been registered
         with the :func:`~snug.core.make_sender` function.
-    auth_factory
+    auth_method
         the authentication method to use
     """
     _sender = urllib_sender if client is None else make_sender(client)
-    authenticator = identity if auth is None else auth_factory(auth)
+    authenticator = identity if auth is None else auth_method(auth)
     return partial(execute, sender=compose(_sender, authenticator))
 
 
 def async_executor(
         auth: T_auth=None,
         client=None,
-        auth_factory: AuthenticatorFactory=_basic_auth_factory) -> (
+        auth_method: AuthenticatorFactory=_basic_authenticator) -> (
             AsyncExecutor):
     """create an ascynchronous executor
 
@@ -470,11 +470,11 @@ def async_executor(
         The (asynchronous) HTTP client to use.
         Its type must have been registered
         with the :func:`~snug.core.make_async_sender` function.
-    auth_factory
+    auth_method
         the authentication method to use
     """
     _sender = asyncio_sender if client is None else make_async_sender(client)
-    authenticator = identity if auth is None else auth_factory(auth)
+    authenticator = identity if auth is None else auth_method(auth)
     return partial(execute_async, sender=compose(_sender, authenticator))
 
 

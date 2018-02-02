@@ -144,7 +144,7 @@ class TestExecutor:
         assert exec(myquery()) == snug.Response(204)
         assert client.request == snug.GET('my/url')
 
-    def test_authentication(self):
+    def test_auth_default(self):
         client = MockClient(snug.Response(204))
         exec = snug.executor(('user', 'pw'), client=client)
 
@@ -154,6 +154,28 @@ class TestExecutor:
         assert exec(myquery()) == snug.Response(204)
         assert client.request == snug.GET(
             'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
+
+    def test_auth_method(self):
+
+        class TokenAuth:
+            def __init__(self, token):
+                self.token = token
+
+            def __call__(self, req):
+                return req.with_headers({
+                    'Authorization': f'Bearer {self.token}'
+                })
+
+        client = MockClient(snug.Response(204))
+        exec = snug.executor(auth='foo', client=client,
+                             auth_method=TokenAuth)
+
+        def myquery():
+            return (yield snug.GET('my/url'))
+
+        assert exec(myquery()) == snug.Response(204)
+        assert client.request == snug.GET(
+            'my/url', headers={'Authorization': 'Bearer foo'})
 
 
 def test_sender_factory_unknown_client():
