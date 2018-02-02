@@ -7,8 +7,8 @@ development
 1.0.0 (2018-01-30)
 ++++++++++++++++++
 
-- first stable release
 - improvements to docs
+- added slack API example
 
 0.5.0 (2018-01-30)
 ++++++++++++++++++
