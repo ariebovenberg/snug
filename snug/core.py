@@ -298,17 +298,18 @@ def asyncio_sender(req: Request) -> Awaitable(Response):
     else:
         connect = asyncio.open_connection(url.hostname, 80)
     reader, writer = yield from connect
-
-    headers = '\r\n'.join([
-        '{} {} HTTP/1.1'.format(req.method, url.path + '?' + url.query),
-        'Host: ' + url.hostname,
-        'Connection: close',
-        'Content-Length: {}'.format(len(req.content or b'')),
-        '\r\n'.join(starmap('{}: {}'.format, req.headers.items())),
-    ])
-    writer.write(b'\r\n'.join([headers.encode(), b'', req.content or b'']))
-    response_bytes = BytesIO((yield from reader.read()))
-    writer.close()
+    try:
+        headers = '\r\n'.join([
+            '{} {} HTTP/1.1'.format(req.method, url.path + '?' + url.query),
+            'Host: ' + url.hostname,
+            'Connection: close',
+            'Content-Length: {}'.format(len(req.content or b'')),
+            '\r\n'.join(starmap('{}: {}'.format, req.headers.items())),
+        ])
+        writer.write(b'\r\n'.join([headers.encode(), b'', req.content or b'']))
+        response_bytes = BytesIO((yield from reader.read()))
+    finally:
+        writer.close()
     raw_response = HTTPResponse(_SocketAdapter(response_bytes))
     raw_response.begin()
     return Response(
