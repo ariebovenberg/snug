@@ -47,7 +47,7 @@ _ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
 
 
 class Request:
-    """a simple HTTP request
+    """A simple HTTP request
 
     Parameters
     ----------
@@ -75,7 +75,7 @@ class Request:
         self.headers = headers
 
     def with_headers(self, headers: TextMapping) -> 'Request':
-        """new request with added headers
+        """Create a new request with added headers
 
         Parameters
         ----------
@@ -86,7 +86,7 @@ class Request:
         return self.replace(headers=merged)
 
     def with_prefix(self, prefix: str) -> 'Request':
-        """new request with added url prefix
+        """Create a new request with added url prefix
 
         Parameters
         ----------
@@ -96,7 +96,7 @@ class Request:
         return self.replace(url=prefix + self.url)
 
     def with_params(self, params: TextMapping) -> 'Request':
-        """new request with added params
+        """Create a new request with added params
 
         Parameters
         ----------
@@ -107,7 +107,7 @@ class Request:
         return self.replace(params=merged)
 
     def with_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
-        """new request with "basic" authentication
+        """Create a new request with "basic" authentication
 
         Parameters
         ----------
@@ -131,7 +131,7 @@ class Request:
         return NotImplemented
 
     def replace(self, **kwargs) -> 'Request':
-        """create a copy with replaced fields
+        """Create a copy with replaced fields
 
         Parameters
         ----------
@@ -148,7 +148,7 @@ class Request:
 
 
 class Response:
-    """a simple HTTP response
+    """A simple HTTP response
 
     Parameters
     ----------
@@ -186,7 +186,7 @@ class Response:
                 'headers={0.headers!r}>').format(self)
 
     def replace(self, **kwargs) -> 'Response':
-        """create a copy with replaced fields
+        """Create a copy with replaced fields
 
         Parameters
         ----------
@@ -199,7 +199,7 @@ class Response:
 
 
 class Query(t.Generic[T], t.Iterable[Request]):
-    """ABC for query-like objects.
+    """Abstract base class for query-like objects.
     Any object where :meth:`~object.__iter__`
     returns a :class:`Request`/:class:`Response` generator implements it.
 
@@ -216,8 +216,7 @@ class Query(t.Generic[T], t.Iterable[Request]):
 
 
 class related:
-    """decorate classes to make them callable as methods
-
+    """Decorate classes to make them callable as methods.
     This can be used to implement related queries.
 
     Example
@@ -252,7 +251,7 @@ AuthenticatorFactory = t.Callable[[T_auth], t.Callable[[Request], Request]]
 
 
 def urllib_sender(req: Request, **kwargs) -> Response:
-    """simple sender which uses python's :mod:`urllib`
+    """Simple sender which uses :mod:`urllib`
 
     Parameters
     ----------
@@ -282,7 +281,7 @@ class _SocketAdapter:
 
 @asyncio.coroutine
 def asyncio_sender(req: Request) -> Awaitable(Response):
-    """a very rudimentary HTTP client using :mod:`asyncio`"""
+    """A rudimentary HTTP client using :mod:`asyncio`"""
     if 'User-Agent' not in req.headers:
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
     url = urllib.parse.urlsplit(
@@ -337,7 +336,7 @@ def make_sender(client) -> Sender:
 
 @singledispatch
 def make_async_sender(client) -> AsyncSender:
-    """create an asynchronous sender from the given client.
+    """Create an asynchronous sender from the given client.
     A :func:`~functools.singledispatch` function.
 
     Parameters
@@ -347,7 +346,7 @@ def make_async_sender(client) -> AsyncSender:
 
     Note
     ----
-    if `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed,
+    If `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed,
     a sender for :class:`aiohttp.ClientSession` is already registerd.
     """
     raise TypeError(
@@ -380,14 +379,14 @@ OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
 
 
 def execute(query: Query[T], sender: Sender=urllib_sender) -> T:
-    """execute a query, returning its result
+    """Execute a query, returning its result
 
     Parameters
     ----------
     query
         the query to resolve
     sender
-        the sender to use
+        the callable used to send requests, returning responses
     """
     gen = iter(query)
     request = next(gen)
@@ -402,20 +401,20 @@ def execute(query: Query[T], sender: Sender=urllib_sender) -> T:
 @asyncio.coroutine
 def execute_async(query: Query[T],
                   sender: AsyncSender=asyncio_sender) -> Awaitable(T):
-    """execute a query asynchronously, returning its result
+    """Execute a query asynchronously, returning its result
 
     Parameters
     ----------
     query
         the query to resolve
     sender
-        the sender to use
+        the callable used to send requests, returning responses
 
     Note
     ----
     The default sender is very rudimentary.
-    Consider using :func:`~snug.core.make_async_sender` to construct a
-    sender from :class:`aiohttp.ClientSession` objects.
+    Consider using :func:`async_executor` to construct an
+    executor from :class:`aiohttp.ClientSession` objects.
     """
     gen = iter(query)
     request = next(gen)
@@ -431,7 +430,7 @@ def executor(auth: T_auth=None,
              client=None,
              auth_method: AuthenticatorFactory=_basic_authenticator) -> (
                  t.Callable[[Query[T]], T]):
-    """create an executor
+    """Create an executor
 
     Parameters
     ----------
@@ -440,7 +439,7 @@ def executor(auth: T_auth=None,
     client
         The HTTP client to use.
         Its type must have been registered
-        with the :func:`~snug.core.make_sender` function.
+        with the :func:`make_sender` function.
     auth_method
         the authentication method to use
     """
@@ -454,7 +453,7 @@ def async_executor(
         client=None,
         auth_method: AuthenticatorFactory=_basic_authenticator) -> (
             AsyncExecutor):
-    """create an ascynchronous executor
+    """Create an ascynchronous executor
 
     Parameters
     ----------
@@ -463,7 +462,7 @@ def async_executor(
     client
         The (asynchronous) HTTP client to use.
         Its type must have been registered
-        with the :func:`~snug.core.make_async_sender` function.
+        with the :func:`make_async_sender` function.
     auth_method
         the authentication method to use
     """
@@ -479,7 +478,7 @@ except ImportError:  # pragma: no cover
 else:
     @make_async_sender.register(aiohttp.ClientSession)
     def _aiohttp_sender(session: aiohttp.ClientSession):
-        """create an asynchronous sender
+        """Create an asynchronous sender
         for an `aiohttp` client session
 
         Parameters
@@ -487,8 +486,6 @@ else:
         session
             the aiohttp session
         """
-        from snug.core import Response
-
         @asyncio.coroutine
         def _aiohttp_sender(req):
             response = yield from session.request(req.method, req.url,
@@ -517,7 +514,7 @@ except ImportError:  # pragma: no cover
 else:
     @make_sender.register(requests.Session)
     def _requests_sender(session: requests.Session):
-        """create a :class:`~snug.Sender` for a :class:`requests.Session`
+        """Create a sender for a :class:`requests.Session`
 
         Parameters
         ----------

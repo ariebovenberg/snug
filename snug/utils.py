@@ -38,7 +38,7 @@ class _EmptyMapping(Mapping):
         return 0
 
     def __repr__(self):
-        return '{}'
+        return '{<empty>}'
 
 
 EMPTY_MAPPING = _EmptyMapping()
