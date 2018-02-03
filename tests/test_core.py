@@ -229,7 +229,8 @@ def test_relation():
 
     class Foo:
 
-        class Bar(snug.Relation):
+        @snug.related
+        class Bar(snug.Query):
             def __iter__(self): pass
 
             def __init__(self, a, b):

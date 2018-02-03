@@ -21,7 +21,7 @@ __all__ = [
     'async_executor',
     'Request',
     'Response',
-    'Relation',
+    'related',
     'header_adder',
     'prefix_adder',
     'make_sender',
@@ -198,12 +198,6 @@ class Response:
         return Response(**attrs)
 
 
-class _CallableAsMethod:
-    """mixin for callables to be callable as methods when bound to a class"""
-    def __get__(self, obj, objtype=None):
-        return self if obj is None else MethodType(self, obj)
-
-
 class Query(t.Generic[T], t.Iterable[Request]):
     """ABC for query-like objects.
     Any object where :meth:`~object.__iter__`
@@ -221,14 +215,8 @@ class Query(t.Generic[T], t.Iterable[Request]):
         raise NotImplementedError()
 
 
-class RelationMeta(type(Query), _CallableAsMethod):
-    pass
-
-
-class Relation(Query[T], metaclass=RelationMeta):
-    """:class:`Relation` subclasses act like a method
-    when bound to a class. This means the parent instance is passed
-    as a first argument when calling the class.
+class related:
+    """decorate classes to make them callable as methods
 
     This can be used to implement related queries.
 
@@ -236,7 +224,8 @@ class Relation(Query[T], metaclass=RelationMeta):
     -------
 
     >>> class Parent:
-    ...     class child(Relation):
+    ...     @related
+    ...     class child:
     ...         def __init__(self, parent, bar):
     ...             self.parent, self.bar = parent, bar
     ...         ...
@@ -248,6 +237,11 @@ class Relation(Query[T], metaclass=RelationMeta):
     >>> c.parent is p
     True
     """
+    def __init__(self, cls):
+        self._cls = cls
+
+    def __get__(self, obj, objtype=None):
+        return self._cls if obj is None else MethodType(self._cls, obj)
 
 
 Sender = t.Callable[[Request], Response]
@@ -336,7 +330,7 @@ def make_sender(client) -> Sender:
     Note
     ----
     if `requests <http://docs.python-requests.org/>`_ is installed,
-    :class:`requests.Session` is already registerd.
+    a sender for :class:`requests.Session` is already registerd.
     """
     raise TypeError('no sender factory registered for {!r}'.format(client))
 
@@ -354,7 +348,7 @@ def make_async_sender(client) -> AsyncSender:
     Note
     ----
     if `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed,
-    :class:`aiohttp.ClientSession` is already registerd.
+    a sender for :class:`aiohttp.ClientSession` is already registerd.
     """
     raise TypeError(
         'no async sender factory registered for {!r}'.format(client))
