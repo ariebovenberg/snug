@@ -4,9 +4,8 @@ API reference
 
 .. automodule:: snug.core
    :members:
-   :show-inheritance:
    :special-members:
-   :exclude-members: Sender,AsyncSender,Executor,AsyncExecutor,__next_in_mro__,__weakref__,__mro__
+   :exclude-members: __next_in_mro__,__weakref__,__mro__
 
 .. autodata:: snug.GET
 .. autodata:: snug.POST
