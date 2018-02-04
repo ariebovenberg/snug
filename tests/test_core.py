@@ -163,7 +163,7 @@ class TestExecutor:
 
             def __call__(self, req):
                 return req.with_headers({
-                    'Authorization': f'Bearer {self.token}'
+                    'Authorization': 'Bearer {}'.format(self.token)
                 })
 
         client = MockClient(snug.Response(204))
