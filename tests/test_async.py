@@ -104,17 +104,26 @@ class TestAsyncExecutor:
 
     def test_authentication(self, loop):
         client = MockAsyncClient(snug.Response(204))
-        exec = snug.async_executor(('user', 'pw'),
+
+        class TokenAuth:
+            def __init__(self, token):
+                self.token = token
+
+            def __call__(self, req):
+                return req.with_headers({
+                    'Authorization': 'Bearer {}'.format(self.token)
+                })
+
+        exec = snug.async_executor('foo',
                                    client=client,
-                                   auth_method=partial(methodcaller,
-                                                       'with_basic_auth'))
+                                   auth_method=TokenAuth)
 
         def myquery():
             return (yield snug.GET('my/url'))
 
         assert loop.run_until_complete(exec(myquery())) == snug.Response(204)
         assert client.request == snug.GET(
-            'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
+            'my/url', headers={'Authorization': 'Bearer foo'})
 
 
 def test_aiohttp_sender(loop):

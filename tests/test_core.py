@@ -57,15 +57,6 @@ class TestRequest:
         assert req.with_params({'other': 3}) == snug.GET(
             'my/url/', params={'foo': 'bar', 'other': 3})
 
-    def test_with_basic_auth(self):
-        req = snug.GET('my/url/', headers={'foo': 'bar'})
-        newreq = req.with_basic_auth(('Aladdin', 'OpenSesame'))
-        assert newreq == snug.GET(
-            'my/url/', headers={
-                'foo': 'bar',
-                'Authorization': 'Basic QWxhZGRpbjpPcGVuU2VzYW1l'
-            })
-
     def test_equality(self):
         req = snug.Request('GET', 'my/url')
         other = req.replace()

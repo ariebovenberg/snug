@@ -106,17 +106,6 @@ class Request:
         merged = dict(chain(self.params.items(), params.items()))
         return self.replace(params=merged)
 
-    def with_basic_auth(self, credentials: t.Tuple[str, str]) -> 'Request':
-        """Create a new request with "basic" authentication
-
-        Parameters
-        ----------
-        credentials
-            the username-password pair
-        """
-        encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
-        return self.with_headers({'Authorization': 'Basic ' + encoded})
-
     def _asdict(self):
         return {a: getattr(self, a) for a in self.__slots__}
 
@@ -312,8 +301,23 @@ def asyncio_sender(req: Request) -> Awaitable(Response):
     )
 
 
-def _basic_authenticator(auth):
-    return methodcaller('with_basic_auth', auth)
+class BasicAuthenticator:
+    """Basic authentication method
+
+    Parameters
+    ----------
+    credentials
+        the username-password pair
+    """
+    __slots__ = 'headers'
+
+    def __init__(self, credentials: t.Tuple[str, str]):
+        encoded = b64encode(':'.join(credentials)
+                            .encode('ascii')).decode()
+        self.headers = {'Authorization': 'Basic ' + encoded}
+
+    def __call__(self, request: Request) -> Request:
+        return request.with_headers(self.headers)
 
 
 @singledispatch
@@ -428,7 +432,7 @@ def execute_async(query: Query[T], *,
 
 def executor(auth: T_auth=None, *,
              client=None,
-             auth_method: AuthenticatorFactory=_basic_authenticator) -> (
+             auth_method: AuthenticatorFactory=BasicAuthenticator) -> (
                  t.Callable[[Query[T]], T]):
     """Create an executor
 
@@ -451,7 +455,7 @@ def executor(auth: T_auth=None, *,
 def async_executor(
         auth: T_auth=None, *,
         client=None,
-        auth_method: AuthenticatorFactory=_basic_authenticator) -> (
+        auth_method: AuthenticatorFactory=BasicAuthenticator) -> (
             AsyncExecutor):
     """Create an ascynchronous executor
 
