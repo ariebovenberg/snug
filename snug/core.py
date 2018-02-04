@@ -378,7 +378,7 @@ OPTIONS = partial(Request, 'OPTIONS')
 OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
 
 
-def execute(query: Query[T], sender: Sender=urllib_sender) -> T:
+def execute(query: Query[T], *, sender: Sender=urllib_sender) -> T:
     """Execute a query, returning its result
 
     Parameters
@@ -399,7 +399,7 @@ def execute(query: Query[T], sender: Sender=urllib_sender) -> T:
 
 
 @asyncio.coroutine
-def execute_async(query: Query[T],
+def execute_async(query: Query[T], *,
                   sender: AsyncSender=asyncio_sender) -> Awaitable(T):
     """Execute a query asynchronously, returning its result
 
@@ -426,7 +426,7 @@ def execute_async(query: Query[T],
             return e.value
 
 
-def executor(auth: T_auth=None,
+def executor(auth: T_auth=None, *,
              client=None,
              auth_method: AuthenticatorFactory=_basic_authenticator) -> (
                  t.Callable[[Query[T]], T]):
@@ -449,7 +449,7 @@ def executor(auth: T_auth=None,
 
 
 def async_executor(
-        auth: T_auth=None,
+        auth: T_auth=None, *,
         client=None,
         auth_method: AuthenticatorFactory=_basic_authenticator) -> (
             AsyncExecutor):

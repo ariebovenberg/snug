@@ -33,7 +33,7 @@ def test_execute():
             response = yield redirect.split(':')[1]
             return response.decode('ascii')
 
-    assert snug.execute(MyQuery(), sender) == 'hello world'
+    assert snug.execute(MyQuery(), sender=sender) == 'hello world'
 
 
 class TestRequest:
