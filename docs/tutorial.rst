@@ -16,7 +16,7 @@ Let's start by creating a lookup query for repositories.
 
 .. literalinclude:: ../tutorial/hello_query.py
 
-We can see from the example that a query:
+We can see from the example that a :class:`~snug.core.Query`:
 
 * yields :class:`Requests<snug.core.Request>`
 * recieves :class:`Responses<snug.core.Response>`
@@ -26,7 +26,7 @@ We can see from the example that a query:
 
    You can ignore the type annotations if you like, they are not required.
 
-We can now import our module, and execture the query as follows:
+We can now import our module, and execute the query as follows:
 
 .. code-block:: python3
 
@@ -34,6 +34,13 @@ We can now import our module, and execture the query as follows:
    >>> query = ghub.repo('Hello-World', owner='octocat')
    >>> repo = snug.execute(query)
    {"description": "My first repository on Github!", ...}
+
+Inside a coroutine, we can execute the same query asynchronously:
+
+.. code-block:: python3
+
+   query = ghub.repo('Hello-World', owner='octocat')
+   repo = await snug.execute_async(query)
 
 Expressing queries as generators has two main advantages:
 
@@ -44,8 +51,8 @@ Expressing queries as generators has two main advantages:
 
 We will explore these features in the following sections.
 
-What's in a query?
-------------------
+Class-based queries
+-------------------
 
 Any object whose :meth:`~object.__iter__` returns a generator
 may be considered a :class:`~snug.core.Query`.
@@ -62,8 +69,8 @@ to our previously defined ``repo``.
 
       def __iter__(self):
           owner, name = self.owner, self.name
-          request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
-          response = yield request
+          req = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
+          response = yield req
           return json.loads(response.content)
 
 The main difference is that the class-based version is reusable:
@@ -73,10 +80,13 @@ The main difference is that the class-based version is reusable:
 >>> # not possible if `repo` was just a generator function
 >>> snug.execute(lookup)
 
+Additionally, class-based queries allow us
+to define :ref:`nested queries<nested>`.
+
 .. Note::
 
   You can use :func:`~gentools.core.reusable`
-  (from the `gentools <https://github.com/ariebovenberg/gentools>`_ package)
+  (from the `gentools <http://gentools.readthedocs.io/>`_ package)
   to create reusable classes from generator functions automatically:
 
   .. code-block:: python3
@@ -89,8 +99,8 @@ The main difference is that the class-based version is reusable:
 
 .. _executors:
 
-Ways to execute your query
---------------------------
+Executing queries
+-----------------
 
 Queries can be executed by different executors.
 Executors are callables which take a query
@@ -147,7 +157,7 @@ In our github API example, we may wish to define common logic for:
 * following redirects
 
 We can use a function-based approach with
-`gentools <https://github.com/ariebovenberg/gentools>`_,
+`gentools`_,
 or a class-based approach by subclassing :class:`~snug.core.Query`.
 We'll explore the functional style first.
 
@@ -204,6 +214,7 @@ Below is a roughly equivalent, object-oriented approach:
 
 .. literalinclude:: ../tutorial/composed_oop.py
 
+.. _nested:
 
 Related queries
 ---------------
@@ -232,3 +243,32 @@ The related queries allow us to write:
    Issue(...)
    >>> execute(star_repo)
    True
+
+
+Authentication methods
+----------------------
+
+The default authentication method is HTTP Basic authentication.
+To use another type of authentication,
+use the ``auth_method`` argument
+of :func:`~snug.core.executor`/:func:`~snug.core.async_executor`.
+
+``auth_method`` will be called with credentials (the ``auth`` parameter),
+and its result will be called with a :class:`~snug.core.Request` to authenticate.
+
+Here is a simple example for token-based authentication:
+
+.. code-block:: python3
+
+   class TokenAuth:
+       def __init__(self, token):
+           self.token = token
+
+       def __call__(self, request):
+           return request.with_headers({
+               'Authorization': f'token {self.token}'
+           })
+
+   exec = snug.executor(auth='my token', auth_method=TokenAuth)
+
+See the slack API example for a real-world use-case.
