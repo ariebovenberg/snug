@@ -94,15 +94,14 @@ html_theme_options = {
     'code_font_size': '0.8em',
     'travis_button': True,
     'pre_bg': '#FFF6E5',
-    'note_bg': '#E5EEFF',
-    'note_border': '#E5EEFF',
+    'note_bg': '#DAF2ED',
+    'note_border': '#DAF2ED',
     'warn_bg': '#FFE8E8',
     'warn_border': '#FFE8E8',
 }
 
 html_sidebars = {
-    '**': ['about.html',
-           'localtoc.html', 'relations.html', 'searchbox.html']
+    '**': ['about.html', 'navigation.html', 'searchbox.html']
 }
 
 
