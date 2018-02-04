@@ -232,11 +232,11 @@ class related:
         return self._cls if obj is None else MethodType(self._cls, obj)
 
 
-Sender = t.Callable[[Request], Response]
-AsyncSender = t.Callable[[Request], Awaitable(Response)]
-Executor = t.Callable[[Query[T]], T]
-AsyncExecutor = t.Callable[[Query[T]], Awaitable(T)]
-AuthenticatorFactory = t.Callable[[T_auth], t.Callable[[Request], Request]]
+_Sender = t.Callable[[Request], Response]
+_AsyncSender = t.Callable[[Request], Awaitable(Response)]
+_Executor = t.Callable[[Query[T]], T]
+_AsyncExecutor = t.Callable[[Query[T]], Awaitable(T)]
+_AuthMethod = t.Callable[[T_auth], t.Callable[[Request], Request]]
 
 
 def urllib_sender(req: Request, **kwargs) -> Response:
@@ -260,7 +260,7 @@ def urllib_sender(req: Request, **kwargs) -> Response:
     )
 
 
-class _SocketAdapter:
+class _SocketAdaptor:
     def __init__(self, io):
         self._file = io
 
@@ -292,7 +292,7 @@ def asyncio_sender(req: Request) -> Awaitable(Response):
         response_bytes = BytesIO((yield from reader.read()))
     finally:
         writer.close()
-    raw_response = HTTPResponse(_SocketAdapter(response_bytes))
+    raw_response = HTTPResponse(_SocketAdaptor(response_bytes))
     raw_response.begin()
     return Response(
         raw_response.getcode(),
@@ -307,7 +307,7 @@ class BasicAuthenticator:
     Parameters
     ----------
     credentials
-        the username-password pair
+        the (username, password) pair
     """
     __slots__ = 'headers'
 
@@ -321,7 +321,7 @@ class BasicAuthenticator:
 
 
 @singledispatch
-def make_sender(client) -> Sender:
+def make_sender(client) -> _Sender:
     """Create a sender for the given client.
     A :func:`~functools.singledispatch` function.
 
@@ -339,7 +339,7 @@ def make_sender(client) -> Sender:
 
 
 @singledispatch
-def make_async_sender(client) -> AsyncSender:
+def make_async_sender(client) -> _AsyncSender:
     """Create an asynchronous sender from the given client.
     A :func:`~functools.singledispatch` function.
 
@@ -357,32 +357,7 @@ def make_async_sender(client) -> AsyncSender:
         'no async sender factory registered for {!r}'.format(client))
 
 
-# useful shortcuts
-prefix_adder = partial(methodcaller, 'with_prefix')
-prefix_adder.__doc__ = """
-make a callable which adds a prefix to a request url
-"""
-header_adder = partial(methodcaller, 'with_headers')
-header_adder.__doc__ = """
-make a callable which adds headers to a request
-"""
-GET = partial(Request, 'GET')
-GET.__doc__ = """shortcut for a GET request"""
-POST = partial(Request, 'POST')
-POST.__doc__ = """shortcut for a POST request"""
-PUT = partial(Request, 'PUT')
-PUT.__doc__ = """shortcut for a PUT request"""
-PATCH = partial(Request, 'PATCH')
-PATCH.__doc__ = """shortcut for a PATCH request"""
-DELETE = partial(Request, 'DELETE')
-DELETE.__doc__ = """shortcut for a DELETE request"""
-HEAD = partial(Request, 'HEAD')
-HEAD.__doc__ = """shortcut for a HEAD request"""
-OPTIONS = partial(Request, 'OPTIONS')
-OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
-
-
-def execute(query: Query[T], *, sender: Sender=urllib_sender) -> T:
+def execute(query: Query[T], *, sender: _Sender=urllib_sender) -> T:
     """Execute a query, returning its result
 
     Parameters
@@ -404,7 +379,7 @@ def execute(query: Query[T], *, sender: Sender=urllib_sender) -> T:
 
 @asyncio.coroutine
 def execute_async(query: Query[T], *,
-                  sender: AsyncSender=asyncio_sender) -> Awaitable(T):
+                  sender: _AsyncSender=asyncio_sender) -> Awaitable(T):
     """Execute a query asynchronously, returning its result
 
     Parameters
@@ -432,8 +407,7 @@ def execute_async(query: Query[T], *,
 
 def executor(auth: T_auth=None, *,
              client=None,
-             auth_method: AuthenticatorFactory=BasicAuthenticator) -> (
-                 t.Callable[[Query[T]], T]):
+             auth_method: _AuthMethod=BasicAuthenticator) -> _Executor:
     """Create an executor
 
     Parameters
@@ -455,8 +429,7 @@ def executor(auth: T_auth=None, *,
 def async_executor(
         auth: T_auth=None, *,
         client=None,
-        auth_method: AuthenticatorFactory=BasicAuthenticator) -> (
-            AsyncExecutor):
+        auth_method: _AuthMethod=BasicAuthenticator) -> _AsyncExecutor:
     """Create an ascynchronous executor
 
     Parameters
@@ -475,21 +448,39 @@ def async_executor(
     return partial(execute_async, sender=compose(_sender, authenticator))
 
 
+prefix_adder = partial(methodcaller, 'with_prefix')
+prefix_adder.__doc__ = """
+make a callable which adds a prefix to a request url
+"""
+header_adder = partial(methodcaller, 'with_headers')
+header_adder.__doc__ = """
+make a callable which adds headers to a request
+"""
+GET = partial(Request, 'GET')
+GET.__doc__ = """shortcut for a GET request"""
+POST = partial(Request, 'POST')
+POST.__doc__ = """shortcut for a POST request"""
+PUT = partial(Request, 'PUT')
+PUT.__doc__ = """shortcut for a PUT request"""
+PATCH = partial(Request, 'PATCH')
+PATCH.__doc__ = """shortcut for a PATCH request"""
+DELETE = partial(Request, 'DELETE')
+DELETE.__doc__ = """shortcut for a DELETE request"""
+HEAD = partial(Request, 'HEAD')
+HEAD.__doc__ = """shortcut for a HEAD request"""
+OPTIONS = partial(Request, 'OPTIONS')
+OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
+
+
 try:
     import aiohttp
 except ImportError:  # pragma: no cover
     pass
 else:
     @make_async_sender.register(aiohttp.ClientSession)
-    def _aiohttp_sender(session: aiohttp.ClientSession):
+    def _aiohttp_sender(session: aiohttp.ClientSession) -> _AsyncSender:
         """Create an asynchronous sender
-        for an `aiohttp` client session
-
-        Parameters
-        ----------
-        session
-            the aiohttp session
-        """
+        for an `aiohttp` client session"""
         @asyncio.coroutine
         def _aiohttp_sender(req):
             response = yield from session.request(req.method, req.url,
@@ -517,20 +508,8 @@ except ImportError:  # pragma: no cover
     pass
 else:
     @make_sender.register(requests.Session)
-    def _requests_sender(session: requests.Session):
-        """Create a sender for a :class:`requests.Session`
-
-        Parameters
-        ----------
-        session
-            a requests session
-
-        Returns
-        -------
-        Sender
-            a request sender
-        """
-
+    def _requests_sender(session: requests.Session) -> _Sender:
+        """Create a sender for a :class:`requests.Session`"""
         def _req_send(req: Request) -> Response:
             response = session.request(req.method, req.url,
                                        params=req.params,
@@ -540,5 +519,4 @@ else:
                 response.content,
                 headers=response.headers,
             )
-
         return _req_send
