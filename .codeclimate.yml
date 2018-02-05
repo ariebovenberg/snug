@@ -2,3 +2,4 @@ exclude_patterns:
 - "examples/"
 - "tests/"
 - "tutorial/"
+- "docs/"
