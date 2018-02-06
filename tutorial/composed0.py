@@ -12,7 +12,7 @@ add_headers = snug.header_adder({
 @map_yield(add_headers, add_prefix, snug.GET)
 def repo(name: str, owner: str) -> snug.Query[dict]:
     """a repository lookup by owner and name"""
-    return json.loads((yield f'/repos/{owner}/{name}').data)
+    return json.loads((yield f'/repos/{owner}/{name}').content)
 
 @reusable
 @map_yield(add_headers, add_prefix, snug.PUT)

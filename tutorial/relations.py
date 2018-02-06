@@ -19,13 +19,13 @@ class ApiException(Exception):
 def handle_errors(resp):
     """raise a descriptive exception on a "bad request" response"""
     if resp.status_code == 400:
-        raise ApiException(json.loads(resp.data).get('message'))
+        raise ApiException(json.loads(resp.content).get('message'))
     return resp
 
 @map_send
 def loads_json_content(resp):
     """get the response body as JSON"""
-    return json.loads(resp.data)
+    return json.loads(resp.content)
 
 def follow_redirects(req):
     resp = yield req

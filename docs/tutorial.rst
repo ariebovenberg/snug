@@ -171,8 +171,8 @@ Outgoing requests of a query can be modified with
 the :class:`~gentools.core.map_yield` decorator.
 
 .. literalinclude:: ../tutorial/composed0.py
-   :lines: 3-4,11-21
-   :emphasize-lines: 4,10
+   :lines: 3-21
+   :emphasize-lines: 10,16
 
 Parsing responses
 ^^^^^^^^^^^^^^^^^
@@ -190,6 +190,8 @@ Relaying queries
 For advanced cases, each requests/response interaction of a query
 can be relayed through another generator.
 This can be done with the :class:`~gentools.core.relay` decorator.
+This can be useful if response handling is dependent on the request,
+or more complex control flow.
 The following example shows how this can be used to implement redirects.
 
 .. literalinclude:: ../tutorial/composed3.py
@@ -256,7 +258,7 @@ of :func:`~snug.core.executor`/:func:`~snug.core.async_executor`.
 ``auth_method`` will be called with credentials (the ``auth`` parameter),
 and its result will be called with a :class:`~snug.core.Request` to authenticate.
 
-Here is a simple example for token-based authentication:
+To illutrate, here is a simple example for token-based authentication:
 
 .. code-block:: python3
 
