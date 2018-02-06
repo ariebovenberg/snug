@@ -91,8 +91,9 @@ class repo(snug.Query[types.Repo]):
                 'state':  state,
             })
 
+    @snug.related
     @dataclass
-    class issue(snug.Relation[types.Issue]):
+    class issue(snug.Query[types.Issue]):
         """get a specific issue in the repo"""
         repo: 'repo'
         number: int

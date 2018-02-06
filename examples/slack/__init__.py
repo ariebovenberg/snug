@@ -19,8 +19,8 @@ class TokenAuth:
         })
 
 
-executor = partial(snug.executor, auth_factory=TokenAuth)
-async_executor = partial(snug.async_executor, auth_factory=TokenAuth)
+executor = partial(snug.executor, auth_method=TokenAuth)
+async_executor = partial(snug.async_executor, auth_method=TokenAuth)
 
 execute = executor()
 execute_async = async_executor()
