@@ -23,7 +23,7 @@ This example illustrates:
 
 - REST API
 - loading JSON data
-- decorator composition
+- class-based query composition
 - nested queries
 
 NS (dutch railways) API

@@ -1,18 +1,18 @@
 """the main API"""
+import abc
 import json
 import reprlib
 import typing as t
 from datetime import datetime
 from functools import singledispatch
-from operator import attrgetter, methodcaller
+from operator import methodcaller
 
 from dataclasses import dataclass
-from gentools import (compose, map_return, map_send, map_yield, oneyield,
-                      reusable)
 
 import snug
 
-from . import types
+from .types import (Repo, Issue, RepoSummary, Organization,
+                    OrganizationSummary, User)
 from .load import registry
 
 API_PREFIX = 'https://api.github.com/'
@@ -42,161 +42,209 @@ def prepare_params(request):
                 if val is not None})
 
 
-def check_errors(response):
-    if response.status_code == 400:
-        try:
-            msg = json.loads(response.content)['message']
-        except (KeyError, ValueError):
-            msg = ''
-        raise ApiError(msg)
-    return response
+T = t.TypeVar('T')
 
 
-basic_interaction = compose(
-    map_yield(prepare_params,
-              snug.prefix_adder(API_PREFIX),
-              snug.header_adder(HEADERS)),
-    map_send(check_errors),
-)
+class BaseQuery(snug.Query[T]):
+    """Base query functionality"""
+
+    @staticmethod
+    def prepare(request):
+        return prepare_params(
+            request
+            .with_prefix(API_PREFIX)
+            .with_headers(HEADERS))
+
+    def __iter__(self):
+        response = yield self.prepare(self.request)
+        return self.parse(response)
+
+    @staticmethod
+    def parse(response):
+        """check for errors"""
+        if response.status_code == 400:
+            try:
+                msg = json.loads(response.content)['message']
+            except (KeyError, ValueError):
+                msg = ''
+            raise ApiError(msg)
+        return response
 
 
-def retrieves(rtype):
-    """decorator factory for simple retrieval queries"""
-    return compose(basic_interaction,
-                   map_return(registry(rtype)),
-                   map_send(json.loads, attrgetter('content')),
-                   oneyield)
+class Retrieval(BaseQuery[T]):
+    """base for retrieval queries"""
+    @abc.abstractproperty
+    def type(self): pass
+
+    def parse(self, response):
+        parsed = super().parse(response)
+        loader = registry(self.type)
+        return loader(json.loads(parsed.content))
 
 
 @dataclass
-class repo(snug.Query[types.Repo]):
+class repo(Retrieval):
     """repository lookup by owner & name"""
+    type = Repo
     name:  str
     owner: str
 
-    @retrieves(types.Repo)
-    def __iter__(self):
+    @property
+    def request(self):
         return snug.GET(f'repos/{self.owner}/{self.name}')
-
-    @reusable
-    @retrieves(t.List[types.Issue])
-    def issues(repo: 'repo',
-               labels: t.Optional[str]=None,
-               state:  t.Optional[str]=None):
-        """get the issues for this repo"""
-        return snug.GET(
-            f'repos/{repo.owner}/{repo.name}/issues',
-            params={
-                'labels': labels,
-                'state':  state,
-            })
 
     @snug.related
     @dataclass
-    class issue(snug.Query[types.Issue]):
+    class issues(Retrieval):
+        """get the issues for this repo"""
+        type = t.List[Issue]
+        repo:   'repo'
+        labels: t.Optional[str] = None
+        state:  t.Optional[str] = None
+
+        @property
+        def request(self):
+            return snug.GET(
+                f'repos/{self.repo.owner}/{self.repo.name}/issues',
+                params={'labels': self.labels, 'state':  self.state})
+
+    @snug.related
+    @dataclass
+    class issue(Retrieval):
         """get a specific issue in the repo"""
+        type = Issue
         repo: 'repo'
         number: int
 
-        @retrieves(types.Issue)
-        def __iter__(self):
+        @property
+        def request(self):
             return snug.GET(
                 f'repos/{self.repo.owner}/'
                 f'{self.repo.name}/issues/{self.number}')
 
-        @reusable
-        @retrieves(t.List[types.Issue.Comment])
-        def comments(issue, since=None):
+        @snug.related
+        @dataclass
+        class comments(Retrieval):
             """retrieve comments for this issue"""
-            return snug.GET(
-                f'repos/{issue.repo.owner}/{issue.repo.name}/'
-                f'issues/{issue.number}/comments',
-                params={'since': since})
+            type = t.List[Issue.Comment]
+            issue: 'issue'
+            since: t.Optional[datetime] = None
 
-
-@reusable
-@retrieves(t.List[types.RepoSummary])
-def repos():
-    """recent repositories"""
-    return snug.GET('repositories')
-
-
-@reusable
-@retrieves(types.Organization)
-def org(login: str):
-    """Organization lookup by login"""
-    return snug.GET(f'orgs/{login}')
-
-
-@reusable
-@retrieves(t.List[types.OrganizationSummary])
-def orgs():
-    """a selection of organizations"""
-    return snug.GET('organizations')
-
-
-@reusable
-@retrieves(t.List[types.Issue])
-def issues(filter: t.Optional[str]=None,
-           state:  t.Optional[types.Issue.State]=None,
-           labels: t.Optional[str]=None,
-           sort:   t.Optional[types.Issue.Sort]=None,
-           since:  t.Optional[datetime]=None):
-    """a selection of assigned issues"""
-    return snug.GET('issues', params={
-        'filter': filter,
-        'state':  state,
-        'labels': labels,
-        'sort':   sort,
-        'since':  since,
-    })
+            @property
+            def request(self):
+                return snug.GET(
+                    f'repos/{self.issue.repo.owner}/{self.issue.repo.name}/'
+                    f'issues/{self.issue.number}/comments',
+                    params={'since': self.since})
 
 
 @dataclass
-class current_user(snug.Query[types.User]):
+class repos(Retrieval):
+    """list of repositories"""
+    type = t.List[RepoSummary]
+    request = snug.GET('repositories')
+
+
+@dataclass
+class org(Retrieval):
+    """Organization lookup by login"""
+    type = Organization
+    login: str
+
+    @property
+    def request(self):
+        return snug.GET(f'orgs/{self.login}')
+
+
+@dataclass
+class orgs(Retrieval):
+    """a selection of organizations"""
+    type = t.List[OrganizationSummary]
+    request = snug.GET('organizations')
+
+
+@dataclass
+class issues(Retrieval):
+    """a selection of assigned issues"""
+    type = t.List[Issue]
+    filter: t.Optional[str] = None
+    state:  t.Optional[Issue.State] = None
+    labels: t.Optional[str] = None
+    sort:   t.Optional[Issue.Sort] = None
+    since:  t.Optional[datetime] = None
+
+    @property
+    def request(self):
+        return snug.GET('issues', params={
+            'filter': self.filter,
+            'state':  self.state,
+            'labels': self.labels,
+            'sort':   self.sort,
+            'since':  self.since,
+        })
+
+
+@dataclass
+class current_user(Retrieval):
     """a reference to the current user"""
+    type = User
+    request = snug.GET('user')
 
-    @retrieves(types.User)
-    def __iter__(self):
-        return snug.GET('user')
-
-    @staticmethod
-    @reusable
-    @retrieves(t.List[types.Issue])
-    def issues():
-        return snug.GET('user/issues')
+    @dataclass
+    class issues(Retrieval):
+        type = t.List[Issue]
+        request = snug.GET('user/issues')
 
 
 CURRENT_USER = current_user()
 
 
 @dataclass
-class user(snug.Query[types.User]):
+class user(Retrieval):
     """retrieve a user by username"""
+    type = User
     username: str
 
-    @retrieves(types.User)
-    def __iter__(self):
+    @property
+    def request(self):
         return snug.GET(f'users/{self.username}')
 
-    @reusable
-    @basic_interaction
-    def follow(self):
+    @snug.related
+    @dataclass
+    class follow(BaseQuery):
         """follow this user"""
-        response = yield snug.PUT(f'user/following/{self.username}',
-                                  headers={'Content-Length': '0'})
-        return response.status_code == 204
+        user: 'user'
 
-    @reusable
-    @basic_interaction
-    def following(self):
+        @property
+        def request(self):
+            return snug.PUT(f'user/following/{self.user.username}',
+                            headers={'Content-Length': '0'})
+
+        def parse(self, response):
+            return response.status_code == 204
+
+    @snug.related
+    @dataclass
+    class following(BaseQuery):
         """check if following this user"""
-        response = yield snug.GET(f'user/following/{self.username}')
-        return response.status_code == 204
+        user: 'user'
 
-    @reusable
-    @basic_interaction
-    def unfollow(self):
+        @property
+        def request(self):
+            return snug.GET(f'user/following/{self.user.username}')
+
+        def parse(self, response):
+            return response.status_code == 204
+
+    @snug.related
+    @dataclass
+    class unfollow(BaseQuery):
         """unfollow this user"""
-        response = yield snug.DELETE(f'user/following/{self.username}')
-        return response.status_code == 204
+        user: 'user'
+
+        @property
+        def request(self):
+            return snug.DELETE(f'user/following/{self.user.username}')
+
+        def parse(self, response):
+            return response.status_code == 204
