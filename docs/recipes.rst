@@ -81,8 +81,11 @@ which uses cursor-based pagination.
 .. code-block:: python3
 
    class Page:
-       def __init__(self, objects, next_cursor):
-           self.objects, self.next_cursor = objects, next_cursor
+       def __init__(self, objects, next):
+           self.objects, self.next = objects, next
+
+       def __iter__(self):
+           yield from self.objects
 
    def list_channels(cursor=None) -> snug.Query[Page]:
        """list slack channels"""
@@ -107,4 +110,75 @@ The query is then usable as:
    >>> list(page2)
    [{"name": ...}, ...]
    >>> exec(page2.next)
+  [{"name": ...}, ...]
+
+An alternative is to evaluate all pages in one query.
+Note that this will fetch **all** results eagerly, so use with care.
+
+.. code-block:: python3
+
+   def all_channels():
+       """get all slack channels"""
+       request = snug.GET(f'https://slack.com/api/channels.list',
+                          params={'cursor': cursor} if cursor else {})
+       response = yield request
+       raw_obj = json.loads(response.content)
+       channels = raw_obj['channels']
+       next_cursor = raw_obj['response_metadata']['next_cursor']
+
+       while next_cursor:
+           request = snug.GET(f'https://slack.com/api/channels.list',
+                              params={'cursor': next_cursor})
+           response = yield request
+           raw_obj = json.loads(response.content)
+           channels.extend(raw_obj['channels'])
+           next_cursor = raw_obj['response_metadata']['next_cursor']
+
+       return channels
+
+We can then query for all results:
+
+   >>> exec = snug.executor(auth=...)
+   >>> exec(all_channels())
    [{"name": ...}, ...]
+
+
+Testing
+-------
+
+Because queries are generators, we can easily write unittests
+that don't touch the network.
+
+Here is an annotated example of testing the example gitub ``repo`` query:
+
+.. code-block:: python3
+
+   from gentools import sendreturn
+
+   def test_repo():
+       # iter() ensures this works for function- and class-based queries
+       query = iter(repo('Hello-World', owner='octocat'))
+
+       # check the request is OK
+       request = next(query)
+       assert request.url.endswith('repos/octocat/Hello-World')
+
+       # construct our test response
+       response = snug.Response(200, b'...<test response content>...')
+
+       # getting the return value of a generator requires
+       # catching StopIteration.
+       # the following shortcut with `sendreturn` is equivalent to:
+       #
+       # try:
+       #     query.send(response)
+       # except StopIteration as e:
+       #     result = e.value
+       # else:
+       #     raise RuntimeError('generator did not return')
+       result = sendreturn(query, response)
+
+       # check the result is OK
+       assert result['description'] == 'My first repository on github!'
+
+The slack and NS API tests show real-world cases for this.
