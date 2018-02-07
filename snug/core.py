@@ -37,15 +37,15 @@ __all__ = [
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
-TextMapping = t.Mapping[str, str]
-Awaitable = (t.Awaitable.__getitem__  # pragma: no cover
-             if sys.version_info > (3, 5)
-             else lambda x: t.Generator[t.Any, t.Any, x])
+_TextMapping = t.Mapping[str, str]
+_Awaitable = (t.Awaitable.__getitem__  # pragma: no cover
+              if sys.version_info > (3, 5)
+              else lambda x: t.Generator[t.Any, t.Any, x])
 _ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
 
 
 class Request:
-    """A simple HTTP request
+    """A simple HTTP request.
 
     Parameters
     ----------
@@ -64,15 +64,15 @@ class Request:
     __hash__ = None
 
     def __init__(self, method: str, url: str, content: bytes=None, *,
-                 params: TextMapping=EMPTY_MAPPING,
-                 headers: TextMapping=EMPTY_MAPPING):
+                 params: _TextMapping=EMPTY_MAPPING,
+                 headers: _TextMapping=EMPTY_MAPPING):
         self.method = method
         self.url = url
         self.content = content
         self.params = params
         self.headers = headers
 
-    def with_headers(self, headers: TextMapping) -> 'Request':
+    def with_headers(self, headers: _TextMapping) -> 'Request':
         """Create a new request with added headers
 
         Parameters
@@ -93,7 +93,7 @@ class Request:
         """
         return self.replace(url=prefix + self.url)
 
-    def with_params(self, params: TextMapping) -> 'Request':
+    def with_params(self, params: _TextMapping) -> 'Request':
         """Create a new request with added params
 
         Parameters
@@ -108,11 +108,13 @@ class Request:
         return {a: getattr(self, a) for a in self.__slots__}
 
     def __eq__(self, other):
+        """check for equality with another request"""
         if isinstance(other, Request):
             return self._asdict() == other._asdict()
         return NotImplemented
 
     def __ne__(self, other):
+        """check for inequality with another request"""
         if isinstance(other, Request):
             return self._asdict() != other._asdict()
         return NotImplemented
@@ -150,7 +152,7 @@ class Response:
     __hash__ = None
 
     def __init__(self, status_code: int, content: bytes=None, *,
-                 headers: TextMapping=EMPTY_MAPPING):
+                 headers: _TextMapping=EMPTY_MAPPING):
         self.status_code = status_code
         self.content = content
         self.headers = headers
@@ -159,11 +161,13 @@ class Response:
         return {a: getattr(self, a) for a in self.__slots__}
 
     def __eq__(self, other):
+        """check for equality with another response"""
         if isinstance(other, Response):
             return self._asdict() == other._asdict()
         return NotImplemented
 
     def __ne__(self, other):
+        """check for inequality with another response"""
         if isinstance(other, Response):
             return self._asdict() != other._asdict()
         return NotImplemented
@@ -187,18 +191,25 @@ class Response:
 
 class Query(t.Generic[T], t.Iterable[Request]):
     """Abstract base class for query-like objects.
-    Any object where :meth:`~object.__iter__`
+    Any object whose :meth:`~object.__iter__`
     returns a :class:`Request`/:class:`Response` generator implements it.
 
     Note
     ----
     :term:`Generator iterator`\\s themselves also implement this interface
     (i.e. :meth:`~object.__iter__` returns the generator itself).
-    """
 
+    Note
+    ----
+    Query is a :class:`~typing.Generic`.
+    This means you may write ``Query[<returntype>]``
+    as a descriptive type annotation.
+
+    For example: ``Query[bool]`` indicates a query which returns a boolean.
+    """
     @abc.abstractmethod
     def __iter__(self) -> t.Generator[Request, Response, T]:
-        """a generator which resolves the query"""
+        """A generator iterator which resolves the query"""
         raise NotImplementedError()
 
 
@@ -231,9 +242,9 @@ class related:
 
 
 _Sender = t.Callable[[Request], Response]
-_AsyncSender = t.Callable[[Request], Awaitable(Response)]
+_AsyncSender = t.Callable[[Request], _Awaitable(Response)]
 _Executor = t.Callable[[Query[T]], T]
-_AsyncExecutor = t.Callable[[Query[T]], Awaitable(T)]
+_AExecutor = t.Callable[[Query[T]], _Awaitable(T)]
 _AuthMethod = t.Callable[[T_auth], t.Callable[[Request], Request]]
 
 
@@ -267,7 +278,7 @@ class _SocketAdaptor:
 
 
 @asyncio.coroutine
-def asyncio_sender(req: Request) -> Awaitable(Response):
+def asyncio_sender(req: Request) -> _Awaitable(Response):
     """A rudimentary HTTP client using :mod:`asyncio`"""
     if 'User-Agent' not in req.headers:
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
@@ -377,7 +388,7 @@ def execute(query: Query[T], *, sender: _Sender=urllib_sender) -> T:
 
 @asyncio.coroutine
 def execute_async(query: Query[T], *,
-                  sender: _AsyncSender=asyncio_sender) -> Awaitable(T):
+                  sender: _AsyncSender=asyncio_sender) -> _Awaitable(T):
     """Execute a query asynchronously, returning its result
 
     Parameters
@@ -403,7 +414,7 @@ def execute_async(query: Query[T], *,
             return e.value
 
 
-def executor(auth: T_auth=None, *,
+def executor(*, auth: T_auth=None,
              client=None,
              auth_method: _AuthMethod=BasicAuthenticator) -> _Executor:
     """Create an executor
@@ -424,10 +435,9 @@ def executor(auth: T_auth=None, *,
     return partial(execute, sender=compose(_sender, authenticator))
 
 
-def async_executor(
-        auth: T_auth=None, *,
-        client=None,
-        auth_method: _AuthMethod=BasicAuthenticator) -> _AsyncExecutor:
+def async_executor(*, auth: T_auth=None,
+                   client=None,
+                   auth_method: _AuthMethod=BasicAuthenticator) -> _AExecutor:
     """Create an ascynchronous executor
 
     Parameters

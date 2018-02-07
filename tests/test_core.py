@@ -163,7 +163,7 @@ class TestExecutor:
 
     def test_auth_default(self):
         client = MockClient(snug.Response(204))
-        exec = snug.executor(('user', 'pw'), client=client)
+        exec = snug.executor(auth=('user', 'pw'), client=client)
 
         def myquery():
             return (yield snug.GET('my/url'))
@@ -356,7 +356,7 @@ class TestAsyncExecutor:
                     'Authorization': 'Bearer {}'.format(self.token)
                 })
 
-        exec = snug.async_executor('foo',
+        exec = snug.async_executor(auth='foo',
                                    client=client,
                                    auth_method=TokenAuth)
 
