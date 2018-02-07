@@ -26,8 +26,6 @@ __all__ = [
     'prefix_adder',
     'make_sender',
     'make_async_sender',
-    'asyncio_sender',
-    'urllib_sender',
     'GET',
     'POST',
     'PUT',
