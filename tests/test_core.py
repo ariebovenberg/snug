@@ -59,7 +59,7 @@ def test_execute():
             response = yield redirect.split(':')[1]
             return response.decode('ascii')
 
-    assert snug.execute(MyQuery(), sender=sender) == 'hello world'
+    assert snug.execute(MyQuery(), _sender=sender) == 'hello world'
 
 
 class TestRequest:
@@ -298,7 +298,7 @@ def test_execute_async(loop):
         return response.upper()
 
     query = myquery()
-    result = loop.run_until_complete(snug.execute_async(query, sender=sender))
+    result = loop.run_until_complete(snug.execute_async(query, _sender=sender))
     assert result == 'HELLO WORLD'
 
 
@@ -332,7 +332,7 @@ class TestAsyncExecutor:
 
     def test_defaults_to_asyncio_sender(self):
         exec = snug.async_executor()
-        assert exec.keywords['sender'].funcs[0] is snug.core.asyncio_sender
+        assert exec.keywords['_sender'].funcs[0] is snug.core.asyncio_sender
 
     def test_custom_client(self, loop):
         client = MockAsyncClient(snug.Response(204))

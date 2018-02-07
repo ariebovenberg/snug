@@ -366,20 +366,20 @@ def make_async_sender(client) -> _AsyncSender:
         'no async sender factory registered for {!r}'.format(client))
 
 
-def execute(query: Query[T], *, sender: _Sender=urllib_sender) -> T:
+def execute(query: Query[T], *, _sender: _Sender=urllib_sender) -> T:
     """Execute a query, returning its result
 
     Parameters
     ----------
     query
         the query to resolve
-    sender
+    _sender
         the callable used to send requests, returning responses
     """
     gen = iter(query)
     request = next(gen)
     while True:
-        response = sender(request)
+        response = _sender(request)
         try:
             request = gen.send(response)
         except StopIteration as e:
@@ -388,14 +388,14 @@ def execute(query: Query[T], *, sender: _Sender=urllib_sender) -> T:
 
 @asyncio.coroutine
 def execute_async(query: Query[T], *,
-                  sender: _AsyncSender=asyncio_sender) -> _Awaitable(T):
+                  _sender: _AsyncSender=asyncio_sender) -> _Awaitable(T):
     """Execute a query asynchronously, returning its result
 
     Parameters
     ----------
     query
         the query to resolve
-    sender
+    _sender
         the callable used to send requests, returning responses
 
     Note
@@ -407,7 +407,7 @@ def execute_async(query: Query[T], *,
     gen = iter(query)
     request = next(gen)
     while True:
-        response = yield from sender(request)
+        response = yield from _sender(request)
         try:
             request = gen.send(response)
         except StopIteration as e:
@@ -432,7 +432,7 @@ def executor(*, auth: T_auth=None,
     """
     _sender = urllib_sender if client is None else make_sender(client)
     authenticator = identity if auth is None else auth_method(auth)
-    return partial(execute, sender=compose(_sender, authenticator))
+    return partial(execute, _sender=compose(_sender, authenticator))
 
 
 def async_executor(*, auth: T_auth=None,
@@ -453,7 +453,7 @@ def async_executor(*, auth: T_auth=None,
     """
     _sender = asyncio_sender if client is None else make_async_sender(client)
     authenticator = identity if auth is None else auth_method(auth)
-    return partial(execute_async, sender=compose(_sender, authenticator))
+    return partial(execute_async, _sender=compose(_sender, authenticator))
 
 
 prefix_adder = partial(methodcaller, 'with_prefix')
