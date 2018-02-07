@@ -11,7 +11,7 @@ LIVE = pytest.config.getoption('--live')
 
 
 @pytest.fixture
-def loop():
+def loop(scope='module'):
     return asyncio.get_event_loop()
 
 
