@@ -52,7 +52,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'snug'
+project = 'Snug'
 copyright = snug.__copyright__
 author = snug.__author__
 
