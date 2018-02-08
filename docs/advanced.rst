@@ -1,10 +1,27 @@
-.. _advanced:
-
 Advanced topics
 ===============
 
 This sections continues where the :ref:`tutorial <tutorial>` left off,
 describing more advanced functionality.
+
+Executors
+---------
+
+To make it easier to call :func:`~snug.core.execute`/:func:`~snug.core.execute_async`
+repeatedly with specific arguments,
+the :func:`~snug.core.executor`/:func:`~snug.core.async_executor`
+shortcut can be used.
+
+.. code-block:: python3
+
+   import requests
+   exec = snug.executor(auth=('me', 'password'),
+                        client=requests.Session())
+   exec(some_query)
+   exec(other_query)
+
+   # we can still override arguments
+   exec(another_query, auth=('bob', 'hunter2'))
 
 .. _composing:
 
@@ -12,7 +29,7 @@ Composing queries
 -----------------
 
 To keep everything nice and modular, queries may be composed and extended.
-In our github API example, we may wish to define common logic for:
+In the github API example, we may wish to define common logic for:
 
 * prefixing urls with ``https://api.github.com``
 * setting the required headers
@@ -86,14 +103,15 @@ Below is a roughly equivalent, object-oriented approach:
 Related queries
 ---------------
 
-The github API is full of related queries.
-For example: creating a new issue related to a repository,
+With class-based queries, it is possible to create an
+expressive, chained API. 
+
+For example, the github API is full of related queries:
+creating a new issue related to a repository,
 or retrieving gists for a user.
 
-We can make use of query classes to express these relations.
-
 .. literalinclude:: ../tutorial/relations.py
-   :lines: 12-15,35-
+   :lines: 12-15,35-67
 
 The ``repo`` query behaves the same as in the previous examples,
 only it now has two related queries ``new_issue`` and ``star``.
@@ -121,21 +139,42 @@ use the ``auth_method`` argument
 of :func:`~snug.core.executor`/:func:`~snug.core.async_executor`.
 
 ``auth_method`` will be called with credentials (the ``auth`` parameter),
-and its result will be called with a :class:`~snug.core.Request` to authenticate.
+and a :class:`~snug.core.Request` instance.
+It should return an authenticated request
 
 To illutrate, here is a simple example for token-based authentication:
 
 .. code-block:: python3
 
-   class TokenAuth:
-       def __init__(self, token):
-           self.token = token
-
-       def __call__(self, request):
-           return request.with_headers({
-               'Authorization': f'token {self.token}'
-           })
+   def token_auth(token, request)
+       return request.with_headers({
+           'Authorization': f'token {token}'
+       })
 
    exec = snug.executor(auth='my token', auth_method=TokenAuth)
 
 See the slack API example for a real-world use-case.
+
+Registering HTTP clients
+------------------------
+
+By default, clients for `requests <http://docs.python-requests.org/>`_
+and `aiohttp <http://aiohttp.readthedocs.io/>`_ are registered.
+Register new clients with :func:`~snug.core.send` or :func:`~snug.core.send_async`.
+
+These functions are :func:`~functools.singledispatch` functions.
+A new client type can be registered as follows:
+
+.. code-block:: python3
+
+   @snug.send.register(MyClientType)
+   def _send(client: MyClientType, req: snug.Request) -> snug.Response:
+       raw_response = client.send_request(
+           url=req.url,
+           data=req.content,
+           ...)
+
+       # be sure to wrap the response in a snug.Response before returning
+       return snug.Response(
+           status_code=raw_response.status_code,
+           ...)
