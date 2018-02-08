@@ -29,7 +29,7 @@ Snug
 
 Key features:
 
-* Write once, run with different (sync *or* async) HTTP clients
+* Write once, run with different HTTP clients (sync *and* async)
 * Fits most API architectures (e.g. REST, RPC, GraphQL)
 * Simple and lightweight
 
@@ -127,8 +127,7 @@ Features
       snug.execute(query, client=requests.Session())
       # {"description": "My first repository on Github!", ...}
 
-4. **Testability**. Since queries are just generators, we can run them
-   just fine without touching the network.
+4. **Testability**. Queries can easily be run without touching the network.
    No need for complex mocks or monkeypatching.
 
    .. code-block:: python
