@@ -420,7 +420,7 @@ def send(client, request: Request) -> Response:
     if `requests <http://docs.python-requests.org/>`_ is installed,
     :class:`requests.Session` is already registerd.
     """
-    raise TypeError(f'client {client!r} not registered')
+    raise TypeError('client {!r} not registered'.format(client))
 
 
 @singledispatch
@@ -449,7 +449,7 @@ def send_async(client, request: Request) -> _Awaitable(Response):
     If `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed,
     :class:`aiohttp.ClientSession` is already registerd.
     """
-    raise TypeError(f'client {client!r} not registered')
+    raise TypeError('client {!r} not registered'.format(client))
 
 
 def executor(**kwargs) -> _Executor:
