@@ -318,20 +318,6 @@ def basic_auth(credentials, request):
     })
 
 
-@singledispatch
-def make_async_sender(client) -> _AsyncSender:
-    """Create an asynchronous sender from the given client.
-    A :func:`~functools.singledispatch` function.
-
-    Parameters
-    ----------
-    client: any registered client type
-        the client to create a sender from
-    """
-    raise TypeError(
-        'no async sender factory registered for {!r}'.format(client))
-
-
 def _exec(query, sender):
     gen = iter(query)
     request = next(gen)
