@@ -17,15 +17,15 @@ __all__ = [
     'Query',
     'execute',
     'execute_async',
-    'executor',
-    'async_executor',
     'Request',
     'Response',
+    'executor',
+    'async_executor',
+    'send',
+    'send_async',
     'related',
     'header_adder',
     'prefix_adder',
-    'make_sender',
-    'make_async_sender',
     'GET',
     'POST',
     'PUT',
@@ -245,7 +245,7 @@ _Sender = t.Callable[[Request], Response]
 _AsyncSender = t.Callable[[Request], _Awaitable(Response)]
 _Executor = t.Callable[[Query[T]], T]
 _AExecutor = t.Callable[[Query[T]], _Awaitable(T)]
-_AuthMethod = t.Callable[[T_auth], t.Callable[[Request], Request]]
+_AuthMethod = t.Callable[[T_auth, Request], Request]
 
 
 def urllib_sender(req: Request, **kwargs) -> Response:
@@ -310,41 +310,12 @@ def asyncio_sender(req: Request) -> _Awaitable(Response):
     )
 
 
-class BasicAuthenticator:
-    """Basic authentication method
-
-    Parameters
-    ----------
-    credentials
-        the (username, password) pair
-    """
-    __slots__ = 'headers'
-
-    def __init__(self, credentials: t.Tuple[str, str]):
-        encoded = b64encode(':'.join(credentials)
-                            .encode('ascii')).decode()
-        self.headers = {'Authorization': 'Basic ' + encoded}
-
-    def __call__(self, request: Request) -> Request:
-        return request.with_headers(self.headers)
-
-
-@singledispatch
-def make_sender(client) -> _Sender:
-    """Create a sender for the given client.
-    A :func:`~functools.singledispatch` function.
-
-    Parameters
-    ----------
-    client: any registered client type
-        the client to create a sender from
-
-    Note
-    ----
-    if `requests <http://docs.python-requests.org/>`_ is installed,
-    a sender for :class:`requests.Session` is already registerd.
-    """
-    raise TypeError('no sender factory registered for {!r}'.format(client))
+def basic_auth(credentials, request):
+    """Apply basic auth to a request"""
+    encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
+    return request.with_headers({
+        'Authorization': 'Basic ' + encoded
+    })
 
 
 @singledispatch
@@ -356,104 +327,165 @@ def make_async_sender(client) -> _AsyncSender:
     ----------
     client: any registered client type
         the client to create a sender from
-
-    Note
-    ----
-    If `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed,
-    a sender for :class:`aiohttp.ClientSession` is already registerd.
     """
     raise TypeError(
         'no async sender factory registered for {!r}'.format(client))
 
 
-def execute(query: Query[T], *, _sender: _Sender=urllib_sender) -> T:
+def _exec(query, sender):
+    gen = iter(query)
+    request = next(gen)
+    while True:
+        response = sender(request)
+        try:
+            request = gen.send(response)
+        except StopIteration as e:
+            return e.value
+
+
+def _exec_async(query, sender):
+    gen = iter(query)
+    request = next(gen)
+    while True:
+        response = yield from sender(request)
+        try:
+            request = gen.send(response)
+        except StopIteration as e:
+            return e.value
+
+
+def execute(query: Query[T], *,
+            auth: T_auth=None,
+            client=None,
+            auth_method: _AuthMethod=basic_auth) -> T:
     """Execute a query, returning its result
 
     Parameters
     ----------
     query
         the query to resolve
-    _sender
-        the callable used to send requests, returning responses
+    auth
+        the authentication credentials. If using the default ``auth_method``,
+        ``auth`` must be a (username, password)-tuple.
+    client
+        The HTTP client to use.
+        Its type must have been registered
+        with :func:`send`.
+    auth_method
+        the authentication method to use
     """
-    gen = iter(query)
-    request = next(gen)
-    while True:
-        response = _sender(request)
-        try:
-            request = gen.send(response)
-        except StopIteration as e:
-            return e.value
+    _sender = urllib_sender if client is None else partial(send, client)
+    authenticator = identity if auth is None else partial(auth_method, auth)
+    return _exec(query, sender=compose(_sender, authenticator))
 
 
-@asyncio.coroutine
 def execute_async(query: Query[T], *,
-                  _sender: _AsyncSender=asyncio_sender) -> _Awaitable(T):
+                  auth: T_auth=None,
+                  client=None,
+                  auth_method: _AuthMethod=basic_auth) -> _Awaitable(T):
     """Execute a query asynchronously, returning its result
 
     Parameters
     ----------
     query
         the query to resolve
-    _sender
-        the callable used to send requests, returning responses
-
-    Note
-    ----
-    The default sender is very rudimentary.
-    Consider using :func:`async_executor` to construct an
-    executor from :class:`aiohttp.ClientSession` objects.
-    """
-    gen = iter(query)
-    request = next(gen)
-    while True:
-        response = yield from _sender(request)
-        try:
-            request = gen.send(response)
-        except StopIteration as e:
-            return e.value
-
-
-def executor(*, auth: T_auth=None,
-             client=None,
-             auth_method: _AuthMethod=BasicAuthenticator) -> _Executor:
-    """Create an executor
-
-    Parameters
-    ----------
     auth
-        the credentials
+        the authentication credentials. If using the default ``auth_method``,
+        ``auth`` must be a (username, password)-tuple.
     client
         The HTTP client to use.
         Its type must have been registered
-        with the :func:`make_sender` function.
+        with :func:`send_async`.
     auth_method
         the authentication method to use
+
+    Note
+    ----
+    The default client is very rudimentary.
+    Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
-    _sender = urllib_sender if client is None else make_sender(client)
-    authenticator = identity if auth is None else auth_method(auth)
-    return partial(execute, _sender=compose(_sender, authenticator))
+    _sender = asyncio_sender if client is None else partial(send_async, client)
+    authenticator = identity if auth is None else partial(auth_method, auth)
+    return _exec_async(query, sender=compose(_sender, authenticator))
 
 
-def async_executor(*, auth: T_auth=None,
-                   client=None,
-                   auth_method: _AuthMethod=BasicAuthenticator) -> _AExecutor:
-    """Create an ascynchronous executor
+@singledispatch
+def send(client, request: Request) -> Response:
+    """given a client, send a :class:`Request`,
+    returning a :class:`Response`
+    A :func:`~functools.singledispatch` function.
+
+    Example of registering a new HTTP client:
+
+    >>> @send.register(MyClientClass)
+    ... def _send(client, request: Request) -> Response:
+    ...     r = client.send(request)
+    ...     return Response(r.status, r.read(), headers=r.get_headers())
 
     Parameters
     ----------
-    auth
-        the credentials
-    client
-        The (asynchronous) HTTP client to use.
-        Its type must have been registered
-        with the :func:`make_async_sender` function.
-    auth_method
-        the authentication method to use
+    client: any registered client type
+        the client to create a sender from
+    request
+        the request to send
+
+    Note
+    ----
+    if `requests <http://docs.python-requests.org/>`_ is installed,
+    :class:`requests.Session` is already registerd.
     """
-    _sender = asyncio_sender if client is None else make_async_sender(client)
-    authenticator = identity if auth is None else auth_method(auth)
-    return partial(execute_async, _sender=compose(_sender, authenticator))
+    raise TypeError(f'client {client!r} not registered')
+
+
+@singledispatch
+def send_async(client, request: Request) -> _Awaitable(Response):
+    """given a client, send a :class:`Request`,
+    returning an awaitable :class:`Response`
+
+    A :func:`~functools.singledispatch` function.
+
+    Example of registering a new HTTP client:
+
+    >>> @send_async.register(MyClientClass)
+    ... async def _send(client, request: Request) -> Response:
+    ...     r = await client.send(request)
+    ...     return Response(r.status, r.read(), headers=r.get_headers())
+
+    Parameters
+    ----------
+    client: any registered client type
+        the client to create a sender from
+    request
+        the request to send
+
+    Note
+    ----
+    If `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed,
+    :class:`aiohttp.ClientSession` is already registerd.
+    """
+    raise TypeError(f'client {client!r} not registered')
+
+
+def executor(**kwargs) -> _Executor:
+    """Create an executor with bound arguments
+
+    Parameters
+    ----------
+    **kwargs
+        arguments to pass to :func:`execute`
+    """
+    return partial(execute, **kwargs)
+
+
+def async_executor(**kwargs) -> _AExecutor:
+    """Create an ascynchronous executor with bound arguments
+
+    Parameters
+    ----------
+    **kwargs
+        arguments to pass to :func:`execute_async`
+    """
+    return partial(execute_async, **kwargs)
 
 
 prefix_adder = partial(methodcaller, 'with_prefix')
@@ -485,29 +517,25 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    @make_async_sender.register(aiohttp.ClientSession)
-    def _aiohttp_sender(session: aiohttp.ClientSession) -> _AsyncSender:
-        """Create an asynchronous sender
-        for an `aiohttp` client session"""
-        @asyncio.coroutine
-        def _aiohttp_sender(req):
-            response = yield from session.request(req.method, req.url,
-                                                  params=req.params,
-                                                  data=req.content,
-                                                  headers=req.headers)
-            try:
-                return Response(
-                    response.status,
-                    content=(yield from response.read()),
-                    headers=response.headers,
-                )
-            except Exception:  # pragma: no cover
-                response.close()
-                raise
-            finally:
-                yield from response.release()
-
-        return _aiohttp_sender
+    @send_async.register(aiohttp.ClientSession)
+    @asyncio.coroutine
+    def _aiohttp_send(session, req: Request) -> _Awaitable(Response):
+        """send a request with the `aiohttp` library"""
+        response = yield from session.request(req.method, req.url,
+                                              params=req.params,
+                                              data=req.content,
+                                              headers=req.headers)
+        try:
+            return Response(
+                response.status,
+                content=(yield from response.read()),
+                headers=response.headers,
+            )
+        except Exception:  # pragma: no cover
+            response.close()
+            raise
+        finally:
+            yield from response.release()
 
 
 try:
@@ -515,16 +543,14 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
-    @make_sender.register(requests.Session)
-    def _requests_sender(session: requests.Session) -> _Sender:
-        """Create a sender for a :class:`requests.Session`"""
-        def _req_send(req: Request) -> Response:
-            response = session.request(req.method, req.url,
-                                       params=req.params,
-                                       headers=req.headers)
-            return Response(
-                response.status_code,
-                response.content,
-                headers=response.headers,
-            )
-        return _req_send
+    @send.register(requests.Session)
+    def _requests_send(session, req: Request) -> Response:
+        """send a request with the `requests` library"""
+        response = session.request(req.method, req.url,
+                                   params=req.params,
+                                   headers=req.headers)
+        return Response(
+            response.status_code,
+            response.content,
+            headers=response.headers,
+        )
