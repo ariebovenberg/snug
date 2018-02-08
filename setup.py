@@ -20,7 +20,7 @@ def find_version(path):
 
 setup(
     name='snug',
-    version=find_version('snug/__init__.py'),
+    version=find_version('snug.py'),
     description='Write reusable web API interactions',
     license='MIT',
     long_description=read('README.rst') + '\n\n' + read('HISTORY.rst'),
@@ -46,5 +46,5 @@ setup(
     keywords=['api-wrapper', 'http', 'generators', 'async',
               'graphql', 'rest', 'rpc'],
     python_requires='>=3.4',
-    packages=find_packages(exclude=('tests', 'docs', 'examples'))
+    py_modules=('snug',),
 )
