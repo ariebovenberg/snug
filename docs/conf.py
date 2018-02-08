@@ -89,6 +89,7 @@ html_theme_options = {
     "github_user": 'ariebovenberg',
     "github_repo": 'snug',
     "github_banner": True,
+    'codecov_button': True,
     "github_type": 'star',
     'fixed_sidebar': True,
     'code_font_size': '0.8em',
