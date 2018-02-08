@@ -411,7 +411,7 @@ def execute_async(query: Query[T], *,
 
 @singledispatch
 def send(client, request: Request) -> Response:
-    """given a client, send a :class:`Request`,
+    """Given a client, send a :class:`Request`,
     returning a :class:`Response`
     A :func:`~functools.singledispatch` function.
 
@@ -439,7 +439,7 @@ def send(client, request: Request) -> Response:
 
 @singledispatch
 def send_async(client, request: Request) -> _Awaitable(Response):
-    """given a client, send a :class:`Request`,
+    """Given a client, send a :class:`Request`,
     returning an awaitable :class:`Response`
 
     A :func:`~functools.singledispatch` function.
