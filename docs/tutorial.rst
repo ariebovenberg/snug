@@ -49,7 +49,7 @@ Expressing queries as generators has two main advantages:
 1. as built-in concepts of the language, they can be easily
    :ref:`composed and extended<composing>`.
 2. decoupling networking logic allows
-   the :ref:`use different and async HTTP clients<executors>`.
+   the :ref:`use different and async HTTP clients<executing_queries>`.
 
 We will explore these features in the following sections.
 
@@ -99,7 +99,7 @@ to define :ref:`nested queries<nested>`.
     def repo(...):
         ...
 
-.. _executors:
+.. _executing_queries:
 
 Executing queries
 -----------------
@@ -115,7 +115,7 @@ Both these functions take arguments which affect:
 To illustrate, let's add another query
 and see the different ways it can be executed.
 
-.. literalinclude:: ../tutorial/executors.py
+.. literalinclude:: ../tutorial/executing_queries.py
    :lines: 2,4,12-
 
 We can make use of the module as follows:
@@ -123,7 +123,7 @@ We can make use of the module as follows:
 .. code-block:: python3
 
    >>> import snug
-   >>> import tutorial.executors as ghub
+   >>> import tutorial.executing_queries as ghub
    >>> # our example query
    >>> follow_the_octocat = ghub.follow('octocat')
 
