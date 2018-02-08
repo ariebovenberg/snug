@@ -29,8 +29,8 @@ Snug
 
 Key features:
 
-* Write once, run with different HTTP clients (both sync *and* async)
-* Fits any API architecture (e.g. REST, RPC, GraphQL)
+* Write once, run with different (sync *or* async) HTTP clients
+* Fits most API architectures (e.g. REST, RPC, GraphQL)
 * Simple and lightweight
 
 Why?
@@ -60,7 +60,7 @@ Consider a typical example:
 *Snug* allows us to write API interactions
 independent of HTTP client, credentials, or whether they are run (a)synchronously.
 
-In contrast to other API client toolkits,
+In contrast to most API client toolkits,
 *snug* makes minimal assumptions and design decisions for you.
 Its simple, versatile foundation ensures
 you can focus on what makes your API unique.
@@ -68,7 +68,7 @@ you can focus on what makes your API unique.
 Quickstart
 ----------
 
-1. API interactions ("queries") are request/response generators:
+1. API interactions ("queries") are request/response generators.
 
 .. code-block:: python
 
@@ -123,8 +123,8 @@ Features
    .. code-block:: python
 
       import requests
-      execute = snug.executor(client=requests.Session())
-      execute(repo('Hello-World', owner='octocat'))
+      query = repo('Hello-World', owner='octocat')
+      snug.execute(query, client=requests.Session())
       # {"description": "My first repository on Github!", ...}
 
 4. **Testability**. Since queries are just generators, we can run them
@@ -133,7 +133,7 @@ Features
 
    .. code-block:: python
 
-      >>> query = iter(repo('Hello-World', owner='octocat'))
+      >>> query = repo('Hello-World', owner='octocat')
       >>> next(query).url.endswith('/repos/octocat/Hello-World')
       True
       >>> query.send(snug.Response(200, b'...'))
@@ -149,14 +149,11 @@ Features
           req = snug.PUT('https://api.github.com/user/following/{name}')
           return (yield req).status_code == 204
 
-      exec_as_me = snug.executor(auth=('me', 'password'))
-      exec_as_bob = snug.executor(auth=('bob', 'password'))
-
-      exec_as_me(follow('octocat'))
-      exec_as_bob(follow('octocat'))
+      snug.execute(follow('octocat'), auth=('me', 'password'))
+      snug.execute(follow('octocat'), auth=('bob', 'hunter2'))
 
 6. **Related queries**. Use class-based queries to create an
-   intuitively chained API for related objects:
+   expressive, chained API for related objects:
 
    .. code-block:: python
 
