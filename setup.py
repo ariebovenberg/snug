@@ -1,28 +1,32 @@
 import os.path
+import re
 from setuptools import setup, find_packages
 
 
-def read_local_file(fname):
+def read(fname):
     path = os.path.join(os.path.dirname(__file__), fname)
     with open(path, 'r') as rfile:
         return rfile.read()
 
 
-metadata = {}
-exec(read_local_file('snug/__about__.py'), metadata)
-readme = read_local_file('README.rst')
-history = read_local_file('HISTORY.rst')
+def find_version(path):
+    version_file = read(path)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
+                              version_file, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Unable to find version string.")
 
 
 setup(
     name='snug',
-    version=metadata['__version__'],
-    description=metadata['__description__'],
+    version=find_version('snug/__init__.py'),
+    description='Write reusable web API interactions',
     license='MIT',
-    long_description=readme + '\n\n' + history,
+    long_description=read('README.rst') + '\n\n' + read('HISTORY.rst'),
     url='https://github.com/ariebovenberg/snug',
 
-    author=metadata['__author__'],
+    author='Arie Bovenberg',
     author_email='a.c.bovenberg@gmail.com',
 
     classifiers=[

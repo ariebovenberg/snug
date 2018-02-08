@@ -4,6 +4,7 @@ import sys
 import typing as t
 import urllib.request
 from base64 import b64encode
+from collections import Mapping
 from functools import partial, singledispatch
 from http.client import HTTPResponse
 from io import BytesIO
@@ -11,9 +12,10 @@ from itertools import chain, starmap
 from operator import methodcaller
 from types import MethodType
 
-from .utils import EMPTY_MAPPING, compose, identity
-from .__about__ import (__version__, __author__,  # noqa
-                        __copyright__, __description__)
+__version__ = '1.0.0'
+__author__ = 'Arie Bovenberg'
+__copyright__ = '2018, Arie Bovenberg'
+__description__ = 'Write reusable web API interactions'
 
 __all__ = [
     'Query',
@@ -46,6 +48,42 @@ _Awaitable = (t.Awaitable.__getitem__  # pragma: no cover
 _ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
 
 
+def _identity(obj):
+    return obj
+
+
+class _compose:
+    """compose a function from a chain of functions"""
+    def __init__(self, *funcs):
+        assert funcs
+        self.funcs = funcs
+
+    def __call__(self, *args, **kwargs):
+        *tail, head = self.funcs
+        value = head(*args, **kwargs)
+        for func in reversed(tail):
+            value = func(value)
+        return value
+
+
+class _EmptyMapping(Mapping):
+    """an empty mapping to use as a default value"""
+    def __iter__(self):
+        yield from ()
+
+    def __getitem__(self, key):
+        raise KeyError(key)
+
+    def __len__(self):
+        return 0
+
+    def __repr__(self):
+        return '{<empty>}'
+
+
+_EMPTY_MAPPING = _EmptyMapping()
+
+
 class Request:
     """A simple HTTP request.
 
@@ -66,8 +104,8 @@ class Request:
     __hash__ = None
 
     def __init__(self, method: str, url: str, content: bytes=None, *,
-                 params: _TextMapping=EMPTY_MAPPING,
-                 headers: _TextMapping=EMPTY_MAPPING):
+                 params: _TextMapping=_EMPTY_MAPPING,
+                 headers: _TextMapping=_EMPTY_MAPPING):
         self.method = method
         self.url = url
         self.content = content
@@ -154,7 +192,7 @@ class Response:
     __hash__ = None
 
     def __init__(self, status_code: int, content: bytes=None, *,
-                 headers: _TextMapping=EMPTY_MAPPING):
+                 headers: _TextMapping=_EMPTY_MAPPING):
         self.status_code = status_code
         self.content = content
         self.headers = headers
@@ -364,8 +402,8 @@ def execute(query: Query[T], *,
         the authentication method to use
     """
     sender = _urllib_sender if client is None else partial(send, client)
-    authenticator = identity if auth is None else partial(auth_method, auth)
-    return _exec(query, sender=compose(sender, authenticator))
+    authenticator = _identity if auth is None else partial(auth_method, auth)
+    return _exec(query, sender=_compose(sender, authenticator))
 
 
 def execute_async(query: Query[T], *,
@@ -394,8 +432,8 @@ def execute_async(query: Query[T], *,
     Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
     sender = _asyncio_sender if client is None else partial(send_async, client)
-    authenticator = identity if auth is None else partial(auth_method, auth)
-    return _exec_async(query, sender=compose(sender, authenticator))
+    authenticator = _identity if auth is None else partial(auth_method, auth)
+    return _exec_async(query, sender=_compose(sender, authenticator))
 
 
 @singledispatch
