@@ -308,6 +308,10 @@ def test_requests_send():
     req = snug.GET('https://www.api.github.com/organizations',
                    params={'since': 3043},
                    headers={'Accept': 'application/vnd.github.v3+json'})
+    req = snug.POST('http://httpbin.org/post',
+                    content=b'foo',
+                    params={'bla': 5},
+                    headers={'User-Agent': 'snug/dev'})
     response = snug.send(session, req)
     assert response == snug.Response(
         status_code=session.request.return_value.status_code,
@@ -315,10 +319,11 @@ def test_requests_send():
         headers=session.request.return_value.headers,
     )
     session.request.assert_called_once_with(
-        'GET',
-        'https://www.api.github.com/organizations',
-        params={'since': 3043},
-        headers={'Accept': 'application/vnd.github.v3+json'})
+        'POST',
+        'http://httpbin.org/post',
+        data=b'foo',
+        params={'bla': 5},
+        headers={'User-Agent': 'snug/dev'})
 
 
 def test_async_sender_factory_unknown_client():

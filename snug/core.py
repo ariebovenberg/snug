@@ -311,7 +311,7 @@ def asyncio_sender(req: Request) -> _Awaitable(Response):
 
 
 def basic_auth(credentials, request):
-    """Apply basic auth to a request"""
+    """Apply basic authentication to a request"""
     encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
     return request.with_headers({
         'Authorization': 'Basic ' + encoded
@@ -467,7 +467,7 @@ def send_async(client, request: Request) -> _Awaitable(Response):
 
 
 def executor(**kwargs) -> _Executor:
-    """Create an executor with bound arguments
+    """Create an executor with bound arguments.
 
     Parameters
     ----------
@@ -478,7 +478,7 @@ def executor(**kwargs) -> _Executor:
 
 
 def async_executor(**kwargs) -> _AExecutor:
-    """Create an ascynchronous executor with bound arguments
+    """Create an ascynchronous executor with bound arguments.
 
     Parameters
     ----------
@@ -547,6 +547,7 @@ else:
     def _requests_send(session, req: Request) -> Response:
         """send a request with the `requests` library"""
         response = session.request(req.method, req.url,
+                                   data=req.content,
                                    params=req.params,
                                    headers=req.headers)
         return Response(

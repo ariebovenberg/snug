@@ -10,6 +10,7 @@ development
 - improvements to docs
 - added slack API example
 - ``related`` decorated replaces ``Relation`` query class
+- bugfixes
 
 0.5.0 (2018-01-30)
 ++++++++++++++++++
