@@ -8,7 +8,7 @@ python:
   - "3.7-dev"
 install: 
   - pip install tox-travis
-  - pip install coveralls
+  - pip install codecov
 matrix:
   include:
     - python: 3.6
@@ -18,4 +18,5 @@ matrix:
     - python: 3.5
       env: TOXENV=isort-check
 script: tox
-after_success: coveralls
+after_success:
+  - codecov
