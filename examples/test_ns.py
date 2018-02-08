@@ -16,7 +16,7 @@ auth = json.loads(CRED_PATH.read_bytes())
 @pytest.fixture(scope='module')
 async def exec():
     async with aiohttp.ClientSession() as client:
-        yield snug.async_executor(auth=auth, client=client)
+        yield ns.async_executor(auth=auth, client=client)
 
 
 @pytest.mark.asyncio

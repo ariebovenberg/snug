@@ -21,6 +21,11 @@ HEADERS = {'Accept': 'application/vnd.github.v3+json'}
 _repr = reprlib.Repr()
 _repr.maxstring = 45
 
+execute = snug.execute
+execute_async = snug.execute_async
+executor = snug.executor
+async_executor = snug.async_executor
+
 
 class ApiError(Exception):
     pass
