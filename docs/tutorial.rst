@@ -1,3 +1,5 @@
+.. _tutorial:
+
 Tutorial
 ========
 
@@ -102,11 +104,16 @@ to define :ref:`nested queries<nested>`.
 Executing queries
 -----------------
 
-Queries can be executed by different executors.
-Executors are callables which take a query
-and return its outcome.
-We've already seen a basic executor: :func:`~snug.core.execute`.
-Lets add another query, and see the different ways it can be executed.
+Queries can be executed in different ways.
+We have already seen :func:`~snug.core.execute`
+and :func:`~snug.core.execute_async`.
+Both these functions take arguments which affect:
+
+* which HTTP client is used
+* which authentication credentials are used
+
+To illustrate, let's add another query
+and see the different ways it can be executed.
 
 .. literalinclude:: ../tutorial/executors.py
    :lines: 2,4,12-
@@ -117,160 +124,27 @@ We can make use of the module as follows:
 
    >>> import snug
    >>> import tutorial.executors as ghub
-   >>> # an example query
+   >>> # our example query
    >>> follow_the_octocat = ghub.follow('octocat')
 
    >>> # using different credentials
-   >>> exec_as_me = snug.executor(auth=('me', 'password'))
-   >>> exec_as_other = snug.executor(('other', 'hunter2'))
-   >>> exec_as_me(follow_the_octocat)
+   >>> snug.execute(follow_the_octocat, auth=('me', 'password'))
    True
-   >>> exec_as_other(follow_the_octocat)
+   >>> snug.execute(follow_the_octocat, auth=('bob', 'hunter2'))
    True
 
    >>> # using another HTTP client, for example `requests`
    >>> import requests
-   >>> exec = snug.executor(('me', 'password'), client=requests.Session())
-   >>> exec(follow_the_octocat)
+   >>> s = requests.Session()
+   >>> snug.execute(follow_to_octocat, client=s, auth=('me', 'password'))
    True
 
-   >>> # the same query may also be executed asynchronously
+   >>> # the same options are available for execute_async
    >>> import asyncio
-   >>> exec_async = ghub.async_executor(auth=('me', 'password'))
+   >>> future = snug.execute_async(follow_the_octocat,
+   ...                             auth=('me', 'password'))
    >>> loop = asyncio.get_event_loop()
-   >>> loop.run_until_complete(exec_async(follow_the_octocat))
+   >>> loop.run_until_complete(future)
    True
 
-.. _composing:
-
-Composing queries
------------------
-
-To keep everything nice and modular, queries may be composed and extended.
-In our github API example, we may wish to define common logic for:
-
-* prefixing urls with ``https://api.github.com``
-* setting the required headers
-* parsing responses to JSON
-* deserializing JSON into objects
-* raising descriptive exceptions from responses
-* following redirects
-
-We can use a function-based approach with
-`gentools`_,
-or a class-based approach by subclassing :class:`~snug.core.Query`.
-We'll explore the functional style first.
-
-Function-based approach
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Preparing requests
-^^^^^^^^^^^^^^^^^^
-
-Outgoing requests of a query can be modified with
-the :class:`~gentools.core.map_yield` decorator.
-
-.. literalinclude:: ../tutorial/composed0.py
-   :lines: 3-21
-   :emphasize-lines: 10,16
-
-Parsing responses
-^^^^^^^^^^^^^^^^^
-
-Responses being sent to a query can be modified with
-the :class:`~gentools.core.map_send` decorator.
-
-.. literalinclude:: ../tutorial/composed2.py
-   :lines: 3-4,11-36
-   :emphasize-lines: 17,24
-
-Relaying queries
-^^^^^^^^^^^^^^^^
-
-For advanced cases, each requests/response interaction of a query
-can be relayed through another generator.
-This can be done with the :class:`~gentools.core.relay` decorator.
-This can be useful if response handling is dependent on the request,
-or more complex control flow.
-The following example shows how this can be used to implement redirects.
-
-.. literalinclude:: ../tutorial/composed3.py
-   :lines: 3-4,24-36
-   :emphasize-lines: 10
-
-
-Loading return values
-^^^^^^^^^^^^^^^^^^^^^
-
-To modify the return value of a generator,
-use the :class:`~gentools.core.map_return` decorator.
-
-.. literalinclude:: ../tutorial/composed4.py
-   :lines: 3-5,12-13,33-43
-   :emphasize-lines: 11
-
-Object-oriented approach
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Below is a roughly equivalent, object-oriented approach:
-
-.. literalinclude:: ../tutorial/composed_oop.py
-
-.. _nested:
-
-Related queries
----------------
-
-The github API is full of related queries.
-For example: creating a new issue related to a repository,
-or retrieving gists for a user.
-
-We can make use of query classes to express these relations.
-
-.. literalinclude:: ../tutorial/relations.py
-   :lines: 12-15,35-
-
-The ``repo`` query behaves the same as in the previous examples,
-only it now has two related queries ``new_issue`` and ``star``.
-The related queries allow us to write:
-
-.. code-block:: python3
-
-   >>> import tutorial.relations as ghub
-   >>> execute = snug.executor(auth=('me', 'password'))
-   >>> hello_repo = ghub.repo('Hello-World', owner='octocat')
-   >>> new_issue = hello_repo.new_issue('found a bug')
-   >>> star_repo = hello_repo.star()
-   >>> execute(new_issue)
-   Issue(...)
-   >>> execute(star_repo)
-   True
-
-
-Authentication methods
-----------------------
-
-The default authentication method is HTTP Basic authentication.
-To use another type of authentication,
-use the ``auth_method`` argument
-of :func:`~snug.core.executor`/:func:`~snug.core.async_executor`.
-
-``auth_method`` will be called with credentials (the ``auth`` parameter),
-and its result will be called with a :class:`~snug.core.Request` to authenticate.
-
-To illutrate, here is a simple example for token-based authentication:
-
-.. code-block:: python3
-
-   class TokenAuth:
-       def __init__(self, token):
-           self.token = token
-
-       def __call__(self, request):
-           return request.with_headers({
-               'Authorization': f'token {self.token}'
-           })
-
-   exec = snug.executor(auth='my token', auth_method=TokenAuth)
-
-See the slack API example for a real-world use-case.
+Read on about more features :ref:`here <advanced>`.
