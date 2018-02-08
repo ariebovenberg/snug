@@ -13,8 +13,8 @@ Snug
 .. image:: https://travis-ci.org/ariebovenberg/snug.svg?branch=master
     :target: https://travis-ci.org/ariebovenberg/snug
 
-.. image:: https://coveralls.io/repos/github/ariebovenberg/snug/badge.svg?branch=master
-    :target: https://coveralls.io/github/ariebovenberg/snug?branch=master
+.. image:: https://codecov.io/gh/ariebovenberg/snug/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/ariebovenberg/snug
 
 .. image:: https://readthedocs.org/projects/snug/badge/?version=latest
     :target: http://snug.readthedocs.io/en/latest/?badge=latest
@@ -57,11 +57,11 @@ Consider a typical example:
   * What if we want to use another HTTP client or session?
   * How do we use this with different credentials?
 
-*Snug* allows us to write API interactions
+*Snug* allows you to write API interactions
 independent of HTTP client, credentials, or whether they are run (a)synchronously.
 
 In contrast to most API client toolkits,
-*snug* makes minimal assumptions and design decisions for you.
+*snug* makes minimal assumptions and design decisions.
 Its simple, versatile foundation ensures
 you can focus on what makes your API unique.
 
