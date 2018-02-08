@@ -54,7 +54,7 @@ def test_exec():
             response = yield redirect.split(':')[1]
             return response.decode('ascii')
 
-    assert snug.core._exec(MyQuery(), sender=sender) == 'hello world'
+    assert snug._exec(MyQuery(), sender=sender) == 'hello world'
 
 
 def test_exec_async(loop):
@@ -73,7 +73,7 @@ def test_exec_async(loop):
             response = yield response[9:]
         return response.upper()
 
-    result_future = snug.core._exec_async(myquery(), sender=sender)
+    result_future = snug._exec_async(myquery(), sender=sender)
 
     if sys.version_info > (3, 5):
         assert inspect.isawaitable(result_future)
@@ -141,7 +141,7 @@ class TestExecute:
 
 class TestExecuteAsync:
 
-    @mock.patch('snug.core._asyncio_sender',
+    @mock.patch('snug._asyncio_sender',
                 MockAsyncClient(snug.Response(204)).send)
     def test_defaults(self, loop):
 
@@ -293,7 +293,7 @@ def test_urllib_sender(urlopen, urllib_request):
     req = snug.Request('HEAD', 'https://www.api.github.com/organizations',
                        params={'since': 3043},
                        headers={'Accept': 'application/vnd.github.v3+json'})
-    response = snug.core._urllib_sender(req, timeout=10)
+    response = snug._urllib_sender(req, timeout=10)
     assert response == snug.Response(
         status_code=urlopen.return_value.getcode.return_value,
         content=urlopen.return_value.read.return_value,
@@ -345,7 +345,7 @@ class TestAsyncioSender:
         req = snug.Request('GET', 'https://httpbin.org/get',
                            params={'param1': 'foo'},
                            headers={'Accept': 'application/json'})
-        response = loop.run_until_complete(snug.core._asyncio_sender(req))
+        response = loop.run_until_complete(snug._asyncio_sender(req))
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
         data = json.loads(response.content.decode())
         assert data['args'] == {'param1': 'foo'}
@@ -356,7 +356,7 @@ class TestAsyncioSender:
         req = snug.Request('POST', 'http://httpbin.org/post',
                            content=json.dumps({"foo": 4}).encode(),
                            headers={'User-Agent': 'snug/dev'})
-        response = loop.run_until_complete(snug.core._asyncio_sender(req))
+        response = loop.run_until_complete(snug._asyncio_sender(req))
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
         data = json.loads(response.content.decode())
         assert data['args'] == {}
