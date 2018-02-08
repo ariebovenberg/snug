@@ -1,11 +1,12 @@
 import asyncio
+import inspect
 import json
+import sys
 from unittest import mock
 
 import pytest
 
 import snug
-
 
 LIVE = pytest.config.getoption('--live')
 
@@ -73,6 +74,10 @@ def test_exec_async(loop):
         return response.upper()
 
     result_future = snug.core._exec_async(myquery(), sender=sender)
+
+    if sys.version_info > (3, 5):
+        assert inspect.isawaitable(result_future)
+
     result = loop.run_until_complete(result_future)
     assert result == 'HELLO WORLD'
 

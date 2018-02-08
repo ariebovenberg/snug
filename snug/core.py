@@ -329,6 +329,7 @@ def _exec(query, sender):
             return e.value
 
 
+@asyncio.coroutine
 def _exec_async(query, sender):
     gen = iter(query)
     request = next(gen)
