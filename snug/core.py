@@ -248,7 +248,7 @@ _AExecutor = t.Callable[[Query[T]], _Awaitable(T)]
 _AuthMethod = t.Callable[[T_auth, Request], Request]
 
 
-def urllib_sender(req: Request, **kwargs) -> Response:
+def _urllib_sender(req: Request, **kwargs) -> Response:
     """Simple sender which uses :mod:`urllib`
 
     Parameters
@@ -278,7 +278,7 @@ class _SocketAdaptor:
 
 
 @asyncio.coroutine
-def asyncio_sender(req: Request) -> _Awaitable(Response):
+def _asyncio_sender(req: Request) -> _Awaitable(Response):
     """A rudimentary HTTP client using :mod:`asyncio`"""
     if 'User-Agent' not in req.headers:
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
@@ -361,9 +361,9 @@ def execute(query: Query[T], *,
     auth_method
         the authentication method to use
     """
-    _sender = urllib_sender if client is None else partial(send, client)
+    sender = _urllib_sender if client is None else partial(send, client)
     authenticator = identity if auth is None else partial(auth_method, auth)
-    return _exec(query, sender=compose(_sender, authenticator))
+    return _exec(query, sender=compose(sender, authenticator))
 
 
 def execute_async(query: Query[T], *,
@@ -391,9 +391,9 @@ def execute_async(query: Query[T], *,
     The default client is very rudimentary.
     Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
-    _sender = asyncio_sender if client is None else partial(send_async, client)
+    sender = _asyncio_sender if client is None else partial(send_async, client)
     authenticator = identity if auth is None else partial(auth_method, auth)
-    return _exec_async(query, sender=compose(_sender, authenticator))
+    return _exec_async(query, sender=compose(sender, authenticator))
 
 
 @singledispatch
