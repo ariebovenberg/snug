@@ -1,3 +1,5 @@
+.. _advanced_topics:
+
 Advanced topics
 ===============
 
@@ -7,9 +9,9 @@ describing more advanced functionality.
 Executors
 ---------
 
-To make it easier to call :func:`~snug.core.execute`/:func:`~snug.core.execute_async`
+To make it easier to call :func:`~snug.execute`/:func:`~snug.execute_async`
 repeatedly with specific arguments,
-the :func:`~snug.core.executor`/:func:`~snug.core.async_executor`
+the :func:`~snug.executor`/:func:`~snug.async_executor`
 shortcut can be used.
 
 .. code-block:: python3
@@ -40,7 +42,7 @@ In the github API example, we may wish to define common logic for:
 
 We can use a function-based approach with
 `gentools <http://gentools.readthedocs.io/>`_,
-or a class-based approach by subclassing :class:`~snug.core.Query`.
+or a class-based approach by subclassing :class:`~snug.Query`.
 We'll explore the functional style first.
 
 Function-based approach
@@ -136,10 +138,10 @@ Authentication methods
 The default authentication method is HTTP Basic authentication.
 To use another type of authentication,
 use the ``auth_method`` argument
-of :func:`~snug.core.executor`/:func:`~snug.core.async_executor`.
+of :func:`~snug.executor`/:func:`~snug.async_executor`.
 
 ``auth_method`` will be called with credentials (the ``auth`` parameter),
-and a :class:`~snug.core.Request` instance.
+and a :class:`~snug.Request` instance.
 It should return an authenticated request
 
 To illutrate, here is a simple example for token-based authentication:
@@ -160,7 +162,7 @@ Registering HTTP clients
 
 By default, clients for `requests <http://docs.python-requests.org/>`_
 and `aiohttp <http://aiohttp.readthedocs.io/>`_ are registered.
-Register new clients with :func:`~snug.core.send` or :func:`~snug.core.send_async`.
+Register new clients with :func:`~snug.send` or :func:`~snug.send_async`.
 
 These functions are :func:`~functools.singledispatch` functions.
 A new client type can be registered as follows:

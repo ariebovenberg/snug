@@ -18,10 +18,10 @@ Let's start by creating a lookup query for repositories.
 
 .. literalinclude:: ../tutorial/hello_query.py
 
-We can see from the example that a :class:`~snug.core.Query`:
+We can see from the example that a :class:`~snug.Query`:
 
-* yields :class:`Requests<snug.core.Request>`
-* recieves :class:`Responses<snug.core.Response>`
+* yields :class:`Requests<snug.Request>`
+* recieves :class:`Responses<snug.Response>`
 * returns an outcome (in this case, a :class:`dict`)
 
 .. Note::
@@ -57,7 +57,7 @@ Class-based queries
 -------------------
 
 Any object whose :meth:`~object.__iter__` returns a generator
-may be considered a :class:`~snug.core.Query`.
+may be considered a :class:`~snug.Query`.
 (This includes :term:`generators <generator iterator>` themselves.)
 The example below shows a query class equivalent
 to our previously defined ``repo``.
@@ -105,8 +105,8 @@ Executing queries
 -----------------
 
 Queries can be executed in different ways.
-We have already seen :func:`~snug.core.execute`
-and :func:`~snug.core.execute_async`.
+We have already seen :func:`~snug.execute`
+and :func:`~snug.execute_async`.
 Both these functions take arguments which affect:
 
 * which HTTP client is used
@@ -147,4 +147,4 @@ We can make use of the module as follows:
    >>> loop.run_until_complete(future)
    True
 
-Read on about more features :ref:`here <advanced>`.
+Read on about more features :ref:`here <advanced_topics>`.

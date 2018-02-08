@@ -2,7 +2,7 @@ API reference
 =============
 
 
-.. automodule:: snug.core
+.. automodule:: snug
    :members:
    :special-members:
    :exclude-members: __next_in_mro__,__weakref__,__mro__
