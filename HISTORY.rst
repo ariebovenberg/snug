@@ -4,12 +4,12 @@ Release history
 development
 +++++++++++
 
-1.0.0 (2018-01-30)
+1.0.0 (2018-02-09)
 ++++++++++++++++++
 
 - improvements to docs
 - added slack API example
-- ``related`` decorated replaces ``Relation`` query class
+- ``related`` decorator replaces ``Relation`` query class
 - bugfixes
 
 0.5.0 (2018-01-30)
