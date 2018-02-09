@@ -515,7 +515,7 @@ def send_async(client, request: Request) -> _Awaitable(Response):
 
 
 def executor(**kwargs) -> _Executor:
-    """Create an executor with bound arguments.
+    """Create a version of :func:`execute` with bound arguments.
 
     Parameters
     ----------
@@ -526,7 +526,7 @@ def executor(**kwargs) -> _Executor:
 
 
 def async_executor(**kwargs) -> _AExecutor:
-    """Create an ascynchronous executor with bound arguments.
+    """Create a version of :func:`execute_async` with bound arguments.
 
     Parameters
     ----------

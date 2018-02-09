@@ -48,14 +48,13 @@ Consider a typical example:
         request = Request(f'https://api.github.com/repos/{owner}/{name}')
         response = my_http_client.send(request)
         return json.loads(response.content)
-..
 
-  Nice and simple. But...
+Nice and simple. But...
 
-  * What about async? Do we write another function for that?
-  * How do we write clean unittests for this?
-  * What if we want to use another HTTP client or session?
-  * How do we use this with different credentials?
+* What about async? Do we write another function for that?
+* How do we write clean unittests for this?
+* What if we want to use another HTTP client or session?
+* How do we use this with different credentials?
 
 *Snug* allows you to write API interactions
 independent of HTTP client, credentials, or whether they are run (a)synchronously.
