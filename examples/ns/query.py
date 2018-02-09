@@ -18,6 +18,12 @@ parse_request = compose(xml.etree.ElementTree.fromstring,
                         attrgetter('content'))
 
 
+execute = snug.execute
+execute_async = snug.execute_async
+executor = snug.executor
+async_executor = snug.async_executor
+
+
 @singledispatch
 def dump_param(val):
     """dump a query param value"""

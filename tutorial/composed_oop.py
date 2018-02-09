@@ -36,7 +36,7 @@ class BaseQuery(snug.Query[T]):
     def check_response(self, resp):
         """raise a descriptive exception on a "bad request" response"""
         if resp.status_code == 400:
-            raise ApiException(json.loads(resp.data).get('message'))
+            raise ApiException(json.loads(resp.content).get('message'))
         return resp
 
 class repo(BaseQuery[Repository]):

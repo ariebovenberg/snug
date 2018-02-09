@@ -23,7 +23,7 @@ similar to the ``repo`` query in the tutorial:
 
 
   @graphql
-  def repo(name, owner, *, fields=('id', )):
+  def repo(name, owner, *, fields=('id', )) -> snug.Query[dict]:
       """lookup a repo by owner and name, returning only certain fields"""
       response = yield f'''
         query {
@@ -33,6 +33,10 @@ similar to the ``repo`` query in the tutorial:
         }
       '''
       return response['repository']
+
+  q = repo('Hello-World', owner='octocat', fields=('description', 'id'))
+  snug.execute(q)
+  # {'description': ..., 'id': ...}
 
 Conditional requests
 --------------------
@@ -66,46 +70,122 @@ The example below shows a reusable implementation using
                    if modified_since else {}))
       return json.loads(response.content)
 
+  q = repo('Hello-World', 'octocat', modified_since='2018-02-08T00:30:01Z')
+  snug.execute(q)
+  # NotModified()
+
 Pagination
 ----------
 
-One way of implementing pagination is to return a ``Page`` object
-with queries referencing the other pages:
+Pagination is one of the things that each API seems to do differently.
+One way of implementing pagination is to return some sort
+of ``Page`` object containing the current list of objects,
+together with queries referencing the next pages.
+This way, paginating through results becomes explicit.
 
-.. code-block:: python
+Below is an example of the slack web API,
+which uses cursor-based pagination.
 
-   from requests.utils import parse_header_links
-
-   class StaticQuery(snug.Query):
-       """a static GET query to an URL"""
-       def __init__(self, url, loader):
-           self.url, self.loader = url, loader
-
-       def __iter__(self):
-           return self.loader((yield snug.GET(self.url)))
+.. code-block:: python3
 
    class Page:
-       """a page of objects, with references to next pages"""
-       def __init__(self, objects, next=None, last=None):
-           self.objects, self.next, self.last = objects, next, last
+       def __init__(self, objects, next):
+           self.objects, self.next = objects, next
 
        def __iter__(self):
-           return iter(self.objects)
+           yield from self.objects
 
-   def repo_issues(owner, name):
-       """get a page of issues"""
-       response = yield snug.GET(f'/repos/{owner}/{name}/issues')
-       return _load_issue_page(response)
+   def list_channels(cursor=None) -> snug.Query[Page]:
+       """list slack channels"""
+       request = snug.GET(f'https://slack.com/api/channels.list',
+                          params={'cursor': cursor} if cursor else {})
+       response = yield request
+       raw_obj = json.loads(response.content)
+       next_cursor = raw_obj['response_metadata']['next_cursor']
+       return Page(raw_obj['channels'],
+                   # next_cursor may be None
+                   next=next_cursor and list_channels(cursor=next_cursor))
 
-   def _load_issue_page(response):
-       links = {
-           link['rel']: link['url']
-           for link in parse_header_links(response.headers['Link'])
-       }
-       nexturl = links.get('next')
-       lasturl = links.get('last')
-       return Page(
-           objects=json.loads(response.content),
-           next=nexturl and StaticQuery(nexturl, loader=_load_issue_page)
-           last=lasturl and StaticQuery(lasturl, loader=_load_issue_page)
-       )
+The query is then usable as:
+
+.. code-block:: python3
+
+   >>> exec = snug.executor(auth=...)
+   >>> page1 = exec(list_channels())
+   >>> list(page1)
+   [{"name": ...}, ...]
+   >>> page2 = exec(page1.next)
+   >>> list(page2)
+   [{"name": ...}, ...]
+   >>> exec(page2.next)
+  [{"name": ...}, ...]
+
+An alternative is to evaluate all pages in one query.
+Note that this will fetch **all** results eagerly, so use with care.
+
+.. code-block:: python3
+
+   def all_channels():
+       """get all slack channels"""
+       request = snug.GET(f'https://slack.com/api/channels.list',
+                          params={'cursor': cursor} if cursor else {})
+       response = yield request
+       raw_obj = json.loads(response.content)
+       channels = raw_obj['channels']
+       next_cursor = raw_obj['response_metadata']['next_cursor']
+
+       while next_cursor:
+           request = snug.GET(f'https://slack.com/api/channels.list',
+                              params={'cursor': next_cursor})
+           response = yield request
+           raw_obj = json.loads(response.content)
+           channels.extend(raw_obj['channels'])
+           next_cursor = raw_obj['response_metadata']['next_cursor']
+
+       return channels
+
+We can then query for all results:
+
+   >>> exec(all_channels(), auth=...)
+   [{"name": ...}, ...]
+
+
+Testing
+-------
+
+Because queries are generators, we can easily write unittests
+that don't touch the network.
+
+Here is an annotated example of testing the example gitub ``repo`` query:
+
+.. code-block:: python3
+
+   from gentools import sendreturn
+
+   def test_repo():
+       # iter() ensures this works for function- and class-based queries
+       query = iter(repo('Hello-World', owner='octocat'))
+
+       # check the request is OK
+       request = next(query)
+       assert request.url.endswith('repos/octocat/Hello-World')
+
+       # construct our test response
+       response = snug.Response(200, b'...<test response content>...')
+
+       # getting the return value of a generator requires
+       # catching StopIteration.
+       # the following shortcut with `sendreturn` is equivalent to:
+       #
+       # try:
+       #     query.send(response)
+       # except StopIteration as e:
+       #     result = e.value
+       # else:
+       #     raise RuntimeError('generator did not return')
+       result = sendreturn(query, response)
+
+       # check the result is OK
+       assert result['description'] == 'My first repository on github!'
+
+The slack and NS API tests show real-world cases for this.

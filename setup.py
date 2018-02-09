@@ -1,28 +1,32 @@
 import os.path
-from setuptools import setup, find_packages
+import re
+from setuptools import setup
 
 
-def read_local_file(fname):
+def read(fname):
     path = os.path.join(os.path.dirname(__file__), fname)
     with open(path, 'r') as rfile:
         return rfile.read()
 
 
-metadata = {}
-exec(read_local_file('snug/__about__.py'), metadata)
-readme = read_local_file('README.rst')
-history = read_local_file('HISTORY.rst')
+def find_version(path):
+    version_file = read(path)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
+                              version_file, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Unable to find version string.")
 
 
 setup(
     name='snug',
-    version=metadata['__version__'],
-    description=metadata['__description__'],
+    version=find_version('snug.py'),
+    description='Write reusable web API interactions',
     license='MIT',
-    long_description=readme + '\n\n' + history,
+    long_description=read('README.rst') + '\n\n' + read('HISTORY.rst'),
     url='https://github.com/ariebovenberg/snug',
 
-    author=metadata['__author__'],
+    author='Arie Bovenberg',
     author_email='a.c.bovenberg@gmail.com',
 
     classifiers=[
@@ -39,7 +43,8 @@ setup(
     install_requires=[
         'typing>=3.6.2;python_version<"3.5"'
     ],
-    keywords=['api', 'wrapper', 'rest', 'http'],
+    keywords=['api-wrapper', 'http', 'generators', 'async',
+              'graphql', 'rest', 'rpc'],
     python_requires='>=3.4',
-    packages=find_packages(exclude=('tests', 'docs', 'examples'))
+    py_modules=('snug',),
 )

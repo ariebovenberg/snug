@@ -1,8 +1,30 @@
+import asyncio
+import inspect
+import json
+import sys
 from unittest import mock
 
 import pytest
 
 import snug
+
+LIVE = pytest.config.getoption('--live')
+
+
+@pytest.fixture
+def loop(scope='module'):
+    return asyncio.get_event_loop()
+
+
+class MockAsyncClient:
+    def __init__(self, response):
+        self.response = response
+
+    @asyncio.coroutine
+    def send(self, req):
+        yield from asyncio.sleep(0)
+        self.request = req
+        return self.response
 
 
 class MockClient:
@@ -14,12 +36,11 @@ class MockClient:
         return self.response
 
 
-@snug.make_sender.register(MockClient)
-def _sender(client):
-    return client.send
+snug.send.register(MockClient, MockClient.send)
+snug.send_async.register(MockAsyncClient, MockAsyncClient.send)
 
 
-def test_execute():
+def test_exec():
     sender = {
         '/posts/latest': 'redirect:/posts/latest/',
         '/posts/latest/': 'redirect:/posts/december/',
@@ -33,7 +54,147 @@ def test_execute():
             response = yield redirect.split(':')[1]
             return response.decode('ascii')
 
-    assert snug.execute(MyQuery(), sender) == 'hello world'
+    assert snug._exec(MyQuery(), sender=sender) == 'hello world'
+
+
+def test_exec_async(loop):
+
+    @asyncio.coroutine
+    def sender(req):
+        yield from asyncio.sleep(0)
+        if not req.endswith('/'):
+            return 'redirect:' + req + '/'
+        elif req == '/posts/latest/':
+            return 'hello world'
+
+    def myquery():
+        response = yield '/posts/latest'
+        while response.startswith('redirect:'):
+            response = yield response[9:]
+        return response.upper()
+
+    result_future = snug._exec_async(myquery(), sender=sender)
+
+    if sys.version_info > (3, 5):
+        assert inspect.isawaitable(result_future)
+
+    result = loop.run_until_complete(result_future)
+    assert result == 'HELLO WORLD'
+
+
+class TestExecute:
+
+    @mock.patch('urllib.request.Request', autospec=True)
+    @mock.patch('urllib.request.urlopen', autospec=True)
+    def test_defaults(self, urlopen, _):
+
+        def myquery():
+            return (yield snug.GET('my/url'))
+
+        assert snug.execute(myquery()) == snug.Response(
+            status_code=urlopen.return_value.getcode.return_value,
+            content=urlopen.return_value.read.return_value,
+            headers=urlopen.return_value.headers,
+        )
+
+    def test_custom_client(self):
+        client = MockClient(snug.Response(204))
+
+        def myquery():
+            return (yield snug.GET('my/url'))
+
+        result = snug.execute(myquery(), client=client)
+        assert result == snug.Response(204)
+        assert client.request == snug.GET('my/url')
+
+    def test_auth(self):
+        client = MockClient(snug.Response(204))
+
+        def myquery():
+            return (yield snug.GET('my/url'))
+
+        result = snug.execute(myquery(),
+                              auth=('user', 'pw'),
+                              client=client)
+        assert result == snug.Response(204)
+        assert client.request == snug.GET(
+            'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
+
+    def test_auth_method(self):
+
+        def token_auth(token, request):
+            return request.with_headers({
+                'Authorization': 'Bearer {}'.format(token)
+            })
+
+        def myquery():
+            return (yield snug.GET('my/url'))
+
+        client = MockClient(snug.Response(204))
+        result = snug.execute(myquery(), auth='foo', client=client,
+                              auth_method=token_auth)
+
+        assert result == snug.Response(204)
+        assert client.request == snug.GET(
+            'my/url', headers={'Authorization': 'Bearer foo'})
+
+
+class TestExecuteAsync:
+
+    @mock.patch('snug._asyncio_sender',
+                MockAsyncClient(snug.Response(204)).send)
+    def test_defaults(self, loop):
+
+        def myquery():
+            return (yield snug.GET('my/url'))
+
+        future = snug.execute_async(myquery())
+        result = loop.run_until_complete(future)
+        assert result == snug.Response(204)
+
+    def test_custom_client(self, loop):
+        client = MockAsyncClient(snug.Response(204))
+
+        def myquery():
+            return (yield snug.GET('my/url'))
+
+        future = snug.execute_async(myquery(), client=client)
+        result = loop.run_until_complete(future)
+        assert result == snug.Response(204)
+        assert client.request == snug.GET('my/url')
+
+    def test_auth(self, loop):
+        client = MockAsyncClient(snug.Response(204))
+
+        def myquery():
+            return (yield snug.GET('my/url'))
+
+        future = snug.execute_async(myquery(),
+                                    auth=('user', 'pw'),
+                                    client=client)
+        result = loop.run_until_complete(future)
+        assert result == snug.Response(204)
+        assert client.request == snug.GET(
+            'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
+
+    def test_auth_method(self, loop):
+
+        def token_auth(token, request):
+            return request.with_headers({
+                'Authorization': 'Bearer {}'.format(token)
+            })
+
+        def myquery():
+            return (yield snug.GET('my/url'))
+
+        client = MockAsyncClient(snug.Response(204))
+        future = snug.execute_async(myquery(), auth='foo', client=client,
+                                    auth_method=token_auth)
+        result = loop.run_until_complete(future)
+
+        assert result == snug.Response(204)
+        assert client.request == snug.GET(
+            'my/url', headers={'Authorization': 'Bearer foo'})
 
 
 class TestRequest:
@@ -56,15 +217,6 @@ class TestRequest:
         req = snug.GET('my/url/', params={'foo': 'bar'})
         assert req.with_params({'other': 3}) == snug.GET(
             'my/url/', params={'foo': 'bar', 'other': 3})
-
-    def test_with_basic_auth(self):
-        req = snug.GET('my/url/', headers={'foo': 'bar'})
-        newreq = req.with_basic_auth(('Aladdin', 'OpenSesame'))
-        assert newreq == snug.GET(
-            'my/url/', headers={
-                'foo': 'bar',
-                'Authorization': 'Basic QWxhZGRpbjpPcGVuU2VzYW1l'
-            })
 
     def test_equality(self):
         req = snug.Request('GET', 'my/url')
@@ -118,49 +270,21 @@ def test_header_adder():
     })
 
 
-class TestExecutor:
+def test_executor():
+    exec = snug.executor(client='foo')
+    assert exec.keywords == {'client': 'foo'}
 
-    @mock.patch('urllib.request.Request', autospec=True)
-    @mock.patch('urllib.request.urlopen', autospec=True)
-    def test_defaults_to_urllib(self, urlopen, urllib_request):
-        exec = snug.executor()
 
-        def myquery():
-            return (yield snug.GET('my/url'))
-
-        assert exec(myquery()) == snug.Response(
-            status_code=urlopen.return_value.getcode.return_value,
-            content=urlopen.return_value.read.return_value,
-            headers=urlopen.return_value.headers,
-        )
-
-    def test_custom_client(self):
-        client = MockClient(snug.Response(204))
-        exec = snug.executor(client=client)
-
-        def myquery():
-            return (yield snug.GET('my/url'))
-
-        assert exec(myquery()) == snug.Response(204)
-        assert client.request == snug.GET('my/url')
-
-    def test_authentication(self):
-        client = MockClient(snug.Response(204))
-        exec = snug.executor(('user', 'pw'), client=client)
-
-        def myquery():
-            return (yield snug.GET('my/url'))
-
-        assert exec(myquery()) == snug.Response(204)
-        assert client.request == snug.GET(
-            'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
+def test_async_executor():
+    exec = snug.async_executor(client='foo')
+    assert exec.keywords == {'client': 'foo'}
 
 
 def test_sender_factory_unknown_client():
     class MyClass:
         pass
     with pytest.raises(TypeError, match='MyClass'):
-        snug.make_sender(MyClass())
+        snug.send(MyClass(), snug.GET('foo'))
 
 
 @mock.patch('urllib.request.Request', autospec=True)
@@ -169,7 +293,7 @@ def test_urllib_sender(urlopen, urllib_request):
     req = snug.Request('HEAD', 'https://www.api.github.com/organizations',
                        params={'since': 3043},
                        headers={'Accept': 'application/vnd.github.v3+json'})
-    response = snug.urllib_sender(req, timeout=10)
+    response = snug._urllib_sender(req, timeout=10)
     assert response == snug.Response(
         status_code=urlopen.return_value.getcode.return_value,
         content=urlopen.return_value.read.return_value,
@@ -183,31 +307,102 @@ def test_urllib_sender(urlopen, urllib_request):
     )
 
 
-def test_requests_sender():
+def test_requests_send():
     requests = pytest.importorskip("requests")
     session = mock.Mock(spec=requests.Session)
-    sender = snug.make_sender(session)
     req = snug.GET('https://www.api.github.com/organizations',
                    params={'since': 3043},
                    headers={'Accept': 'application/vnd.github.v3+json'})
-    response = sender(req)
+    req = snug.POST('http://httpbin.org/post',
+                    content=b'foo',
+                    params={'bla': 5},
+                    headers={'User-Agent': 'snug/dev'})
+    response = snug.send(session, req)
     assert response == snug.Response(
         status_code=session.request.return_value.status_code,
         content=session.request.return_value.content,
         headers=session.request.return_value.headers,
     )
     session.request.assert_called_once_with(
-        'GET',
-        'https://www.api.github.com/organizations',
-        params={'since': 3043},
-        headers={'Accept': 'application/vnd.github.v3+json'})
+        'POST',
+        'http://httpbin.org/post',
+        data=b'foo',
+        params={'bla': 5},
+        headers={'User-Agent': 'snug/dev'})
+
+
+def test_async_sender_factory_unknown_client():
+    class MyClass:
+        pass
+    with pytest.raises(TypeError, match='MyClass'):
+        snug.send_async(MyClass(), snug.GET('foo'))
+
+
+@pytest.mark.skipif(not LIVE, reason='skip live data test')
+class TestAsyncioSender:
+
+    def test_https(self, loop):
+        req = snug.Request('GET', 'https://httpbin.org/get',
+                           params={'param1': 'foo'},
+                           headers={'Accept': 'application/json'})
+        response = loop.run_until_complete(snug._asyncio_sender(req))
+        assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
+        data = json.loads(response.content.decode())
+        assert data['args'] == {'param1': 'foo'}
+        assert data['headers']['Accept'] == 'application/json'
+        assert data['headers']['User-Agent'].startswith('Python-asyncio/')
+
+    def test_http(self, loop):
+        req = snug.Request('POST', 'http://httpbin.org/post',
+                           content=json.dumps({"foo": 4}).encode(),
+                           headers={'User-Agent': 'snug/dev'})
+        response = loop.run_until_complete(snug._asyncio_sender(req))
+        assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
+        data = json.loads(response.content.decode())
+        assert data['args'] == {}
+        assert json.loads(data['data']) == {'foo': 4}
+        assert data['headers']['User-Agent'] == 'snug/dev'
+
+
+def test_aiohttp_send(loop):
+    req = snug.GET('https://test.com',
+                   content=b'{"foo": 4}',
+                   params={'bla': 99},
+                   headers={'Authorization': 'Basic ABC'})
+    aiohttp = pytest.importorskip('aiohttp')
+    from aioresponses import aioresponses
+
+    @asyncio.coroutine
+    def do_test():
+        session = aiohttp.ClientSession()
+        try:
+            return (yield from snug.send_async(session, req))
+        finally:
+            session.close()
+
+    with aioresponses() as m:
+        m.get('https://test.com/?bla=99', body=b'{"my": "content"}',
+              status=201,
+              headers={'Content-Type': 'application/json'})
+        response = loop.run_until_complete(do_test())
+
+        assert response == snug.Response(
+            201,
+            content=b'{"my": "content"}',
+            headers={'Content-Type': 'application/json'})
+
+        call, = m.requests[('GET', 'https://test.com/?bla=99')]
+        assert call.kwargs['headers'] == {'Authorization': 'Basic ABC'}
+        assert call.kwargs['params'] == {'bla': 99}
+        assert call.kwargs['data'] == b'{"foo": 4}'
 
 
 def test_relation():
 
     class Foo:
 
-        class Bar(snug.Relation):
+        @snug.related
+        class Bar(snug.Query):
             def __iter__(self): pass
 
             def __init__(self, a, b):

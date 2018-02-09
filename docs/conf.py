@@ -52,7 +52,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'snug'
+project = 'Snug'
 copyright = snug.__copyright__
 author = snug.__author__
 
@@ -89,20 +89,20 @@ html_theme_options = {
     "github_user": 'ariebovenberg',
     "github_repo": 'snug',
     "github_banner": True,
+    'codecov_button': True,
     "github_type": 'star',
     'fixed_sidebar': True,
     'code_font_size': '0.8em',
     'travis_button': True,
     'pre_bg': '#FFF6E5',
-    'note_bg': '#E5EEFF',
-    'note_border': '#E5EEFF',
+    'note_bg': '#DAF2ED',
+    'note_border': '#DAF2ED',
     'warn_bg': '#FFE8E8',
     'warn_border': '#FFE8E8',
 }
 
 html_sidebars = {
-    '**': ['about.html',
-           'localtoc.html', 'relations.html', 'searchbox.html']
+    '**': ['about.html', 'navigation.html', 'searchbox.html']
 }
 
 

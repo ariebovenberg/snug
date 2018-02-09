@@ -1,3 +1,5 @@
+.. _tutorial:
+
 Tutorial
 ========
 
@@ -16,17 +18,17 @@ Let's start by creating a lookup query for repositories.
 
 .. literalinclude:: ../tutorial/hello_query.py
 
-We can see from the example that a query:
+We can see from the example that a :class:`~snug.Query`:
 
-* yields :class:`Requests<snug.core.Request>`
-* recieves :class:`Responses<snug.core.Response>`
+* yields :class:`Requests<snug.Request>`
+* recieves :class:`Responses<snug.Response>`
 * returns an outcome (in this case, a :class:`dict`)
 
 .. Note::
 
    You can ignore the type annotations if you like, they are not required.
 
-We can now import our module, and execture the query as follows:
+We can now import our module, and execute the query as follows:
 
 .. code-block:: python3
 
@@ -35,20 +37,27 @@ We can now import our module, and execture the query as follows:
    >>> repo = snug.execute(query)
    {"description": "My first repository on Github!", ...}
 
+Inside a coroutine, we can execute the same query asynchronously:
+
+.. code-block:: python3
+
+   query = ghub.repo('Hello-World', owner='octocat')
+   repo = await snug.execute_async(query)
+
 Expressing queries as generators has two main advantages:
 
 1. as built-in concepts of the language, they can be easily
    :ref:`composed and extended<composing>`.
 2. decoupling networking logic allows
-   the :ref:`use different and async HTTP clients<executors>`.
+   the :ref:`use different and async HTTP clients<executing_queries>`.
 
 We will explore these features in the following sections.
 
-What's in a query?
-------------------
+Class-based queries
+-------------------
 
 Any object whose :meth:`~object.__iter__` returns a generator
-may be considered a :class:`~snug.core.Query`.
+may be considered a :class:`~snug.Query`.
 (This includes :term:`generators <generator iterator>` themselves.)
 The example below shows a query class equivalent
 to our previously defined ``repo``.
@@ -62,8 +71,8 @@ to our previously defined ``repo``.
 
       def __iter__(self):
           owner, name = self.owner, self.name
-          request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
-          response = yield request
+          req = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
+          response = yield req
           return json.loads(response.content)
 
 The main difference is that the class-based version is reusable:
@@ -73,30 +82,40 @@ The main difference is that the class-based version is reusable:
 >>> # not possible if `repo` was just a generator function
 >>> snug.execute(lookup)
 
-You can use :func:`~gentools.core.reusable`
-(from the `gentools <https://github.com/ariebovenberg/gentools>`_ package)
-to create reusable classes from generator functions automatically:
+Additionally, class-based queries allow us
+to define :ref:`nested queries<nested>`.
 
-.. code-block:: python3
+.. Note::
 
-  from gentools import reusable
+  You can use :func:`~gentools.core.reusable`
+  (from the `gentools <http://gentools.readthedocs.io/>`_ package)
+  to create reusable classes from generator functions automatically:
 
-  @reusable
-  def repo(...):
-      ...
+  .. code-block:: python3
 
-.. _executors:
+    from gentools import reusable
 
-Ways to execute your query
---------------------------
+    @reusable
+    def repo(...):
+        ...
 
-Queries can be executed by different executors.
-Executors are callables which take a query
-and return its outcome.
-We've already seen a basic executor: :func:`~snug.core.execute`.
-Lets add another query, and see the different ways it can be executed.
+.. _executing_queries:
 
-.. literalinclude:: ../tutorial/executors.py
+Executing queries
+-----------------
+
+Queries can be executed in different ways.
+We have already seen :func:`~snug.execute`
+and :func:`~snug.execute_async`.
+Both these functions take arguments which affect:
+
+* which HTTP client is used
+* which authentication credentials are used
+
+To illustrate, let's add another query
+and see the different ways it can be executed.
+
+.. literalinclude:: ../tutorial/executing_queries.py
    :lines: 2,4,12-
 
 We can make use of the module as follows:
@@ -104,130 +123,28 @@ We can make use of the module as follows:
 .. code-block:: python3
 
    >>> import snug
-   >>> import tutorial.executors as ghub
-   >>> # an example query
+   >>> import tutorial.executing_queries as ghub
+   >>> # our example query
    >>> follow_the_octocat = ghub.follow('octocat')
 
    >>> # using different credentials
-   >>> exec_as_me = snug.executor(auth=('me', 'password'))
-   >>> exec_as_other = snug.executor(('other', 'hunter2'))
-   >>> exec_as_me(follow_the_octocat)
+   >>> snug.execute(follow_the_octocat, auth=('me', 'password'))
    True
-   >>> exec_as_other(follow_the_octocat)
+   >>> snug.execute(follow_the_octocat, auth=('bob', 'hunter2'))
    True
 
    >>> # using another HTTP client, for example `requests`
    >>> import requests
-   >>> exec = snug.executor(('me', 'password'), client=requests.Session())
-   >>> exec(follow_the_octocat)
+   >>> s = requests.Session()
+   >>> snug.execute(follow_to_octocat, client=s, auth=('me', 'password'))
    True
 
-   >>> # the same query may also be executed asynchronously:
+   >>> # the same options are available for execute_async
    >>> import asyncio
-   >>> exec_async = ghub.async_executor(auth=('me', 'password'))
+   >>> future = snug.execute_async(follow_the_octocat,
+   ...                             auth=('me', 'password'))
    >>> loop = asyncio.get_event_loop()
-   >>> loop.run_until_complete(exec_async(follow_the_octocat))
+   >>> loop.run_until_complete(future)
    True
 
-.. _composing:
-
-Composing queries
------------------
-
-To keep everything nice and modular, queries may be composed and extended.
-In our github API example, we may wish to define common logic for:
-
-* prefixing urls with ``https://api.github.com``
-* setting the required headers
-* parsing responses to JSON
-* deserializing JSON into objects
-* raising descriptive exceptions from responses
-* following redirects
-
-We can use a functional approach with 
-`gentools <https://github.com/ariebovenberg/gentools>`_,
-or a more object-oriented approach by subclassing :class:`~snug.core.Query`.
-We'll explore the functional style first.
-
-Functional approach
-~~~~~~~~~~~~~~~~~~~
-
-Preparing requests
-^^^^^^^^^^^^^^^^^^
-
-Outgoing requests of a query can be modified with
-the :class:`~gentools.core.map_yield` decorator.
-
-.. literalinclude:: ../tutorial/composed0.py
-   :lines: 3-4,11-21
-   :emphasize-lines: 4,10
-
-Parsing responses
-^^^^^^^^^^^^^^^^^
-
-Responses being sent to a query can be modified with
-the :class:`~gentools.core.map_send` decorator.
-
-.. literalinclude:: ../tutorial/composed2.py
-   :lines: 3-4,11-36
-   :emphasize-lines: 17,24
-
-Relaying queries
-^^^^^^^^^^^^^^^^
-
-For advanced cases, each requests/response interaction of a query
-can be relayed through another generator.
-This can be done with the :class:`~gentools.core.relay` decorator.
-The following example shows how this can be used to implement redirects.
-
-.. literalinclude:: ../tutorial/composed3.py
-   :lines: 3-4,24-36
-   :emphasize-lines: 10
-
-
-Loading return values
-^^^^^^^^^^^^^^^^^^^^^
-
-To modify the return value of a generator,
-use the :class:`~gentools.core.map_return` decorator.
-
-.. literalinclude:: ../tutorial/composed4.py
-   :lines: 3-5,12-13,33-43
-   :emphasize-lines: 11
-
-Object-oriented approach
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Below is a roughly equivalent, object-oriented approach:
-
-.. literalinclude:: ../tutorial/composed_oop.py
-
-
-Related queries
----------------
-
-The github API is full of related queries:
-for example, creating a new issue related to a repository,
-or retrieving gists for a user.
-
-We can make use of query classes to express these relations.
-
-
-.. literalinclude:: ../tutorial/relations.py
-   :lines: 12-15,35-
-
-The ``repo`` query behaves the same as in the previous examples,
-only it now has two related queries ``new_issue`` and ``star``.
-The related queries allow us to write:
-
-.. code-block:: python3
-
-   >>> import tutorial.relations as ghub
-   >>> execute = snug.executor(auth=('me', 'password'))
-   >>> hello_repo = ghub.repo('Hello-World', owner='octocat')
-   >>> new_issue = hello_repo.new_issue('found a bug')
-   >>> star_repo = hello_repo.star()
-   >>> execute(new_issue)
-   Issue(...)
-   >>> execute(star_repo)
-   True
+Read on about more features :ref:`here <advanced_topics>`.

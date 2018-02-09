@@ -13,8 +13,8 @@ Snug
 .. image:: https://travis-ci.org/ariebovenberg/snug.svg?branch=master
     :target: https://travis-ci.org/ariebovenberg/snug
 
-.. image:: https://coveralls.io/repos/github/ariebovenberg/snug/badge.svg?branch=master
-    :target: https://coveralls.io/github/ariebovenberg/snug?branch=master
+.. image:: https://codecov.io/gh/ariebovenberg/snug/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/ariebovenberg/snug
 
 .. image:: https://readthedocs.org/projects/snug/badge/?version=latest
     :target: http://snug.readthedocs.io/en/latest/?badge=latest
@@ -25,71 +25,74 @@ Snug
    :alt: Maintainability
 
 
-**Snug** is a compact toolkit for wrapping web APIs.
+**Snug** is a tiny toolkit for writing reusable interactions with web APIs.
 
-* Architecture agnostic (REST, RPC, GraphQL, ...)
-* Swappable HTTP clients (urllib, requests, aiohttp, ...)
-* Interchangeably sync/async
+Key features:
+
+* Write once, run with different HTTP clients (sync *and* async)
+* Fits most API architectures (e.g. REST, RPC, GraphQL)
+* Simple and lightweight
+
+Why?
+----
+
+Writing reusable web API interactions is difficult.
+Consider a typical example:
+
+.. code-block:: python
+
+    import json
+
+    def repo(name, owner):
+        """get a github repo by owner and name"""
+        request = Request(f'https://api.github.com/repos/{owner}/{name}')
+        response = my_http_client.send(request)
+        return json.loads(response.content)
+
+Nice and simple. But...
+
+* What about async? Do we write another function for that?
+* How do we write clean unittests for this?
+* What if we want to use another HTTP client or session?
+* How do we use this with different credentials?
+
+*Snug* allows you to write API interactions
+independent of HTTP client, credentials, or whether they are run (a)synchronously.
+
+In contrast to most API client toolkits,
+*snug* makes minimal assumptions and design decisions.
+Its simple, versatile foundation ensures
+you can focus on what makes your API unique.
 
 Quickstart
 ----------
 
-1. API interactions ("queries") are request/response generators:
+1. API interactions ("queries") are request/response generators.
 
-   .. code-block:: python
+.. code-block:: python
 
-    import json
-    import snug
+  import snug
 
-    def repo(name, owner):
-        """a repo lookup by owner and name"""
-        request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
-        response = yield request
-        return json.loads(response.content)
+  def repo(name, owner):
+      """get a github repo by owner and name"""
+      request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
+      response = yield request
+      return json.loads(response.content)
 
 2. Queries can be executed:
 
-   .. code-block:: python
+.. code-block:: python
 
-    >>> query = repo('Hello-World', owner='octocat')
-    >>> snug.execute(query)
-    {"description": "My first repository on Github!", ...}
+  >>> query = repo('Hello-World', owner='octocat')
+  >>> snug.execute(query)
+  {"description": "My first repository on Github!", ...}
 
 3. That's it
-
-
-Why another library?
---------------------
-
-There are plenty of tools for wrapping web APIs.
-However, these generally make far-reaching design decisions for you,
-making it awkward to bend it to the needs of a specific API.
-**Snug** aims only to provide a versatile base,
-so you can focus on what makes your API unique.
-
-
-Installation
-------------
-
-There are no required dependencies on python 3.5+. Installation is easy as:
-
-.. code-block:: bash
-
-   pip install snug
-
-Although snug includes basic sync and async HTTP clients,
-you may wish to install `requests <http://docs.python-requests.org/>`_
-and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
-
-.. code-block:: bash
-
-   pip install requests
-   pip install aiohttp
 
 Features
 --------
 
-1. *Flexibility*. Since queries are just generators,
+1. **Flexibility**. Since queries are just generators,
    customizing them requires no special glue-code.
    For example: add validation logic, or use any serialization method:
 
@@ -105,38 +108,37 @@ Features
          response = yield request
          return UserSchema().load(json.loads(response.content))
 
-2. *Effortlessly async*. The same query can also be executed asynchronously:
+2. **Effortlessly async**. The same query can also be executed asynchronously:
 
    .. code-block:: python
 
       query = repo('Hello-World', owner='octocat')
       repo = await snug.execute_async(query)
 
-3. *Pluggable clients*. Queries are fully agnostic of the HTTP client.
+3. **Pluggable clients**. Queries are fully agnostic of the HTTP client.
    For example, to use `requests <http://docs.python-requests.org/>`_
    instead of the standard library:
 
    .. code-block:: python
 
       import requests
-      execute = snug.executor(client=requests.Session())
-      execute(repo('Hello-World', owner='octocat'))
+      query = repo('Hello-World', owner='octocat')
+      snug.execute(query, client=requests.Session())
       # {"description": "My first repository on Github!", ...}
 
-4. *Testable*. Since queries are just generators, we can run them
-   just fine without touching the network.
+4. **Testability**. Queries can easily be run without touching the network.
    No need for complex mocks or monkeypatching.
 
    .. code-block:: python
 
-      >>> query = iter(repo('Hello-World', owner='octocat'))
+      >>> query = repo('Hello-World', owner='octocat')
       >>> next(query).url.endswith('/repos/octocat/Hello-World')
       True
       >>> query.send(snug.Response(200, b'...'))
       StopIteration({"description": "My first repository on Github!", ...})
 
-5. *Swappable authentication*. Different credentials can be used to execute
-   the same query:
+5. **Swappable authentication**. Queries aren't tied to a session or credentials.
+   Use different credentials to execute the same query:
 
    .. code-block:: python
 
@@ -145,13 +147,11 @@ Features
           req = snug.PUT('https://api.github.com/user/following/{name}')
           return (yield req).status_code == 204
 
-      exec_as_me = snug.executor(auth=('me', 'password'))
-      exec_as_bob = snug.executor(auth=('bob', 'password'))
+      snug.execute(follow('octocat'), auth=('me', 'password'))
+      snug.execute(follow('octocat'), auth=('bob', 'hunter2'))
 
-      exec_as_me(follow('octocat'))
-      exec_as_bob(follow('octocat'))
-
-6. *Related queries*. Use class-based queries to create a chained API for related objects:
+6. **Related queries**. Use class-based queries to create an
+   expressive, chained API for related objects:
 
    .. code-block:: python
 
@@ -159,26 +159,21 @@ Features
           """a repo lookup by owner and name"""
           def __init__(self, name, owner): ...
 
-          def __iter__(self): ...  # query of the repo itself
+          def __iter__(self): ...  # query for the repo itself
 
           def issue(self, num: int) -> snug.Query[dict]:
               """retrieve an issue in this repository by its number"""
               r = snug.GET(f'/repos/{self.owner}/{self.name}/issues/{num}')
               return json.loads((yield r).content)
 
-      hello_world_repo = repo('Hello-World', owner='octocat')
-      issue_348 = hello_world_repo.issue(348)
-      snug.execute(issue_348)
+      my_issue = repo('Hello-World', owner='octocat').issue(348)
+      snug.execute(my_issue)
       # {"title": "Testing comments", ...}
 
-      # we could take this as far as we like, eventually:
-      new_comments = (repo('Hello-World', owner='octocat')
-                      .issue(348)
-                      .comments(since=datetime(2018, 1, 1)))
 
-
-7. *Function- or class-based? You decide*.
-   Use class-based queries and inheritance to keep everything DRY:
+7. **Function- or class-based? You decide**.
+   One option to keep everything DRY is to use
+   class-based queries and inheritance:
 
    .. code-block:: python
 
@@ -188,10 +183,11 @@ Features
           def prepare(self, request): ...  # add url prefix, headers, etc.
 
           def __iter__(self):
+              """the base query routine"""
               request = self.prepare(self.request)
               return self.load(self.check_response((yield request)))
 
-          def check_response(self, result): ...
+          def check_response(self, result): ...  # raise nice errors
 
       class repo(BaseQuery):
           """get a repo by owner and name"""
@@ -245,4 +241,23 @@ Features
 
 For more info, check out the `tutorial <http://snug.readthedocs.io/en/latest/tutorial.html>`_,
 `recipes <http://snug.readthedocs.io/en/latest/recipes.html>`_,
-or the examples (in the ``examples/`` directory)
+or `examples <http://snug.readthedocs.io/en/latest/examples.html>`_.
+
+
+Installation
+------------
+
+There are no required dependencies on python 3.5+. Installation is easy as:
+
+.. code-block:: bash
+
+   pip install snug
+
+Although snug includes basic sync and async HTTP clients,
+you may wish to install `requests <http://docs.python-requests.org/>`_
+and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
+
+.. code-block:: bash
+
+   pip install requests
+   pip install aiohttp

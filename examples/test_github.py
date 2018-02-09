@@ -6,7 +6,6 @@ import aiohttp
 import pytest
 
 import github as gh
-import snug
 
 live = pytest.config.getoption('--live')
 
@@ -17,7 +16,7 @@ auth = tuple(json.loads(CRED_PATH.read_bytes()))
 @pytest.fixture(scope='module')
 async def exec():
     async with aiohttp.ClientSession() as client:
-        yield snug.async_executor(auth=auth, client=client)
+        yield gh.async_executor(auth=auth, client=client)
 
 
 @pytest.mark.asyncio
@@ -139,3 +138,13 @@ async def test_issue_comments(exec):
 
         assert isinstance(comments, list)
         assert isinstance(comments[0], gh.Issue.Comment)
+
+
+@pytest.mark.asyncio
+async def test_follow_user(exec):
+    user = gh.user('octocat')
+
+    if live:
+        assert await exec(user.follow())
+        assert await exec(user.unfollow())
+        assert not await exec(user.following())
