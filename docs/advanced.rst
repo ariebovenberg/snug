@@ -112,6 +112,8 @@ For example, the github API is full of related queries:
 creating a new issue related to a repository,
 or retrieving gists for a user.
 
+Below is an example of the ``repo`` query extended with related queries
+
 .. literalinclude:: ../tutorial/relations.py
    :lines: 12-15,35-67
 
@@ -122,13 +124,14 @@ The related queries allow us to write:
 .. code-block:: python3
 
    >>> import tutorial.relations as ghub
-   >>> execute = snug.executor(auth=('me', 'password'))
+   >>> exec = snug.executor(auth=('me', 'password'))
+   >>>
    >>> hello_repo = ghub.repo('Hello-World', owner='octocat')
    >>> new_issue = hello_repo.new_issue('found a bug')
    >>> star_repo = hello_repo.star()
-   >>> execute(new_issue)
+   >>> exec(new_issue)
    Issue(...)
-   >>> execute(star_repo)
+   >>> exec(star_repo)
    True
 
 
@@ -142,7 +145,7 @@ of :func:`~snug.executor`/:func:`~snug.async_executor`.
 
 ``auth_method`` will be called with credentials (the ``auth`` parameter),
 and a :class:`~snug.Request` instance.
-It should return an authenticated request
+It should return an authenticated request.
 
 To illutrate, here is a simple example for token-based authentication:
 
@@ -171,6 +174,7 @@ A new client type can be registered as follows:
 
    @snug.send.register(MyClientType)
    def _send(client: MyClientType, req: snug.Request) -> snug.Response:
+       # unpack the snug.Request into a client call
        raw_response = client.send_request(
            url=req.url,
            data=req.content,

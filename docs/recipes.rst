@@ -23,7 +23,7 @@ similar to the ``repo`` query in the tutorial:
 
 
   @graphql
-  def repo(name, owner, *, fields=('id', )):
+  def repo(name, owner, *, fields=('id', )) -> snug.Query[dict]:
       """lookup a repo by owner and name, returning only certain fields"""
       response = yield f'''
         query {
@@ -33,6 +33,10 @@ similar to the ``repo`` query in the tutorial:
         }
       '''
       return response['repository']
+
+  q = repo('Hello-World', owner='octocat', fields=('description', 'id'))
+  snug.execute(q)
+  # {'description': ..., 'id': ...}
 
 Conditional requests
 --------------------
@@ -65,6 +69,10 @@ The example below shows a reusable implementation using
           headers=({'If-Modified-Since': modified_since}
                    if modified_since else {}))
       return json.loads(response.content)
+
+  q = repo('Hello-World', 'octocat', modified_since='2018-02-08T00:30:01Z')
+  snug.execute(q)
+  # NotModified()
 
 Pagination
 ----------
@@ -138,8 +146,7 @@ Note that this will fetch **all** results eagerly, so use with care.
 
 We can then query for all results:
 
-   >>> exec = snug.executor(auth=...)
-   >>> exec(all_channels())
+   >>> exec(all_channels(), auth=...)
    [{"name": ...}, ...]
 
 

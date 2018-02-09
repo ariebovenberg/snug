@@ -12,11 +12,6 @@ from itertools import chain, starmap
 from operator import methodcaller
 from types import MethodType
 
-__version__ = '1.0.0'
-__author__ = 'Arie Bovenberg'
-__copyright__ = '2018, Arie Bovenberg'
-__description__ = 'Write reusable web API interactions'
-
 __all__ = [
     'Query',
     'execute',
@@ -39,6 +34,11 @@ __all__ = [
     'OPTIONS',
 ]
 
+__version__ = '1.0.0'
+__author__ = 'Arie Bovenberg'
+__copyright__ = '2018, Arie Bovenberg'
+__description__ = 'Write reusable web API interactions'
+
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
 _TextMapping = t.Mapping[str, str]
@@ -46,6 +46,11 @@ _Awaitable = (t.Awaitable.__getitem__  # pragma: no cover
               if sys.version_info > (3, 5)
               else lambda x: t.Generator[t.Any, t.Any, x])
 _ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
+_Sender = t.Callable[['Request'], 'Response']
+_AsyncSender = t.Callable[['Request'], _Awaitable('Response')]
+_Executor = t.Callable[['Query[T]'], T]
+_AExecutor = t.Callable[['Query[T]'], _Awaitable(T)]
+_AuthMethod = t.Callable[[T_auth, 'Request'], 'Request']
 
 
 def _identity(obj):
@@ -177,7 +182,7 @@ class Request:
 
 
 class Response:
-    """A simple HTTP response
+    """A simple HTTP response.
 
     Parameters
     ----------
@@ -246,6 +251,35 @@ class Query(t.Generic[T], t.Iterable[Request]):
     as a descriptive type annotation.
 
     For example: ``Query[bool]`` indicates a query which returns a boolean.
+
+    Examples
+    --------
+
+    Creating a query from a generator function:
+
+    >>> def repo(name: str, owner: str) -> snug.Query[dict]:
+    ...    \"\"\"a repo lookup by owner and name\"\"\"
+    ...    req = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
+    ...    response = yield req
+    ...    return json.loads(response.content)
+    ...
+    >>> query = repo('Hello-World', owner='octocat')
+
+    Creating a query with a :class:`Query` subclass:
+
+    >>> class repo(snug.Query[dict]):
+    ...    \"\"\"a repository lookup by owner and name\"\"\"
+    ...    def __init__(self, name: str, owner: str):
+    ...        self.name, self.owner = name, owner
+    ...
+    ...    def __iter__(self):
+    ...        owner, name = self.owner, self.name
+    ...        request = snug.GET(
+    ...            f'https://api.github.com/repos/{owner}/{name}')
+    ...        response = yield request
+    ...        return json.loads(response.content)
+    ...
+    >>> query = repo('Hello-World', owner='octocat')
     """
     @abc.abstractmethod
     def __iter__(self) -> t.Generator[Request, Response, T]:
@@ -255,23 +289,24 @@ class Query(t.Generic[T], t.Iterable[Request]):
 
 class related:
     """Decorate classes to make them callable as methods.
-    This can be used to implement related queries.
+    This can be used to implement related queries
+    through nested classes.
 
     Example
     -------
 
-    >>> class Parent:
+    >>> class Foo:
     ...     @related
-    ...     class child:
-    ...         def __init__(self, parent, bar):
-    ...             self.parent, self.bar = parent, bar
+    ...     class Bar:
+    ...         def __init__(self, foo, qux):
+    ...             self.the_foo, self.qux = foo, qux
     ...         ...
     ...
-    >>> p = Parent()
-    >>> c = p.child(bar=5)
-    >>> isinstance(c, Parent.child)
+    >>> f = Foo()
+    >>> b = p.Bar(qux=5)
+    >>> isinstance(b, Foo.Bar)
     True
-    >>> c.parent is p
+    >>> b.the_foo is f
     True
     """
     def __init__(self, cls):
@@ -281,23 +316,8 @@ class related:
         return self._cls if obj is None else MethodType(self._cls, obj)
 
 
-_Sender = t.Callable[[Request], Response]
-_AsyncSender = t.Callable[[Request], _Awaitable(Response)]
-_Executor = t.Callable[[Query[T]], T]
-_AExecutor = t.Callable[[Query[T]], _Awaitable(T)]
-_AuthMethod = t.Callable[[T_auth, Request], Request]
-
-
 def _urllib_sender(req: Request, **kwargs) -> Response:
-    """Simple sender which uses :mod:`urllib`
-
-    Parameters
-    ----------
-    req
-        the request to send
-    **kwargs
-        keyword arguments passed to :func:`urllib.request.urlopen`
-    """
+    """Simple sender which uses :mod:`urllib`"""
     url = req.url + '?' + urllib.parse.urlencode(req.params)
     raw_request = urllib.request.Request(url, headers=req.headers,
                                          method=req.method)
@@ -439,7 +459,8 @@ def execute_async(query: Query[T], *,
 @singledispatch
 def send(client, request: Request) -> Response:
     """Given a client, send a :class:`Request`,
-    returning a :class:`Response`
+    returning a :class:`Response`.
+
     A :func:`~functools.singledispatch` function.
 
     Example of registering a new HTTP client:
@@ -452,14 +473,14 @@ def send(client, request: Request) -> Response:
     Parameters
     ----------
     client: any registered client type
-        the client to create a sender from
+        the client with which to send the request
     request
         the request to send
 
     Note
     ----
     if `requests <http://docs.python-requests.org/>`_ is installed,
-    :class:`requests.Session` is already registerd.
+    :class:`requests.Session` is already registerd as a valid client type.
     """
     raise TypeError('client {!r} not registered'.format(client))
 
@@ -467,7 +488,7 @@ def send(client, request: Request) -> Response:
 @singledispatch
 def send_async(client, request: Request) -> _Awaitable(Response):
     """Given a client, send a :class:`Request`,
-    returning an awaitable :class:`Response`
+    returning an awaitable :class:`Response`.
 
     A :func:`~functools.singledispatch` function.
 
@@ -481,14 +502,14 @@ def send_async(client, request: Request) -> _Awaitable(Response):
     Parameters
     ----------
     client: any registered client type
-        the client to create a sender from
+        the client with which to send the request
     request
         the request to send
 
     Note
     ----
     If `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed,
-    :class:`aiohttp.ClientSession` is already registerd.
+    :class:`aiohttp.ClientSession` is already registerd as a valid client type.
     """
     raise TypeError('client {!r} not registered'.format(client))
 
