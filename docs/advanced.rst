@@ -152,11 +152,9 @@ To illutrate, here is a simple example for token-based authentication:
 .. code-block:: python3
 
    def token_auth(token, request)
-       return request.with_headers({
-           'Authorization': f'token {token}'
-       })
+       return request.with_headers({'Authorization': f'token {token}'})
 
-   exec = snug.executor(auth='my token', auth_method=TokenAuth)
+   exec = snug.executor(auth='my token', auth_method=token_auth)
 
 See the slack API example for a real-world use-case.
 
