@@ -368,9 +368,9 @@ class TestAsyncioSender:
 @pytest.mark.skipif(not LIVE, reason='skip live data test')
 def test_aiohttp_send(loop):
     req = snug.POST('https://httpbin.org/post',
-                   content=b'{"foo": 4}',
-                   params={'bla': 99},
-                   headers={'Accept': 'application/json'})
+                    content=b'{"foo": 4}',
+                    params={'bla': 99},
+                    headers={'Accept': 'application/json'})
     aiohttp = pytest.importorskip('aiohttp')
 
     @asyncio.coroutine
