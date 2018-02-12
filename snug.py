@@ -34,7 +34,7 @@ __all__ = [
     'OPTIONS',
 ]
 
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 __author__ = 'Arie Bovenberg'
 __copyright__ = '2018, Arie Bovenberg'
 __description__ = 'Write reusable web API interactions'
@@ -321,12 +321,8 @@ def _urllib_sender(req: Request, **kwargs) -> Response:
     url = req.url + '?' + urllib.parse.urlencode(req.params)
     raw_request = urllib.request.Request(url, headers=req.headers,
                                          method=req.method)
-    raw_response = urllib.request.urlopen(raw_request, **kwargs)
-    return Response(
-        raw_response.getcode(),
-        content=raw_response.read(),
-        headers=raw_response.headers,
-    )
+    res = urllib.request.urlopen(raw_request, **kwargs)
+    return Response(res.getcode(), content=res.read(), headers=res.headers)
 
 
 class _SocketAdaptor:
@@ -373,9 +369,7 @@ def _asyncio_sender(req: Request) -> _Awaitable(Response):
 def basic_auth(credentials, request):
     """Apply basic authentication to a request"""
     encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
-    return request.with_headers({
-        'Authorization': 'Basic ' + encoded
-    })
+    return request.with_headers({'Authorization': 'Basic ' + encoded})
 
 
 def _exec(query, sender):
@@ -539,27 +533,23 @@ def async_executor(**kwargs) -> _AExecutor:
 
 
 prefix_adder = partial(methodcaller, 'with_prefix')
-prefix_adder.__doc__ = """
-make a callable which adds a prefix to a request url
-"""
+prefix_adder.__doc__ = "make a callable which adds a prefix to a request url"
 header_adder = partial(methodcaller, 'with_headers')
-header_adder.__doc__ = """
-make a callable which adds headers to a request
-"""
+header_adder.__doc__ = "make a callable which adds headers to a request"
 GET = partial(Request, 'GET')
-GET.__doc__ = """shortcut for a GET request"""
+GET.__doc__ = "shortcut for a GET request"
 POST = partial(Request, 'POST')
-POST.__doc__ = """shortcut for a POST request"""
+POST.__doc__ = "shortcut for a POST request"
 PUT = partial(Request, 'PUT')
-PUT.__doc__ = """shortcut for a PUT request"""
+PUT.__doc__ = "shortcut for a PUT request"
 PATCH = partial(Request, 'PATCH')
-PATCH.__doc__ = """shortcut for a PATCH request"""
+PATCH.__doc__ = "shortcut for a PATCH request"
 DELETE = partial(Request, 'DELETE')
-DELETE.__doc__ = """shortcut for a DELETE request"""
+DELETE.__doc__ = "shortcut for a DELETE request"
 HEAD = partial(Request, 'HEAD')
-HEAD.__doc__ = """shortcut for a HEAD request"""
+HEAD.__doc__ = "shortcut for a HEAD request"
 OPTIONS = partial(Request, 'OPTIONS')
-OPTIONS.__doc__ = """shortcut for a OPTIONS request"""
+OPTIONS.__doc__ = "shortcut for a OPTIONS request"
 
 
 try:
@@ -596,12 +586,8 @@ else:
     @send.register(requests.Session)
     def _requests_send(session, req: Request) -> Response:
         """send a request with the `requests` library"""
-        response = session.request(req.method, req.url,
-                                   data=req.content,
-                                   params=req.params,
-                                   headers=req.headers)
-        return Response(
-            response.status_code,
-            response.content,
-            headers=response.headers,
-        )
+        res = session.request(req.method, req.url,
+                              data=req.content,
+                              params=req.params,
+                              headers=req.headers)
+        return Response(res.status_code, res.content, headers=res.headers)
