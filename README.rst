@@ -1,5 +1,5 @@
-Snug
-====
+Snug 🧣
+=======
 
 .. image:: https://img.shields.io/pypi/v/snug.svg
     :target: https://pypi.python.org/pypi/snug
@@ -30,8 +30,8 @@ Snug
 Key features:
 
 * Write once, run with different HTTP clients (sync *and* async)
-* Fits most API architectures (e.g. REST, RPC, GraphQL)
-* Simple and lightweight
+* Fits any API architecture (e.g. REST, RPC, GraphQL)
+* Simple, lightweight and versatile
 
 Why?
 ----
