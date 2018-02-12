@@ -5,6 +5,5 @@ pytest-coverage
 pytest-asyncio
 wheel
 twine
-aioresponses
 isort
 dataclasses

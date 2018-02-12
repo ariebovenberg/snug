@@ -482,6 +482,7 @@ def send(client, request: Request) -> Response:
 
 
 @singledispatch
+@asyncio.coroutine
 def send_async(client, request: Request) -> _Awaitable(Response):
     """Given a client, send a :class:`Request`,
     returning an awaitable :class:`Response`.
