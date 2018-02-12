@@ -82,6 +82,8 @@ The following example shows how this can be used to implement redirects.
    :lines: 3-4,24-36
    :emphasize-lines: 10
 
+See the :ref:`recipes <recipes>` for more examples.
+
 
 Loading return values
 ^^^^^^^^^^^^^^^^^^^^^

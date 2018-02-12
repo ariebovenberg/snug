@@ -9,7 +9,7 @@ In this example, we will be wrapping the github v3 REST API.
 Hello query
 -----------
 
-The basic building block we'll be working with is the *query*,
+The basic building block we'll be working with is the *query*.
 A query represents an interaction with the API which may be executed.
 The simplest way to create a query is through a
 :term:`generator function <generator>`.
@@ -147,4 +147,4 @@ We can make use of the module as follows:
    >>> loop.run_until_complete(future)
    True
 
-Read on about more features :ref:`here <advanced_topics>`.
+Read on about more advanced features :ref:`here <advanced_topics>`.
