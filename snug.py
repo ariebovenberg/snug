@@ -418,6 +418,7 @@ def execute(query: Query[T], *,
         The HTTP client to use.
         Its type must have been registered
         with :func:`send`.
+        If not given, the built-in :mod:`urllib` module is used.
     auth_method
         the authentication method to use
     """
@@ -443,6 +444,7 @@ def execute_async(query: Query[T], *,
         The HTTP client to use.
         Its type must have been registered
         with :func:`send_async`.
+        If not given, the built-in :mod:`asyncio` module is used.
     auth_method
         the authentication method to use
 
