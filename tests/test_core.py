@@ -280,7 +280,7 @@ def test_async_executor():
     assert exec.keywords == {'client': 'foo'}
 
 
-def test_sender_factory_unknown_client():
+def test_send_with_unknown_client():
     class MyClass:
         pass
     with pytest.raises(TypeError, match='MyClass'):
@@ -331,11 +331,12 @@ def test_requests_send():
         headers={'User-Agent': 'snug/dev'})
 
 
-def test_async_sender_factory_unknown_client():
+def test_async_send_with_unknown_client(loop):
     class MyClass:
         pass
+
     with pytest.raises(TypeError, match='MyClass'):
-        snug.send_async(MyClass(), snug.GET('foo'))
+        loop.run_until_complete(snug.send_async(MyClass(), snug.GET('foo')))
 
 
 @pytest.mark.skipif(not LIVE, reason='skip live data test')
@@ -364,13 +365,13 @@ class TestAsyncioSender:
         assert data['headers']['User-Agent'] == 'snug/dev'
 
 
+@pytest.mark.skipif(not LIVE, reason='skip live data test')
 def test_aiohttp_send(loop):
-    req = snug.GET('https://test.com',
-                   content=b'{"foo": 4}',
-                   params={'bla': 99},
-                   headers={'Authorization': 'Basic ABC'})
+    req = snug.POST('https://httpbin.org/post',
+                    content=b'{"foo": 4}',
+                    params={'bla': 99},
+                    headers={'Accept': 'application/json'})
     aiohttp = pytest.importorskip('aiohttp')
-    from aioresponses import aioresponses
 
     @asyncio.coroutine
     def do_test():
@@ -378,23 +379,14 @@ def test_aiohttp_send(loop):
         try:
             return (yield from snug.send_async(session, req))
         finally:
-            session.close()
+            yield from session.close()
 
-    with aioresponses() as m:
-        m.get('https://test.com/?bla=99', body=b'{"my": "content"}',
-              status=201,
-              headers={'Content-Type': 'application/json'})
-        response = loop.run_until_complete(do_test())
-
-        assert response == snug.Response(
-            201,
-            content=b'{"my": "content"}',
-            headers={'Content-Type': 'application/json'})
-
-        call, = m.requests[('GET', 'https://test.com/?bla=99')]
-        assert call.kwargs['headers'] == {'Authorization': 'Basic ABC'}
-        assert call.kwargs['params'] == {'bla': 99}
-        assert call.kwargs['data'] == b'{"foo": 4}'
+    response = loop.run_until_complete(do_test())
+    assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
+    data = json.loads(response.content.decode())
+    assert data['args'] == {'bla': '99'}
+    assert json.loads(data['data']) == {'foo': 4}
+    assert data['headers']['Accept'] == 'application/json'
 
 
 def test_relation():

@@ -1,5 +1,5 @@
-Snug
-====
+Snug 🧣
+=======
 
 .. image:: https://img.shields.io/pypi/v/snug.svg
     :target: https://pypi.python.org/pypi/snug
@@ -30,8 +30,8 @@ Snug
 Key features:
 
 * Write once, run with different HTTP clients (sync *and* async)
-* Fits most API architectures (e.g. REST, RPC, GraphQL)
-* Simple and lightweight
+* Fits any API architecture (e.g. REST, RPC, GraphQL)
+* Simple, lightweight and versatile
 
 Why?
 ----
@@ -60,7 +60,7 @@ Nice and simple. But...
 independent of HTTP client, credentials, or whether they are run (a)synchronously.
 
 In contrast to most API client toolkits,
-*snug* makes minimal assumptions and design decisions.
+*snug* makes minimal assumptions and design decisions for you.
 Its simple, versatile foundation ensures
 you can focus on what makes your API unique.
 
@@ -124,7 +124,6 @@ Features
       import requests
       query = repo('Hello-World', owner='octocat')
       snug.execute(query, client=requests.Session())
-      # {"description": "My first repository on Github!", ...}
 
 4. **Testability**. Queries can easily be run without touching the network.
    No need for complex mocks or monkeypatching.
@@ -168,7 +167,6 @@ Features
 
       my_issue = repo('Hello-World', owner='octocat').issue(348)
       snug.execute(my_issue)
-      # {"title": "Testing comments", ...}
 
 
 7. **Function- or class-based? You decide**.
@@ -205,7 +203,7 @@ Features
           def load(self, response):
               return response.status_code == 204
 
-   Or, if you're comfortable with high-order functions and decorators,
+   Or, if you're comfortable with higher-order functions and decorators,
    make use of `gentools <http://gentools.readthedocs.io/>`_
    to modify query ``yield``, ``send``, and ``return`` values:
 

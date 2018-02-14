@@ -3,3 +3,4 @@ exclude_patterns:
 - "tests/"
 - "tutorial/"
 - "docs/"
+- "setup.py"
