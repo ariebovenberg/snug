@@ -316,12 +316,29 @@ class related:
         return self._cls if obj is None else MethodType(self._cls, obj)
 
 
+# necessary to be able to send POST requests without content-type header:
+# urllib adds application/x-www-form-urlencoded by default.
+class _NoContentTypeHandler(urllib.request.BaseHandler):
+
+    def http_request(self, req):
+        if req.has_header('Content-type'):
+            req.remove_header('Content-type')
+        return req
+
+    https_request = http_request
+
+
+_urlopen_no_ctype = urllib.request.build_opener(_NoContentTypeHandler()).open
+
+
 def _urllib_sender(req: Request, **kwargs) -> Response:
     """Simple sender which uses :mod:`urllib`"""
     url = req.url + '?' + urllib.parse.urlencode(req.params)
-    raw_request = urllib.request.Request(url, headers=req.headers,
-                                         method=req.method)
-    res = urllib.request.urlopen(raw_request, **kwargs)
+    raw_req = urllib.request.Request(url, req.content, headers=req.headers,
+                                     method=req.method)
+    has_contenttype = any(h.lower() == 'content-type' for h in req.headers)
+    opener = urllib.request.urlopen if has_contenttype else _urlopen_no_ctype
+    res = opener(raw_req, **kwargs)
     return Response(res.getcode(), content=res.read(), headers=res.headers)
 
 
