@@ -85,18 +85,13 @@ def test_exec_async(loop):
 
 class TestExecute:
 
-    @mock.patch('urllib.request.Request', autospec=True)
-    @mock.patch('urllib.request.urlopen', autospec=True)
-    def test_defaults(self, urlopen, _):
+    @mock.patch('snug._urllib_sender', autospec=True)
+    def test_defaults(self, send):
 
         def myquery():
             return (yield snug.GET('my/url'))
 
-        assert snug.execute(myquery()) == snug.Response(
-            status_code=urlopen.return_value.getcode.return_value,
-            content=urlopen.return_value.read.return_value,
-            headers=urlopen.return_value.headers,
-        )
+        assert snug.execute(myquery()) == send.return_value
 
     def test_custom_client(self):
         client = MockClient(snug.Response(204))
