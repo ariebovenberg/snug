@@ -361,7 +361,7 @@ class TestAsyncioSender:
     def test_http(self, loop):
         req = snug.Request('POST', 'http://httpbin.org/post',
                            content=json.dumps({"foo": 4}).encode(),
-                           headers={'User-Agent': 'snug/dev'})
+                           headers={'User-agent': 'snug/dev'})
         response = loop.run_until_complete(snug._asyncio_sender(req))
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
         data = json.loads(response.content.decode())

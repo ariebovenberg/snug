@@ -353,7 +353,7 @@ class _SocketAdaptor:
 @asyncio.coroutine
 def _asyncio_sender(req: Request) -> _Awaitable(Response):
     """A rudimentary HTTP client using :mod:`asyncio`"""
-    if 'User-Agent' not in req.headers:
+    if not any(h.lower() == 'user-agent' for h in req.headers):
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
     url = urllib.parse.urlsplit(
         req.url + '?' + urllib.parse.urlencode(req.params))
