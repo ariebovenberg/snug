@@ -4,7 +4,7 @@ Release history
 development
 +++++++++++
 
-1.0.2 (2018-02-16)
+1.0.2 (2018-02-17)
 ++++++++++++++++++
 
 - fixes for sending requests with default clients
