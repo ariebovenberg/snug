@@ -8,6 +8,7 @@ development
 ++++++++++++++++++
 
 - fixes for sending requests with default clients
+- improvements to docs
 
 1.0.1 (2018-02-12)
 ++++++++++++++++++
