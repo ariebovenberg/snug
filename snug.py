@@ -320,8 +320,7 @@ class related:
 class _NoContentTypeHandler(urllib.request.BaseHandler):
 
     def http_request(self, req):
-        if req.has_header('Content-type'):
-            req.remove_header('Content-type')
+        req.remove_header('Content-type')
         return req
 
     https_request = http_request
