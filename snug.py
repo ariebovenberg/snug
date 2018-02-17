@@ -300,7 +300,6 @@ class related:
     ...     class Bar:
     ...         def __init__(self, foo, qux):
     ...             self.the_foo, self.qux = foo, qux
-    ...         ...
     ...
     >>> f = Foo()
     >>> b = p.Bar(qux=5)
