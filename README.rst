@@ -25,9 +25,7 @@ Snug 🧣
    :alt: Maintainability
 
 
-**Snug** is a tiny toolkit for writing reusable interactions with web APIs.
-
-Key features:
+**Snug** is a tiny toolkit for writing reusable interactions with web APIs. Key features:
 
 * Write once, run with different HTTP clients (sync *and* async)
 * Fits any API architecture (e.g. REST, RPC, GraphQL)
@@ -37,7 +35,7 @@ Why?
 ----
 
 Writing reusable web API interactions is difficult.
-Consider a typical example:
+Consider a generic example:
 
 .. code-block:: python
 
@@ -60,9 +58,11 @@ Nice and simple. But...
 independent of HTTP client, credentials, or whether they are run (a)synchronously.
 
 In contrast to most API client toolkits,
-*snug* makes minimal assumptions and design decisions for you.
-Its simple, versatile foundation ensures
+snug makes minimal assumptions and design decisions for you.
+Its simple, adaptable foundation ensures
 you can focus on what makes your API unique.
+Snug fits in nicely whether you're writing a full-featured API wrapper,
+or just making a few API calls.
 
 Quickstart
 ----------
@@ -259,3 +259,10 @@ and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
 
    pip install requests
    pip install aiohttp
+
+Alternatives
+------------
+
+If you're looking for a less minimalistic API client toolkit,
+check out `uplink <http://uplink.readthedocs.io/>`_
+or `tapioca <http://tapioca-wrapper.readthedocs.io/>`_.
