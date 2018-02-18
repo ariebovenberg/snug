@@ -5,7 +5,7 @@ API reference
 .. automodule:: snug
    :members:
    :special-members:
-   :exclude-members: __next_in_mro__,__weakref__,__mro__
+   :exclude-members: __next_in_mro__,__weakref__,__mro__,__init__,__repr__
 
 .. autodata:: snug.GET
 .. autodata:: snug.POST

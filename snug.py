@@ -34,7 +34,7 @@ __all__ = [
     'OPTIONS',
 ]
 
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 __author__ = 'Arie Bovenberg'
 __copyright__ = '2018, Arie Bovenberg'
 __description__ = 'Write reusable web API interactions'
@@ -300,7 +300,6 @@ class related:
     ...     class Bar:
     ...         def __init__(self, foo, qux):
     ...             self.the_foo, self.qux = foo, qux
-    ...         ...
     ...
     >>> f = Foo()
     >>> b = p.Bar(qux=5)
@@ -316,12 +315,28 @@ class related:
         return self._cls if obj is None else MethodType(self._cls, obj)
 
 
+# necessary to be able to send POST requests without content-type header:
+# urllib adds application/x-www-form-urlencoded by default.
+class _NoContentTypeHandler(urllib.request.BaseHandler):
+
+    def http_request(self, req):
+        req.remove_header('Content-type')
+        return req
+
+    https_request = http_request
+
+
+_urlopen_no_ctype = urllib.request.build_opener(_NoContentTypeHandler()).open
+
+
 def _urllib_sender(req: Request, **kwargs) -> Response:
     """Simple sender which uses :mod:`urllib`"""
     url = req.url + '?' + urllib.parse.urlencode(req.params)
-    raw_request = urllib.request.Request(url, headers=req.headers,
-                                         method=req.method)
-    res = urllib.request.urlopen(raw_request, **kwargs)
+    raw_req = urllib.request.Request(url, req.content, headers=req.headers,
+                                     method=req.method)
+    has_contenttype = any(h.lower() == 'content-type' for h in req.headers)
+    opener = urllib.request.urlopen if has_contenttype else _urlopen_no_ctype
+    res = opener(raw_req, **kwargs)
     return Response(res.getcode(), content=res.read(), headers=res.headers)
 
 
@@ -336,7 +351,7 @@ class _SocketAdaptor:
 @asyncio.coroutine
 def _asyncio_sender(req: Request) -> _Awaitable(Response):
     """A rudimentary HTTP client using :mod:`asyncio`"""
-    if 'User-Agent' not in req.headers:
+    if not any(h.lower() == 'user-agent' for h in req.headers):
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
     url = urllib.parse.urlsplit(
         req.url + '?' + urllib.parse.urlencode(req.params))

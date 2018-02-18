@@ -4,6 +4,12 @@ Release history
 development
 +++++++++++
 
+1.0.2 (2018-02-18)
+++++++++++++++++++
+
+- fixes for sending requests with default clients
+- improvements to docs
+
 1.0.1 (2018-02-12)
 ++++++++++++++++++
 

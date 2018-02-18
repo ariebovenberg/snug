@@ -109,18 +109,23 @@ Related queries
 
 With class-based queries, it is possible to create an
 expressive, chained API. 
-
-For example, the github API is full of related queries:
+The github API, for example is full of related queries:
 creating a new issue related to a repository,
 or retrieving gists for a user.
 
-Below is an example of the ``repo`` query extended with related queries
+Below is an example of the ``repo`` query extended with related queries.
+It demonstrates two ways of declaring related queries:
+
+* as a method
+* as a nested class with the :func:`~snug.related` decorator.
 
 .. literalinclude:: ../tutorial/relations.py
-   :lines: 12-15,35-67
+   :emphasize-lines: 15,20,33
 
 The ``repo`` query behaves the same as in the previous examples,
-only it now has two related queries ``new_issue`` and ``star``.
+only it now has two related queries: ``star`` and ``issue``,
+which has a related query of its own (``comments``).
+
 The related queries allow us to write:
 
 .. code-block:: python3
@@ -129,12 +134,13 @@ The related queries allow us to write:
    >>> exec = snug.executor(auth=('me', 'password'))
    >>>
    >>> hello_repo = ghub.repo('Hello-World', owner='octocat')
-   >>> new_issue = hello_repo.new_issue('found a bug')
-   >>> star_repo = hello_repo.star()
-   >>> exec(new_issue)
-   Issue(...)
-   >>> exec(star_repo)
+   >>> exec(hello_repo)
+   {"description": "My first repository on Github!", ...}
+   >>> exec(hello_repo.star())
    True
+   >>> comments = hello_repo.issue(348).comments(since=datetime(2018, 1, 1))
+   >>> exec(comments)
+   [{"body": ...}, ...]
 
 
 Authentication methods

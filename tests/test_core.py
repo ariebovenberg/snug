@@ -8,7 +8,8 @@ import pytest
 
 import snug
 
-LIVE = pytest.config.getoption('--live')
+live = pytest.mark.skipif(not pytest.config.getoption('--live'),
+                          reason='skip live data test')
 
 
 @pytest.fixture
@@ -84,18 +85,13 @@ def test_exec_async(loop):
 
 class TestExecute:
 
-    @mock.patch('urllib.request.Request', autospec=True)
-    @mock.patch('urllib.request.urlopen', autospec=True)
-    def test_defaults(self, urlopen, _):
+    @mock.patch('snug._urllib_sender', autospec=True)
+    def test_defaults(self, send):
 
         def myquery():
             return (yield snug.GET('my/url'))
 
-        assert snug.execute(myquery()) == snug.Response(
-            status_code=urlopen.return_value.getcode.return_value,
-            content=urlopen.return_value.read.return_value,
-            headers=urlopen.return_value.headers,
-        )
+        assert snug.execute(myquery()) == send.return_value
 
     def test_custom_client(self):
         client = MockClient(snug.Response(204))
@@ -287,24 +283,33 @@ def test_send_with_unknown_client():
         snug.send(MyClass(), snug.GET('foo'))
 
 
-@mock.patch('urllib.request.Request', autospec=True)
-@mock.patch('urllib.request.urlopen', autospec=True)
-def test_urllib_sender(urlopen, urllib_request):
-    req = snug.Request('HEAD', 'https://www.api.github.com/organizations',
-                       params={'since': 3043},
-                       headers={'Accept': 'application/vnd.github.v3+json'})
-    response = snug._urllib_sender(req, timeout=10)
-    assert response == snug.Response(
-        status_code=urlopen.return_value.getcode.return_value,
-        content=urlopen.return_value.read.return_value,
-        headers=urlopen.return_value.headers,
-    )
-    urlopen.assert_called_once_with(urllib_request.return_value, timeout=10)
-    urllib_request.assert_called_once_with(
-        'https://www.api.github.com/organizations?since=3043',
-        headers={'Accept': 'application/vnd.github.v3+json'},
-        method='HEAD',
-    )
+class TestUrllibSender:
+
+    @live
+    def test_no_contenttype(self):
+        req = snug.Request('POST', 'http://httpbin.org/post',
+                           content=b'foo',
+                           headers={'Accept': 'application/json'},
+                           params={'foo': 'bar'})
+        response = snug._urllib_sender(req)
+        assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
+        data = json.loads(response.content.decode())
+        assert data['args'] == {'foo': 'bar'}
+        assert data['data'] == 'foo'
+        assert data['headers']['Accept'] == 'application/json'
+
+    @live
+    def test_contenttype(self):
+        req = snug.Request('POST', 'http://httpbin.org/post',
+                           content=b'foo',
+                           headers={'content-Type': 'application/json'},
+                           params={'foo': 'bar'})
+        response = snug._urllib_sender(req)
+        assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
+        data = json.loads(response.content.decode())
+        assert data['args'] == {'foo': 'bar'}
+        assert data['data'] == 'foo'
+        assert data['headers']['Content-Type'] == 'application/json'
 
 
 def test_requests_send():
@@ -339,7 +344,7 @@ def test_async_send_with_unknown_client(loop):
         loop.run_until_complete(snug.send_async(MyClass(), snug.GET('foo')))
 
 
-@pytest.mark.skipif(not LIVE, reason='skip live data test')
+@live
 class TestAsyncioSender:
 
     def test_https(self, loop):
@@ -356,7 +361,7 @@ class TestAsyncioSender:
     def test_http(self, loop):
         req = snug.Request('POST', 'http://httpbin.org/post',
                            content=json.dumps({"foo": 4}).encode(),
-                           headers={'User-Agent': 'snug/dev'})
+                           headers={'User-agent': 'snug/dev'})
         response = loop.run_until_complete(snug._asyncio_sender(req))
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
         data = json.loads(response.content.decode())
@@ -365,7 +370,7 @@ class TestAsyncioSender:
         assert data['headers']['User-Agent'] == 'snug/dev'
 
 
-@pytest.mark.skipif(not LIVE, reason='skip live data test')
+@live
 def test_aiohttp_send(loop):
     req = snug.POST('https://httpbin.org/post',
                     content=b'{"foo": 4}',
