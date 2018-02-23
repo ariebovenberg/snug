@@ -297,6 +297,19 @@ class TestUrllibSender:
         assert data['args'] == {'foo': 'bar'}
         assert data['data'] == 'foo'
         assert data['headers']['Accept'] == 'application/json'
+        assert data['headers']['Content-Type'] == 'application/octet-stream'
+
+    @live
+    def test_no_data(self):
+        req = snug.Request('GET', 'http://httpbin.org/get',
+                           headers={'Accept': 'application/json'},
+                           params={'foo': 'bar'})
+        response = snug._urllib_sender(req)
+        assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
+        data = json.loads(response.content.decode())
+        assert data['args'] == {'foo': 'bar'}
+        assert data['headers']['Accept'] == 'application/json'
+        assert 'Content-Type' not in data['headers']
 
     @live
     def test_contenttype(self):
