@@ -4,6 +4,11 @@ Release history
 development
 +++++++++++
 
+1.1.0 (2018-02-??)
+++++++++++++++++++
+
+- improvements to ``aiohttp``, ``urllib`` clients
+
 1.0.2 (2018-02-18)
 ++++++++++++++++++
 
