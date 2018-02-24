@@ -383,28 +383,56 @@ class TestAsyncioSender:
         assert data['headers']['User-Agent'] == 'snug/dev'
 
 
-@live
-def test_aiohttp_send(loop):
-    req = snug.POST('https://httpbin.org/post',
-                    content=b'{"foo": 4}',
-                    params={'bla': 99},
-                    headers={'Accept': 'application/json'})
-    aiohttp = pytest.importorskip('aiohttp')
+@asyncio.coroutine
+def error(self):
+    yield from asyncio.sleep(0)
+    raise ValueError('foo')
 
-    @asyncio.coroutine
-    def do_test():
-        session = aiohttp.ClientSession()
-        try:
-            return (yield from snug.send_async(session, req))
-        finally:
-            yield from session.close()
 
-    response = loop.run_until_complete(do_test())
-    assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
-    data = json.loads(response.content.decode())
-    assert data['args'] == {'bla': '99'}
-    assert json.loads(data['data']) == {'foo': 4}
-    assert data['headers']['Accept'] == 'application/json'
+class TestAiohttpSend:
+
+    @live
+    def test_ok(self, loop):
+        req = snug.POST('https://httpbin.org/post',
+                        content=b'{"foo": 4}',
+                        params={'bla': 99},
+                        headers={'Accept': 'application/json'})
+        aiohttp = pytest.importorskip('aiohttp')
+
+        @asyncio.coroutine
+        def do_test():
+            session = aiohttp.ClientSession()
+            try:
+                return (yield from snug.send_async(session, req))
+            finally:
+                yield from session.close()
+
+        response = loop.run_until_complete(do_test())
+        assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
+        data = json.loads(response.content.decode())
+        assert data['args'] == {'bla': '99'}
+        assert json.loads(data['data']) == {'foo': 4}
+        assert data['headers']['Accept'] == 'application/json'
+
+    @live
+    def test_error(self, loop):
+        req = snug.POST('https://httpbin.org/post',
+                        content=b'{"foo": 4}',
+                        params={'bla': 99},
+                        headers={'Accept': 'application/json'})
+        aiohttp = pytest.importorskip('aiohttp')
+
+        @asyncio.coroutine
+        def do_test():
+            session = aiohttp.ClientSession()
+            try:
+                return (yield from snug.send_async(session, req))
+            finally:
+                yield from session.close()
+
+        with mock.patch('aiohttp.client_reqrep.ClientResponse.read', error):
+            with pytest.raises(ValueError, match='foo'):
+                loop.run_until_complete(do_test())
 
 
 def test_relation():

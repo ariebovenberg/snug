@@ -34,7 +34,7 @@ __all__ = [
     'OPTIONS',
 ]
 
-__version__ = '1.0.2'
+__version__ = '1.1.0'
 __author__ = 'Arie Bovenberg'
 __copyright__ = '2018, Arie Bovenberg'
 __description__ = 'Write reusable web API interactions'
@@ -564,21 +564,21 @@ else:
     @asyncio.coroutine
     def _aiohttp_send(session, req: Request) -> _Awaitable(Response):
         """send a request with the `aiohttp` library"""
-        response = yield from session.request(req.method, req.url,
-                                              params=req.params,
-                                              data=req.content,
-                                              headers=req.headers)
+        # this is basically `async with` in py3.4 compatible syntax
+        # see https://www.python.org/dev/peps/pep-0492/#new-syntax
+        resp = yield from session.request(
+            req.method, req.url,
+            params=req.params,
+            data=req.content,
+            headers=req.headers).__aenter__()
         try:
-            return Response(
-                response.status,
-                content=(yield from response.read()),
-                headers=response.headers,
-            )
-        except Exception:  # pragma: no cover
-            response.close()
+            content = yield from resp.read()
+        except:  # noqa
+            yield from resp.__aexit__(*sys.exc_info())
             raise
-        finally:
-            yield from response.release()
+        else:
+            yield from resp.__aexit__(None, None, None)
+        return Response(resp.status, content=content, headers=resp.headers)
 
 
 try:
