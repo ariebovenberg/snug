@@ -139,11 +139,17 @@ class TestExecute:
             'my/url', headers={'Authorization': 'Bearer foo'})
 
 
+@asyncio.coroutine
+def awaitable_response(resp):
+    yield from asyncio.sleep(0)
+    return resp
+
+
 class TestExecuteAsync:
 
-    @mock.patch('snug._asyncio_sender',
-                MockAsyncClient(snug.Response(204)).send)
-    def test_defaults(self, loop):
+    @mock.patch('snug.send_async',
+                return_value=awaitable_response(snug.Response(204)))
+    def test_defaults(self, send, loop):
 
         def myquery():
             return (yield snug.GET('my/url'))
@@ -151,6 +157,9 @@ class TestExecuteAsync:
         future = snug.execute_async(myquery())
         result = loop.run_until_complete(future)
         assert result == snug.Response(204)
+        client, req = send.call_args[0]
+        assert isinstance(client, snug._UsingAsyncio)
+        assert req == snug.GET('my/url')
 
     def test_custom_client(self, loop):
         client = MockAsyncClient(snug.Response(204))
@@ -365,13 +374,14 @@ def test_async_send_with_unknown_client(loop):
 
 
 @live
-class TestAsyncioSender:
+class TestSendWithAsyncio:
 
     def test_https(self, loop):
         req = snug.Request('GET', 'https://httpbin.org/get',
                            params={'param1': 'foo'},
                            headers={'Accept': 'application/json'})
-        response = loop.run_until_complete(snug._asyncio_sender(req))
+        client = snug._UsingAsyncio()
+        response = loop.run_until_complete(snug.send_async(client, req))
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
         data = json.loads(response.content.decode())
         assert data['args'] == {'param1': 'foo'}
@@ -382,7 +392,8 @@ class TestAsyncioSender:
         req = snug.Request('POST', 'http://httpbin.org/post',
                            content=json.dumps({"foo": 4}).encode(),
                            headers={'User-agent': 'snug/dev'})
-        response = loop.run_until_complete(snug._asyncio_sender(req))
+        client = snug._UsingAsyncio()
+        response = loop.run_until_complete(snug.send_async(client, req))
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
         data = json.loads(response.content.decode())
         assert data['args'] == {}

@@ -51,6 +51,8 @@ _AsyncSender = t.Callable[['Request'], _Awaitable('Response')]
 _Executor = t.Callable[['Query[T]'], T]
 _AExecutor = t.Callable[['Query[T]'], _Awaitable(T)]
 _AuthMethod = t.Callable[[T_auth, 'Request'], 'Request']
+# a sentinel class to register with the send_async singledispatch function
+_UsingAsyncio = type('_UsingAsyncio', (), {})
 
 
 def _identity(obj):
@@ -323,39 +325,6 @@ class _SocketAdaptor:
         return self._file
 
 
-@asyncio.coroutine
-def _asyncio_sender(req: Request) -> _Awaitable(Response):
-    """A rudimentary HTTP client using :mod:`asyncio`"""
-    if not any(h.lower() == 'user-agent' for h in req.headers):
-        req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
-    url = urllib.parse.urlsplit(
-        req.url + '?' + urllib.parse.urlencode(req.params))
-    if url.scheme == 'https':
-        connect = asyncio.open_connection(url.hostname, 443, ssl=True)
-    else:
-        connect = asyncio.open_connection(url.hostname, 80)
-    reader, writer = yield from connect
-    try:
-        headers = '\r\n'.join([
-            '{} {} HTTP/1.1'.format(req.method, url.path + '?' + url.query),
-            'Host: ' + url.hostname,
-            'Connection: close',
-            'Content-Length: {}'.format(len(req.content or b'')),
-            '\r\n'.join(starmap('{}: {}'.format, req.headers.items())),
-        ])
-        writer.write(b'\r\n'.join([headers.encode(), b'', req.content or b'']))
-        response_bytes = BytesIO((yield from reader.read()))
-    finally:
-        writer.close()
-    raw_response = HTTPResponse(_SocketAdaptor(response_bytes))
-    raw_response.begin()
-    return Response(
-        raw_response.getcode(),
-        content=raw_response.read(),
-        headers=raw_response.headers,
-    )
-
-
 def basic_auth(credentials, request):
     """Apply basic authentication to a request"""
     encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
@@ -413,7 +382,7 @@ def execute(query: Query[T], *,
 
 def execute_async(query: Query[T], *,
                   auth: T_auth=None,
-                  client=None,
+                  client=_UsingAsyncio(),
                   auth_method: _AuthMethod=basic_auth) -> _Awaitable(T):
     """Execute a query asynchronously, returning its result
 
@@ -437,7 +406,7 @@ def execute_async(query: Query[T], *,
     The default client is very rudimentary.
     Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
-    sender = _asyncio_sender if client is None else partial(send_async, client)
+    sender = partial(send_async, client)
     authenticator = _identity if auth is None else partial(auth_method, auth)
     return _exec_async(query, sender=_compose(sender, authenticator))
 
@@ -512,6 +481,36 @@ def send_async(client, request: Request) -> _Awaitable(Response):
     :class:`aiohttp.ClientSession` is already registerd as a valid client type.
     """
     raise TypeError('client {!r} not registered'.format(client))
+
+
+@send_async.register(_UsingAsyncio)
+@asyncio.coroutine
+def _asyncio_send(_, req: Request) -> _Awaitable(Response):
+    """A rudimentary HTTP client using :mod:`asyncio`"""
+    if not any(h.lower() == 'user-agent' for h in req.headers):
+        req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
+    url = urllib.parse.urlsplit(
+        req.url + '?' + urllib.parse.urlencode(req.params))
+    if url.scheme == 'https':
+        connect = asyncio.open_connection(url.hostname, 443, ssl=True)
+    else:
+        connect = asyncio.open_connection(url.hostname, 80)
+    reader, writer = yield from connect
+    try:
+        headers = '\r\n'.join([
+            '{} {} HTTP/1.1'.format(req.method, url.path + '?' + url.query),
+            'Host: ' + url.hostname,
+            'Connection: close',
+            'Content-Length: {}'.format(len(req.content or b'')),
+            '\r\n'.join(starmap('{}: {}'.format, req.headers.items())),
+        ])
+        writer.write(b'\r\n'.join([headers.encode(), b'', req.content or b'']))
+        response_bytes = BytesIO((yield from reader.read()))
+    finally:
+        writer.close()
+    resp = HTTPResponse(_SocketAdaptor(response_bytes))
+    resp.begin()
+    return Response(resp.getcode(), content=resp.read(), headers=resp.headers)
 
 
 def executor(**kwargs) -> _Executor:
