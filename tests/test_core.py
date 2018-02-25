@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import json
 import sys
+import urllib.request
 from unittest import mock
 
 import pytest
@@ -85,13 +86,16 @@ def test_exec_async(loop):
 
 class TestExecute:
 
-    @mock.patch('snug._urllib_sender', autospec=True)
+    @mock.patch('snug.send', autospec=True)
     def test_defaults(self, send):
 
         def myquery():
             return (yield snug.GET('my/url'))
 
         assert snug.execute(myquery()) == send.return_value
+        client, req = send.call_args[0]
+        assert isinstance(client, urllib.request.OpenerDirector)
+        assert req == snug.GET('my/url')
 
     def test_custom_client(self):
         client = MockClient(snug.Response(204))
@@ -283,7 +287,7 @@ def test_send_with_unknown_client():
         snug.send(MyClass(), snug.GET('foo'))
 
 
-class TestUrllibSender:
+class TestSendWithUrllib:
 
     @live
     def test_no_contenttype(self):
@@ -291,7 +295,8 @@ class TestUrllibSender:
                            content=b'foo',
                            headers={'Accept': 'application/json'},
                            params={'foo': 'bar'})
-        response = snug._urllib_sender(req)
+        client = urllib.request.build_opener()
+        response = snug.send(client, req)
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
         data = json.loads(response.content.decode())
         assert data['args'] == {'foo': 'bar'}
@@ -304,7 +309,8 @@ class TestUrllibSender:
         req = snug.Request('GET', 'http://httpbin.org/get',
                            headers={'Accept': 'application/json'},
                            params={'foo': 'bar'})
-        response = snug._urllib_sender(req)
+        client = urllib.request.build_opener()
+        response = snug.send(client, req)
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
         data = json.loads(response.content.decode())
         assert data['args'] == {'foo': 'bar'}
@@ -317,7 +323,8 @@ class TestUrllibSender:
                            content=b'foo',
                            headers={'content-Type': 'application/json'},
                            params={'foo': 'bar'})
-        response = snug._urllib_sender(req)
+        client = urllib.request.build_opener()
+        response = snug.send(client, req)
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
         data = json.loads(response.content.decode())
         assert data['args'] == {'foo': 'bar'}

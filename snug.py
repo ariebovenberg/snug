@@ -315,18 +315,6 @@ class related:
         return self._cls if obj is None else MethodType(self._cls, obj)
 
 
-def _urllib_sender(req: Request, **kwargs) -> Response:
-    """Simple sender which uses :mod:`urllib`"""
-    if req.content and not any(h.lower() == 'content-type'
-                               for h in req.headers):
-        req = req.with_headers({'Content-Type': 'application/octet-stream'})
-    url = req.url + '?' + urllib.parse.urlencode(req.params)
-    raw_req = urllib.request.Request(url, req.content, headers=req.headers,
-                                     method=req.method)
-    res = urllib.request.urlopen(raw_req, **kwargs)
-    return Response(res.getcode(), content=res.read(), headers=res.headers)
-
-
 class _SocketAdaptor:
     def __init__(self, io):
         self._file = io
@@ -399,7 +387,7 @@ def _exec_async(query, sender):
 
 def execute(query: Query[T], *,
             auth: T_auth=None,
-            client=None,
+            client=urllib.request.build_opener(),
             auth_method: _AuthMethod=basic_auth) -> T:
     """Execute a query, returning its result
 
@@ -418,7 +406,7 @@ def execute(query: Query[T], *,
     auth_method
         the authentication method to use
     """
-    sender = _urllib_sender if client is None else partial(send, client)
+    sender = partial(send, client)
     authenticator = _identity if auth is None else partial(auth_method, auth)
     return _exec(query, sender=_compose(sender, authenticator))
 
@@ -481,6 +469,19 @@ def send(client, request: Request) -> Response:
     :class:`requests.Session` is already registerd as a valid client type.
     """
     raise TypeError('client {!r} not registered'.format(client))
+
+
+@send.register(urllib.request.OpenerDirector)
+def _urllib_send(opener, req: Request, **kwargs) -> Response:
+    """Send a request with an :mod:`urllib` opener"""
+    if req.content and not any(h.lower() == 'content-type'
+                               for h in req.headers):
+        req = req.with_headers({'Content-Type': 'application/octet-stream'})
+    url = req.url + '?' + urllib.parse.urlencode(req.params)
+    raw_req = urllib.request.Request(url, req.content, headers=req.headers,
+                                     method=req.method)
+    res = urllib.request.urlopen(raw_req, **kwargs)
+    return Response(res.getcode(), content=res.read(), headers=res.headers)
 
 
 @singledispatch
