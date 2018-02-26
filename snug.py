@@ -56,20 +56,6 @@ def _identity(obj):
     return obj
 
 
-class _compose:
-    """compose a function from a chain of functions"""
-    def __init__(self, *funcs):
-        assert funcs
-        self.funcs = funcs
-
-    def __call__(self, *args, **kwargs):
-        *tail, head = self.funcs
-        value = head(*args, **kwargs)
-        for func in reversed(tail):
-            value = func(value)
-        return value
-
-
 class _EmptyMapping(Mapping):
     """an empty mapping to use as a default value"""
     def __iter__(self):
