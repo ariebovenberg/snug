@@ -264,8 +264,9 @@ class Query(t.Generic[T], t.Iterable[Request]):
     ...
     >>> query = repo('Hello-World', owner='octocat')
 
-    Creating a query with a :class:`Query` subclass:
+    Creating a class-based query:
 
+    >>> # actually subclassing `Query` is not required
     >>> class repo(snug.Query[dict]):
     ...    \"\"\"a repository lookup by owner and name\"\"\"
     ...    def __init__(self, name: str, owner: str):
@@ -279,13 +280,60 @@ class Query(t.Generic[T], t.Iterable[Request]):
     ...        return json.loads(response.content)
     ...
     >>> query = repo('Hello-World', owner='octocat')
+
+    Creating a fully customized query (for rare cases):
+
+    >>> # actually subclassing `Query` is not required
+    >>> class asset_download(snug.Query):
+    ...     \"\"\"streaming download of a repository asset.
+    ...     Can only be executed with particular clients\"\"\"
+    ...     def __init__(self, repo_name, repo_owner, id):
+    ...         self.request = snug.GET(
+    ...             f'https://api.github.com/repos/{repo_owner}'
+    ...             f'/{repo_name}/releases/assets/{id}',
+    ...             headers={'Accept': 'application/octet-stream'})
+    ...
+    ...     def __execute__(self, client, authenticate):
+    ...         \"\"\"execute, returning a streaming requests response\"\"\"
+    ...         assert isinstance(client, requests.Session)
+    ...         req = authenticate(self.request)
+    ...         return client.request(req.method, req.url,
+    ...                               data=req.content,
+    ...                               params=req.params,
+    ...                               headers=req.headers)
+    ...
+    ...     async def __execute_async__(self, client, authenticate):
+    ...         ...
+    ...
+    >>> query = asset_download('hub', rep_owner='github', id=4187895)
+    >>> response = snug.execute(download, client=requests.Session())
+    >>> for chunk in response.iter_content():
+    ...    ...
+
     """
     def __iter__(self) -> t.Generator[Request, Response, T]:
         """A generator iterator which resolves the query"""
         raise NotImplementedError()
 
-    def __execute__(self, client, authenticate) -> T:
-        """execution logic for the query"""
+    def __execute__(self, client,
+                    authenticate: t.Callable[[Request], Request]) -> T:
+        """Default execution logic for a query,
+        which uses the query's :meth:`~Query.__iter__`.
+        May be overriden for full control of query execution,
+        at the cost of reusability.
+
+        Note
+        ----
+        You shouldn't need to override this method, except in rare cases
+        where implementing :meth:`Query.__iter__` does not suffice.
+
+        Parameters
+        ----------
+        client
+            the client instance passed to :func:`execute`
+        authenticate
+            a callable to authenticate a :class:`Request`
+        """
         gen = iter(self)
         request = next(gen)
         while True:
@@ -296,8 +344,25 @@ class Query(t.Generic[T], t.Iterable[Request]):
                 return e.value
 
     @asyncio.coroutine
-    def __execute_async__(self, client, authenticate) -> T:
-        """asynchronous execution logic for the query"""
+    def __execute_async__(self, client,
+                          authenticate: t.Callable[[Request], Request]) -> T:
+        """Default asynchronous execution logic for a query,
+        which uses the query's :meth:`~Query.__iter__`.
+        May be overriden for full control of query execution,
+        at the cost of reusability.
+
+        Note
+        ----
+        You shouldn't need to override this method, except in rare cases
+        where implementing :meth:`Query.__iter__` does not suffice.
+
+        Parameters
+        ----------
+        client
+            the client instance passed to :func:`execute`
+        authenticate
+            a callable to authenticate a :class:`Request`
+        """
         gen = iter(self)
         request = next(gen)
         while True:

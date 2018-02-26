@@ -166,6 +166,90 @@ To illutrate, here is a simple example for token-based authentication:
 
 See the slack API example for a real-world use-case.
 
+Client-specific behavior
+------------------------
+
+One of the main advantages of queries is that they can be executed
+with any HTTP client.
+However, it may occur that advanced, client-specific features are needed.
+For example, streaming data or multipart requests/responses.
+
+For this purpose, you can use the
+:meth:`~snug.Query.__execute__`\/:meth:`~snug.Query.__execute_async__` hook.
+Implementing this method allows full customization of a query's execution.
+The downside is that the query will become dependent
+on the client, which limits its reusability.
+
+The :meth:`~snug.Query.__execute__`\/:meth:`~snug.Query.__execute_async__`
+methods take two (positional) arguments:
+
+* ``client`` -- the client which was passed to :func:`~snug.execute` (may be ``None``).
+* ``authenticate`` -- a callable which takes a :class:`~snug.Request`,
+  and returns an authenticated :class:`~snug.Request`.
+
+The following example shows how this can be used to implement streaming responses
+to download github repository `assets <https://developer.github.com/v3/repos/releases/#get-a-single-release-asset>`_.
+
+.. code-block:: python3
+
+   class asset_download(snug.Query):
+       """streaming download of a repository asset.
+       Can only be executed with the `requests` or `aiohttp` client"""
+
+       def __init__(self, repo_name, repo_owner, id):
+           self.request = snug.GET(
+               f'https://api.github.com/repos/{repo_owner}'
+               f'/{repo_name}/releases/assets/{id}',
+               headers={'Accept': 'application/octet-stream'})
+
+       def __execute__(self, client, authenticate):
+           """executes the query, returning a streaming requests response"""
+           assert isinstance(client, requests.Session)
+           req = authenticate(self.request)
+           return client.request(req.method, req.url,
+                                 data=req.content,
+                                 params=req.params,
+                                 headers=req.headers)
+
+       async def __execute_async__(self, client, authenticate):
+           """executes the query, returning an aiohttp response"""
+           assert isinstance(client, aiohttp.Session)
+           req = authenticate(self.request)
+           return client.request(req.method, req.url,
+                                 data=req.content,
+                                 params=req.params,
+                                 headers=req.headers)
+
+
+We can then write:
+
+.. code-block:: python3
+
+   download = asset_download('hub', repo_owner='github', id=4187895)
+
+   # with requests:
+   response = snug.execute(download, client=requests.Session())
+   for chunk in response.iter_content():
+       ...
+
+   # with aiohttp (inside a coroutine)
+   async with aiohttp.Session() as s:
+       response = snug.execute_async(download, client=s)
+
+       while True:
+           chunk = await resp.content.read(chunk_size)
+           ...
+
+.. note::
+
+   You shouldn't have to use this feature very often.
+   Its purpose is to provide an "escape hatch" to circumvent
+   the usual query execution logic.
+   If you find yourself using it often,
+   consider posting a `feature request <https://github.com/ariebovenberg/snug/issues>`_
+   for your use-case.
+          
+
 Registering HTTP clients
 ------------------------
 
