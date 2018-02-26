@@ -1,4 +1,3 @@
-import abc
 import asyncio
 import sys
 import typing as t
@@ -51,8 +50,6 @@ _AsyncSender = t.Callable[['Request'], _Awaitable('Response')]
 _Executor = t.Callable[['Query[T]'], T]
 _AExecutor = t.Callable[['Query[T]'], _Awaitable(T)]
 _AuthMethod = t.Callable[[T_auth, 'Request'], 'Request']
-# a sentinel class to register with the send_async singledispatch function
-_UsingAsyncio = type('_UsingAsyncio', (), {})
 
 
 def _identity(obj):
@@ -283,10 +280,32 @@ class Query(t.Generic[T], t.Iterable[Request]):
     ...
     >>> query = repo('Hello-World', owner='octocat')
     """
-    @abc.abstractmethod
     def __iter__(self) -> t.Generator[Request, Response, T]:
         """A generator iterator which resolves the query"""
         raise NotImplementedError()
+
+    def __execute__(self, client, authenticate) -> T:
+        """execution logic for the query"""
+        gen = iter(self)
+        request = next(gen)
+        while True:
+            response = send(client, authenticate(request))
+            try:
+                request = gen.send(response)
+            except StopIteration as e:
+                return e.value
+
+    @asyncio.coroutine
+    def __execute_async__(self, client, authenticate) -> T:
+        """asynchronous execution logic for the query"""
+        gen = iter(self)
+        request = next(gen)
+        while True:
+            response = yield from send_async(client, authenticate(request))
+            try:
+                request = gen.send(response)
+            except StopIteration as e:
+                return e.value
 
 
 class related:
@@ -331,29 +350,6 @@ def basic_auth(credentials, request):
     return request.with_headers({'Authorization': 'Basic ' + encoded})
 
 
-def _exec(query, sender):
-    gen = iter(query)
-    request = next(gen)
-    while True:
-        response = sender(request)
-        try:
-            request = gen.send(response)
-        except StopIteration as e:
-            return e.value
-
-
-@asyncio.coroutine
-def _exec_async(query, sender):
-    gen = iter(query)
-    request = next(gen)
-    while True:
-        response = yield from sender(request)
-        try:
-            request = gen.send(response)
-        except StopIteration as e:
-            return e.value
-
-
 def execute(query: Query[T], *,
             auth: T_auth=None,
             client=urllib.request.build_opener(),
@@ -375,14 +371,14 @@ def execute(query: Query[T], *,
     auth_method
         the authentication method to use
     """
-    sender = partial(send, client)
-    authenticator = _identity if auth is None else partial(auth_method, auth)
-    return _exec(query, sender=_compose(sender, authenticator))
+    exec_func = getattr(type(query), '__execute__', Query.__execute__)
+    authenticate = _identity if auth is None else partial(auth_method, auth)
+    return exec_func(query, client, authenticate)
 
 
 def execute_async(query: Query[T], *,
                   auth: T_auth=None,
-                  client=_UsingAsyncio(),
+                  client=asyncio.get_event_loop(),
                   auth_method: _AuthMethod=basic_auth) -> _Awaitable(T):
     """Execute a query asynchronously, returning its result
 
@@ -406,9 +402,10 @@ def execute_async(query: Query[T], *,
     The default client is very rudimentary.
     Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
-    sender = partial(send_async, client)
-    authenticator = _identity if auth is None else partial(auth_method, auth)
-    return _exec_async(query, sender=_compose(sender, authenticator))
+    exec_func = getattr(
+        type(query), '__execute_async__', Query.__execute_async__)
+    authenticate = _identity if auth is None else partial(auth_method, auth)
+    return exec_func(query, client, authenticate)
 
 
 @singledispatch
@@ -483,9 +480,9 @@ def send_async(client, request: Request) -> _Awaitable(Response):
     raise TypeError('client {!r} not registered'.format(client))
 
 
-@send_async.register(_UsingAsyncio)
+@send_async.register(asyncio.AbstractEventLoop)
 @asyncio.coroutine
-def _asyncio_send(_, req: Request) -> _Awaitable(Response):
+def _asyncio_send(loop, req: Request) -> _Awaitable(Response):
     """A rudimentary HTTP client using :mod:`asyncio`"""
     if not any(h.lower() == 'user-agent' for h in req.headers):
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
