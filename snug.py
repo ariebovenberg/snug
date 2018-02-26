@@ -561,7 +561,8 @@ else:
     @asyncio.coroutine
     def _aiohttp_send(session, req: Request) -> _Awaitable(Response):
         """send a request with the `aiohttp` library"""
-        # this is basically `async with` in py3.4 compatible syntax
+        # this is basically a simplified `async with`
+        # in py3.4 compatible syntax
         # see https://www.python.org/dev/peps/pep-0492/#new-syntax
         resp = yield from session.request(
             req.method, req.url,
@@ -570,10 +571,7 @@ else:
             headers=req.headers).__aenter__()
         try:
             content = yield from resp.read()
-        except:  # noqa
-            yield from resp.__aexit__(*sys.exc_info())
-            raise
-        else:
+        finally:
             yield from resp.__aexit__(None, None, None)
         return Response(resp.status, content=content, headers=resp.headers)
 
