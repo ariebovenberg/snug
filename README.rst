@@ -10,19 +10,17 @@ Snug 🧣
 .. image:: https://img.shields.io/pypi/pyversions/snug.svg
     :target: https://pypi.python.org/pypi/snug
 
-.. image:: https://travis-ci.org/ariebovenberg/snug.svg?branch=master
+.. image:: https://img.shields.io/travis/ariebovenberg/snug.svg
     :target: https://travis-ci.org/ariebovenberg/snug
 
-.. image:: https://codecov.io/gh/ariebovenberg/snug/branch/master/graph/badge.svg
+.. image:: https://img.shields.io/codecov/c/github/ariebovenberg/snug.svg
   :target: https://codecov.io/gh/ariebovenberg/snug
 
-.. image:: https://readthedocs.org/projects/snug/badge/?version=latest
-    :target: http://snug.readthedocs.io/en/latest/?badge=latest
-    :alt: Documentation Status
+.. image:: https://img.shields.io/readthedocs/snug.svg
+    :target: http://snug.readthedocs.io/
 
-.. image:: https://api.codeclimate.com/v1/badges/00312aa548eb87fe11b4/maintainability
+.. image:: https://img.shields.io/codeclimate/maintainability/ariebovenberg/snug.svg
    :target: https://codeclimate.com/github/ariebovenberg/snug/maintainability
-   :alt: Maintainability
 
 
 **Snug** is a tiny toolkit for writing reusable interactions with web APIs. Key features:
