@@ -249,7 +249,6 @@ We can then write:
    If you find yourself using it often,
    consider posting a `feature request <https://github.com/ariebovenberg/snug/issues>`_
    for your use-case.
-          
 
 Registering HTTP clients
 ------------------------
