@@ -3,7 +3,6 @@ import sys
 import typing as t
 import urllib.request
 from base64 import b64encode
-from collections import Mapping
 from functools import partial, singledispatch
 from http.client import HTTPResponse
 from io import BytesIO
