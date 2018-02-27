@@ -448,24 +448,28 @@ def send(client, request: Request) -> Response:
 
     A :func:`~functools.singledispatch` function.
 
+    Parameters
+    ----------
+    client: any registered client type
+        The client with which to send the request.
+
+        Client types registered by default:
+
+        * :class:`urllib.request.OpenerDirector`
+          (e.g. from :func:`~urllib.request.build_opener`)
+        * :class:`requests.Session`
+          (if `requests <http://docs.python-requests.org/>`_ is installed)
+
+    request
+        The request to send
+
+
     Example of registering a new HTTP client:
 
     >>> @send.register(MyClientClass)
     ... def _send(client, request: Request) -> Response:
     ...     r = client.send(request)
     ...     return Response(r.status, r.read(), headers=r.get_headers())
-
-    Parameters
-    ----------
-    client: any registered client type
-        the client with which to send the request
-    request
-        the request to send
-
-    Note
-    ----
-    If `requests <http://docs.python-requests.org/>`_ is installed,
-    :class:`requests.Session` is already registerd as a valid client type.
     """
     raise TypeError('client {!r} not registered'.format(client))
 
@@ -501,14 +505,17 @@ def send_async(client, request: Request) -> _Awaitable(Response):
     Parameters
     ----------
     client: any registered client type
-        the client with which to send the request
-    request
-        the request to send
+        The client with which to send the request.
 
-    Note
-    ----
-    If `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed,
-    :class:`aiohttp.ClientSession` is already registerd as a valid client type.
+        Client types supported by default:
+
+        * :class:`asyncio.AbstractEventLoop`
+          (e.g. from :func:`~asyncio.get_event_loop`)
+        * :class:`aiohttp.ClientSession`
+          (if `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed)
+
+    request
+        The request to send
     """
     raise TypeError('client {!r} not registered'.format(client))
 
