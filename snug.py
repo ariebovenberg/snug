@@ -514,6 +514,10 @@ def send_async(client, request: Request) -> _Awaitable(Response):
         * :class:`aiohttp.ClientSession`
           (if `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed)
 
+        Note
+        ----
+        ``aiohttp`` is only supported on python 3.5.3+
+
     request
         The request to send
     """
