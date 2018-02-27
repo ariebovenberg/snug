@@ -529,3 +529,8 @@ def test_relation():
     assert isinstance(qux, f.Qux)
     qux2 = Foo.Qux(1, 2)
     assert isinstance(qux2, Foo.Qux)
+
+
+def test_identity():
+    obj = object()
+    assert snug._identity(obj) is obj

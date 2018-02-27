@@ -56,51 +56,33 @@ def _identity(obj):
     return obj
 
 
-class _EmptyMapping(Mapping):
-    """an empty mapping to use as a default value"""
-    def __iter__(self):
-        yield from ()
-
-    def __getitem__(self, key):
-        raise KeyError(key)
-
-    def __len__(self):
-        return 0
-
-    def __repr__(self):
-        return '{<empty>}'
-
-
-_EMPTY_MAPPING = _EmptyMapping()
-
-
 class Request:
     """A simple HTTP request.
 
     Parameters
     ----------
     method
-        the http method
+        The http method
     url
-        the requested url
+        The requested url
     content
-        the request content
+        The request content
     params
-        the query parameters
+        The query parameters. Defaults to an empty :class:`dict`.
     headers
-        mapping of headers
+        Mapping of headers. Defaults to an empty :class:`dict`.
     """
     __slots__ = 'method', 'url', 'content', 'params', 'headers'
     __hash__ = None
 
     def __init__(self, method: str, url: str, content: bytes=None, *,
-                 params: _TextMapping=_EMPTY_MAPPING,
-                 headers: _TextMapping=_EMPTY_MAPPING):
+                 params: _TextMapping=None,
+                 headers: _TextMapping=None):
         self.method = method
         self.url = url
         self.content = content
-        self.params = params
-        self.headers = headers
+        self.params = {} if params is None else params
+        self.headers = {} if headers is None else headers
 
     def with_headers(self, headers: _TextMapping) -> 'Request':
         """Create a new request with added headers
@@ -172,20 +154,20 @@ class Response:
     Parameters
     ----------
     status_code
-        the HTTP status code
+        The HTTP status code
     content
-        the response content
+        The response content
     headers
-        the headers of the response
+        The headers of the response. Defaults to an empty :class:`dict`.
     """
     __slots__ = 'status_code', 'content', 'headers'
     __hash__ = None
 
     def __init__(self, status_code: int, content: bytes=None, *,
-                 headers: _TextMapping=_EMPTY_MAPPING):
+                 headers: _TextMapping=None):
         self.status_code = status_code
         self.content = content
-        self.headers = headers
+        self.headers = {} if headers is None else headers
 
     def _asdict(self):
         return {a: getattr(self, a) for a in self.__slots__}
@@ -295,7 +277,6 @@ class Query(t.Generic[T], t.Iterable[Request]):
     >>> response = snug.execute(download, client=requests.Session())
     >>> for chunk in response.iter_content():
     ...    ...
-
     """
     def __iter__(self) -> t.Generator[Request, Response, T]:
         """A generator iterator which resolves the query"""
@@ -482,7 +463,7 @@ def send(client, request: Request) -> Response:
 
     Note
     ----
-    if `requests <http://docs.python-requests.org/>`_ is installed,
+    If `requests <http://docs.python-requests.org/>`_ is installed,
     :class:`requests.Session` is already registerd as a valid client type.
     """
     raise TypeError('client {!r} not registered'.format(client))
