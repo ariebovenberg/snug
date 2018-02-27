@@ -520,10 +520,8 @@ def _asyncio_send(loop, req: Request) -> _Awaitable(Response):
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
     url = urllib.parse.urlsplit(
         req.url + '?' + urllib.parse.urlencode(req.params))
-    if url.scheme == 'https':
-        connect = asyncio.open_connection(url.hostname, 443, ssl=True)
-    else:
-        connect = asyncio.open_connection(url.hostname, 80)
+    open_ = partial(asyncio.open_connection, url.hostname, loop=loop)
+    connect = open_(443, ssl=True) if url.scheme == 'https' else open_(80)
     reader, writer = yield from connect
     try:
         headers = '\r\n'.join([

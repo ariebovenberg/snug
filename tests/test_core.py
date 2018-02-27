@@ -431,6 +431,7 @@ class TestSendWithAsyncio:
         response = loop.run_until_complete(snug.send_async(loop, req))
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
         data = json.loads(response.content.decode())
+        assert data['url'] == 'https://httpbin.org/get?param1=foo'
         assert data['args'] == {'param1': 'foo'}
         assert data['headers']['Accept'] == 'application/json'
         assert data['headers']['User-Agent'].startswith('Python-asyncio/')
@@ -442,6 +443,7 @@ class TestSendWithAsyncio:
         response = loop.run_until_complete(snug.send_async(loop, req))
         assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
         data = json.loads(response.content.decode())
+        assert data['url'] == 'http://httpbin.org/post'
         assert data['args'] == {}
         assert json.loads(data['data']) == {'foo': 4}
         assert data['headers']['User-Agent'] == 'snug/dev'
