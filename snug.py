@@ -268,7 +268,8 @@ class Query(t.Generic[T], t.Iterable[Request]):
     ...         return client.request(req.method, req.url,
     ...                               data=req.content,
     ...                               params=req.params,
-    ...                               headers=req.headers)
+    ...                               headers=req.headers,
+    ...                               stream=True)
     ...
     ...     async def __execute_async__(self, client, authenticate):
     ...         ...

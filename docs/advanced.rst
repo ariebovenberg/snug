@@ -209,7 +209,8 @@ to download github repository `assets <https://developer.github.com/v3/repos/rel
            return client.request(req.method, req.url,
                                  data=req.content,
                                  params=req.params,
-                                 headers=req.headers)
+                                 headers=req.headers,
+                                 stream=True)
 
        async def __execute_async__(self, client, authenticate):
            """executes the query, returning an aiohttp response"""
