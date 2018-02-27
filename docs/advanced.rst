@@ -183,7 +183,7 @@ on the client, which limits its reusability.
 The :meth:`~snug.Query.__execute__`\/:meth:`~snug.Query.__execute_async__`
 methods take two (positional) arguments:
 
-* ``client`` -- the client which was passed to :func:`~snug.execute` (may be ``None``).
+* ``client`` -- the client which was passed to :func:`~snug.execute`.
 * ``authenticate`` -- a callable which takes a :class:`~snug.Request`,
   and returns an authenticated :class:`~snug.Request`.
 
