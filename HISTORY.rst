@@ -7,8 +7,8 @@ development
 1.1.0 (2018-02-??)
 ++++++++++++++++++
 
-- improvements to ``aiohttp``, ``urllib`` clients
 - implement overridable ``__execute__``, ``__execute_async__``
+- improvements to ``aiohttp``, ``urllib`` clients
 
 1.0.2 (2018-02-18)
 ++++++++++++++++++

@@ -166,8 +166,8 @@ To illutrate, here is a simple example for token-based authentication:
 
 See the slack API example for a real-world use-case.
 
-Client-specific behavior
-------------------------
+Full customization
+------------------
 
 One of the main advantages of queries is that they can be executed
 with any HTTP client.
