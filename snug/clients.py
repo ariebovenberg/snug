@@ -1,3 +1,4 @@
+"""Funtions for dealing with for HTTP clients in a unified manner"""
 import asyncio
 import sys
 import urllib.request
@@ -18,8 +19,8 @@ _ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
 
 @singledispatch
 def send(client, request):
-    """Given a client, send a :class:`Request`,
-    returning a :class:`Response`.
+    """Given a client, send a :class:`~snug.http.Request`,
+    returning a :class:`~snug.http.Response`.
 
     A :func:`~functools.singledispatch` function.
 
@@ -57,8 +58,8 @@ def send(client, request):
 @singledispatch
 @asyncio.coroutine
 def send_async(client, request):
-    """Given a client, send a :class:`Request`,
-    returning an awaitable :class:`Response`.
+    """Given a client, send a :class:`~snug.http.Request`,
+    returning an awaitable :class:`~snug.http.Response`.
 
     A :func:`~functools.singledispatch` function.
 

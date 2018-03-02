@@ -221,7 +221,7 @@ def execute(query, *,
     client
         The HTTP client to use.
         Its type must have been registered
-        with :func:`send`.
+        with :func:`~snug.clients.send`.
         If not given, the built-in :mod:`urllib` module is used.
     auth_method: ~typing.Callable[[T_auth, Request], Request]
         the authentication method to use
@@ -247,7 +247,7 @@ def execute_async(query, *,
     client
         The HTTP client to use.
         Its type must have been registered
-        with :func:`send_async`.
+        with :func:`~snug.clients.send_async`.
         If not given, the built-in :mod:`asyncio` module is used.
     auth_method: ~typing.Callable[[T_auth, Request], Request]
         the authentication method to use
