@@ -3,6 +3,7 @@ import sys
 import typing as t
 import urllib.request
 from base64 import b64encode
+from collections import Mapping
 from functools import partial, singledispatch
 from http.client import HTTPResponse
 from io import BytesIO
@@ -30,12 +31,8 @@ __all__ = [
     'DELETE',
     'HEAD',
     'OPTIONS',
+    'Headers',
 ]
-
-__version__ = '1.1.0'
-__author__ = 'Arie Bovenberg'
-__copyright__ = '2018, Arie Bovenberg'
-__description__ = 'Write reusable web API interactions'
 
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
@@ -59,7 +56,7 @@ def _identity(obj):
 # - it allows us to deal with headers in a case-insensitive manner
 # - it allows us to make it immutable which is easier to reason about.
 # - it may be hashable, allowing Request to be hashable
-class Headers(t.Mapping[str, str]):
+class Headers(Mapping):
     """Case-insensitive, immutable, hashable mapping of headers"""
     __slots__ = '_inner', '_casing'
 
@@ -84,7 +81,7 @@ class Headers(t.Mapping[str, str]):
         return '{{{}}}'.format(content)
 
     def __eq__(self, other):
-        if isinstance(other, t.Mapping):
+        if isinstance(other, Mapping):
             return self._inner == Headers(other)._inner
         return NotImplemented
 

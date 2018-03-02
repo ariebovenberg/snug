@@ -117,7 +117,7 @@ def test__execute_async__(loop):
 
 class TestExecute:
 
-    @mock.patch('snug.send', autospec=True)
+    @mock.patch('snug.core.send', autospec=True)
     def test_defaults(self, send):
 
         def myquery():
@@ -183,7 +183,7 @@ class TestExecute:
 
 class TestExecuteAsync:
 
-    @mock.patch('snug.send_async',
+    @mock.patch('snug.core.send_async',
                 return_value=awaitable(snug.Response(204)))
     def test_defaults(self, send, loop):
 
@@ -574,7 +574,7 @@ class TestHeaders:
         assert headers['ACCEPT'] == 'text/plain'
 
     def test_iter(self, headers):
-        assert list(headers) == ['Content-Type', 'accept']
+        assert set(headers) == {'Content-Type', 'accept'}
 
     def test_equality(self, headers):
         assert headers == headers
@@ -632,7 +632,7 @@ class TestHeaders:
         assert 'Content-Type' in headers.keys()
         assert 'Content-type' in headers.keys()
         assert 'Content-Disposition' not in headers.keys()
-        assert list(headers.keys()) == ['Content-Type', 'accept']
+        assert set(headers.keys()) == {'Content-Type', 'accept'}
 
     def test_len(self, headers):
         assert len(headers) == 2
@@ -673,4 +673,4 @@ class TestHeaders:
 
 def test_identity():
     obj = object()
-    assert snug._identity(obj) is obj
+    assert snug.core._identity(obj) is obj
