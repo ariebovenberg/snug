@@ -1,18 +1,14 @@
 import asyncio
 import sys
-import typing as t
 import urllib.request
 from functools import partial
 from http.client import HTTPResponse
 from io import BytesIO
 from itertools import starmap
 
-from .http import Request, Response, send, send_async
+from .http import Response, send, send_async
 
 _ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
-_Awaitable = (t.Awaitable.__getitem__  # pragma: no cover
-              if sys.version_info > (3, 5)
-              else lambda x: t.Generator[t.Any, t.Any, x])
 
 
 class _SocketAdaptor:
@@ -24,7 +20,7 @@ class _SocketAdaptor:
 
 
 @send.register(urllib.request.OpenerDirector)
-def _urllib_send(opener, req: Request, **kwargs) -> Response:
+def _urllib_send(opener, req, **kwargs):
     """Send a request with an :mod:`urllib` opener"""
     if req.content and not any(h.lower() == 'content-type'
                                for h in req.headers):
@@ -38,7 +34,7 @@ def _urllib_send(opener, req: Request, **kwargs) -> Response:
 
 @send_async.register(asyncio.AbstractEventLoop)
 @asyncio.coroutine
-def _asyncio_send(loop, req: Request) -> _Awaitable(Response):
+def _asyncio_send(loop, req):
     """A rudimentary HTTP client using :mod:`asyncio`"""
     if not any(h.lower() == 'user-agent' for h in req.headers):
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
@@ -71,7 +67,7 @@ except ImportError:  # pragma: no cover
 else:
     @send_async.register(aiohttp.ClientSession)
     @asyncio.coroutine
-    def _aiohttp_send(session, req: Request) -> _Awaitable(Response):
+    def _aiohttp_send(session, req):
         """send a request with the `aiohttp` library"""
         # this is basically a simplified `async with`
         # in py3.4 compatible syntax
@@ -94,7 +90,7 @@ except ImportError:  # pragma: no cover
     pass
 else:
     @send.register(requests.Session)
-    def _requests_send(session, req: Request) -> Response:
+    def _requests_send(session, req):
         """send a request with the `requests` library"""
         res = session.request(req.method, req.url,
                               data=req.content,
