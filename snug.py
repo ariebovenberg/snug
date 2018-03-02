@@ -7,7 +7,7 @@ from functools import partial, singledispatch
 from http.client import HTTPResponse
 from io import BytesIO
 from itertools import chain, starmap
-from operator import methodcaller
+from operator import methodcaller, attrgetter
 from types import MethodType
 
 __all__ = [
@@ -55,6 +55,43 @@ def _identity(obj):
     return obj
 
 
+# why a dedicated class?
+# - it allows us to deal with headers in a case-insensitive manner
+# - it allows us to make it immutable which is easier to reason about.
+# - it may be hashable, allowing Request to be hashable
+class Headers(t.Mapping[str, str]):
+    """Case-insensitive, immutable, hashable mapping of headers"""
+    __slots__ = '_inner', '_casing'
+
+    def __init__(self, items=()):
+        inner = dict(items)
+        self._casing = {k.lower(): k for k in inner}
+        self._inner = {k.lower(): v for k, v in inner.items()}
+
+    def __getitem__(self, name: str):
+        return self._inner[name.lower()]
+
+    __len__ = property(attrgetter('_inner.__len__'))
+
+    def __iter__(self):
+        yield from self._casing.values()
+
+    def __repr__(self):
+        content = ', '.join(starmap(
+            '{}: {!r}'.format,
+            zip(self._casing.values(),
+                self._inner.values()))) if self else '<empty>'
+        return '{{{}}}'.format(content)
+
+    def __eq__(self, other):
+        if isinstance(other, t.Mapping):
+            return self._inner == Headers(other)._inner
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(frozenset(self._inner.items()))
+
+
 class Request:
     """A simple HTTP request.
 
@@ -67,21 +104,21 @@ class Request:
     content
         The request content
     params
-        The query parameters. Defaults to an empty :class:`dict`.
+        The query parameters
     headers
-        Mapping of headers. Defaults to an empty :class:`dict`.
+        request headers
     """
     __slots__ = 'method', 'url', 'content', 'params', 'headers'
     __hash__ = None
 
     def __init__(self, method: str, url: str, content: bytes=None, *,
                  params: _TextMapping=None,
-                 headers: _TextMapping=None):
+                 headers: _TextMapping=Headers()):
         self.method = method
         self.url = url
         self.content = content
-        self.params = {} if params is None else params
-        self.headers = {} if headers is None else headers
+        self.params = params or {}
+        self.headers = headers
 
     def with_headers(self, headers: _TextMapping) -> 'Request':
         """Create a new request with added headers

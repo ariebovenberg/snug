@@ -533,6 +533,144 @@ def test_relation():
     assert isinstance(qux2, Foo.Qux)
 
 
+@pytest.fixture
+def headers():
+    return snug.Headers({
+        'Content-Type': 'application/json',
+        'accept': 'text/plain'
+    })
+
+
+class AlwaysEquals:
+    def __eq__(self, other):
+        return True
+
+    def __ne__(self, other):
+        return False
+
+
+class AlwaysInEquals:
+    def __eq__(self, other):
+        return False
+
+    def __ne__(self, other):
+        return True
+
+
+class TestHeaders:
+
+    def test_empty(self):
+        headers = snug.Headers()
+        assert len(headers) == 0
+        with pytest.raises(KeyError, match='foo'):
+            assert headers['foo']
+        assert list(headers) == []
+        assert headers == {}
+
+    def test_getitem(self, headers):
+        assert headers['Content-Type'] == 'application/json'
+        assert headers['content-type'] == 'application/json'
+        assert headers['Accept'] == 'text/plain'
+        assert headers['ACCEPT'] == 'text/plain'
+
+    def test_iter(self, headers):
+        assert list(headers) == ['Content-Type', 'accept']
+
+    def test_equality(self, headers):
+        assert headers == headers
+        equivalent = {
+            'Accept': 'text/plain',
+            'Content-TYPE': 'application/json',
+        }
+        assert headers == equivalent
+        assert headers == snug.Headers(equivalent)
+        assert hash(headers) == hash(snug.Headers(equivalent))
+
+        assert not headers == {
+            'Content-Type': 'application/json',
+        }
+        assert not headers == snug.Headers({
+            'Content-Type': 'application/json',
+        })
+
+        assert not headers == {
+            'Content-TYPE': 'application/pdf',
+            'Accept': 'text/plain'
+        }
+        assert headers == AlwaysEquals()
+        assert not headers == AlwaysInEquals()
+
+    def test_inequality(self, headers):
+        assert not headers != headers
+        equivalent = {
+            'Accept': 'text/plain',
+            'Content-TYPE': 'application/json',
+        }
+        assert not headers != equivalent
+        assert not headers != snug.Headers(equivalent)
+        assert headers != {
+            'Content-Type': 'application/json',
+        }
+        assert headers != {
+            'Content-TYPE': 'application/pdf',
+            'Accept': 'text/plain'
+        }
+        assert hash(headers) != hash(snug.Headers({
+            'Content-TYPE': 'application/pdf',
+            'Accept': 'text/plain'
+        }))
+        assert not headers != AlwaysEquals()
+        assert headers != AlwaysInEquals()
+
+    def test_items(self, headers):
+        assert set(headers.items()) == {
+            ('Content-Type', 'application/json'),
+            ('accept', 'text/plain'),
+        }
+
+    def test_keys(self, headers):
+        assert 'Content-Type' in headers.keys()
+        assert 'Content-type' in headers.keys()
+        assert 'Content-Disposition' not in headers.keys()
+        assert list(headers.keys()) == ['Content-Type', 'accept']
+
+    def test_len(self, headers):
+        assert len(headers) == 2
+
+    def test_bool(self, headers):
+        assert headers
+        assert not snug.Headers()
+
+    def test_contains(self, headers):
+        assert 'Content-Type' in headers
+        assert 'Content-type' in headers
+        assert 'ACCEPT' in headers
+        assert 'Content-Disposition' not in headers
+
+    def test_asdict(self, headers):
+        assert dict(headers) == {
+            'Content-Type': 'application/json',
+            'accept': 'text/plain'
+        }
+
+    def test_values(self, headers):
+        assert set(headers.values()) == {'application/json', 'text/plain'}
+
+    def test_get(self, headers):
+        assert headers.get('Content-Type', 'foo') == 'application/json'
+        assert headers.get('Content-TYPE', None) == 'application/json'
+        assert headers.get('Accept', None) == 'text/plain'
+        assert headers.get('Cookie', 'foo') == 'foo'
+
+    def test_repr(self, headers):
+        rep = repr(headers)
+        for key, value in headers.items():
+            assert key in rep
+            assert value in rep
+
+        assert repr(snug.Headers()) == '{<empty>}'
+
+
 def test_identity():
     obj = object()
     assert snug._identity(obj) is obj
