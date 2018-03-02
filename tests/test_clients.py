@@ -7,7 +7,6 @@ import pytest
 
 import snug
 
-
 live = pytest.mark.skipif(not pytest.config.getoption('--live'),
                           reason='skip live data test')
 

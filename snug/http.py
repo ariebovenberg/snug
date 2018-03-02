@@ -2,11 +2,10 @@
 import sys
 import typing as t
 from base64 import b64encode
-from functools import partial
-from itertools import starmap, chain
-from operator import attrgetter, methodcaller
-
 from collections import Mapping
+from functools import partial
+from itertools import chain, starmap
+from operator import attrgetter, methodcaller
 
 _TextMapping = Mapping
 _Awaitable = (t.Awaitable.__getitem__  # pragma: no cover
