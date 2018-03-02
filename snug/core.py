@@ -34,15 +34,13 @@ __all__ = [
     'Headers',
 ]
 
+_ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
 _TextMapping = t.Mapping[str, str]
 _Awaitable = (t.Awaitable.__getitem__  # pragma: no cover
               if sys.version_info > (3, 5)
               else lambda x: t.Generator[t.Any, t.Any, x])
-_ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
-_Sender = t.Callable[['Request'], 'Response']
-_AsyncSender = t.Callable[['Request'], _Awaitable('Response')]
 _Executor = t.Callable[['Query[T]'], T]
 _AExecutor = t.Callable[['Query[T]'], _Awaitable(T)]
 _AuthMethod = t.Callable[[T_auth, 'Request'], 'Request']
