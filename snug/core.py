@@ -2,42 +2,22 @@ import asyncio
 import sys
 import typing as t
 import urllib.request
-from base64 import b64encode
-from collections import Mapping
-from functools import partial, singledispatch
-from http.client import HTTPResponse
-from io import BytesIO
-from itertools import chain, starmap
-from operator import methodcaller, attrgetter
+from functools import partial
 from types import MethodType
+
+from .http import Request, Response, basic_auth, send, send_async
 
 __all__ = [
     'Query',
     'execute',
     'execute_async',
-    'Request',
-    'Response',
     'executor',
     'async_executor',
-    'send',
-    'send_async',
     'related',
-    'header_adder',
-    'prefix_adder',
-    'GET',
-    'POST',
-    'PUT',
-    'PATCH',
-    'DELETE',
-    'HEAD',
-    'OPTIONS',
-    'Headers',
 ]
 
-_ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
 T = t.TypeVar('T')
 T_auth = t.TypeVar('T_auth')
-_TextMapping = t.Mapping[str, str]
 _Awaitable = (t.Awaitable.__getitem__  # pragma: no cover
               if sys.version_info > (3, 5)
               else lambda x: t.Generator[t.Any, t.Any, x])
@@ -48,188 +28,6 @@ _AuthMethod = t.Callable[[T_auth, 'Request'], 'Request']
 
 def _identity(obj):
     return obj
-
-
-# why a dedicated class?
-# - it allows us to deal with headers in a case-insensitive manner
-# - it allows us to make it immutable which is easier to reason about.
-# - it may be hashable, allowing Request to be hashable
-class Headers(Mapping):
-    """Case-insensitive, immutable, hashable mapping of headers"""
-    __slots__ = '_inner', '_casing'
-
-    def __init__(self, items=()):
-        inner = dict(items)
-        self._casing = {k.lower(): k for k in inner}
-        self._inner = {k.lower(): v for k, v in inner.items()}
-
-    def __getitem__(self, name: str):
-        return self._inner[name.lower()]
-
-    __len__ = property(attrgetter('_inner.__len__'))
-
-    def __iter__(self):
-        yield from self._casing.values()
-
-    def __repr__(self):
-        content = ', '.join(starmap(
-            '{}: {!r}'.format,
-            zip(self._casing.values(),
-                self._inner.values()))) if self else '<empty>'
-        return '{{{}}}'.format(content)
-
-    def __eq__(self, other):
-        if isinstance(other, Mapping):
-            return self._inner == Headers(other)._inner
-        return NotImplemented
-
-    def __hash__(self):
-        return hash(frozenset(self._inner.items()))
-
-
-class Request:
-    """A simple HTTP request.
-
-    Parameters
-    ----------
-    method
-        The http method
-    url
-        The requested url
-    content
-        The request content
-    params
-        The query parameters
-    headers
-        request headers
-    """
-    __slots__ = 'method', 'url', 'content', 'params', 'headers'
-    __hash__ = None
-
-    def __init__(self, method: str, url: str, content: bytes=None, *,
-                 params: _TextMapping=None,
-                 headers: _TextMapping=Headers()):
-        self.method = method
-        self.url = url
-        self.content = content
-        self.params = params or {}
-        self.headers = headers
-
-    def with_headers(self, headers: _TextMapping) -> 'Request':
-        """Create a new request with added headers
-
-        Parameters
-        ----------
-        headers
-            the headers to add
-        """
-        merged = dict(chain(self.headers.items(), headers.items()))
-        return self.replace(headers=merged)
-
-    def with_prefix(self, prefix: str) -> 'Request':
-        """Create a new request with added url prefix
-
-        Parameters
-        ----------
-        prefix
-            the URL prefix
-        """
-        return self.replace(url=prefix + self.url)
-
-    def with_params(self, params: _TextMapping) -> 'Request':
-        """Create a new request with added params
-
-        Parameters
-        ----------
-        params
-            the parameters to add
-        """
-        merged = dict(chain(self.params.items(), params.items()))
-        return self.replace(params=merged)
-
-    def _asdict(self):
-        return {a: getattr(self, a) for a in self.__slots__}
-
-    def __eq__(self, other):
-        """check for equality with another request"""
-        if isinstance(other, Request):
-            return self._asdict() == other._asdict()
-        return NotImplemented
-
-    def __ne__(self, other):
-        """check for inequality with another request"""
-        if isinstance(other, Request):
-            return self._asdict() != other._asdict()
-        return NotImplemented
-
-    def replace(self, **kwargs) -> 'Request':
-        """Create a copy with replaced fields
-
-        Parameters
-        ----------
-        **kwargs
-            fields and values to replace
-        """
-        attrs = self._asdict()
-        attrs.update(kwargs)
-        return Request(**attrs)
-
-    def __repr__(self):
-        return ('<Request: {0.method} {0.url}, params={0.params!r}, '
-                'headers={0.headers!r}>').format(self)
-
-
-class Response:
-    """A simple HTTP response.
-
-    Parameters
-    ----------
-    status_code
-        The HTTP status code
-    content
-        The response content
-    headers
-        The headers of the response. Defaults to an empty :class:`dict`.
-    """
-    __slots__ = 'status_code', 'content', 'headers'
-    __hash__ = None
-
-    def __init__(self, status_code: int, content: bytes=None, *,
-                 headers: _TextMapping=None):
-        self.status_code = status_code
-        self.content = content
-        self.headers = {} if headers is None else headers
-
-    def _asdict(self):
-        return {a: getattr(self, a) for a in self.__slots__}
-
-    def __eq__(self, other):
-        """check for equality with another response"""
-        if isinstance(other, Response):
-            return self._asdict() == other._asdict()
-        return NotImplemented
-
-    def __ne__(self, other):
-        """check for inequality with another response"""
-        if isinstance(other, Response):
-            return self._asdict() != other._asdict()
-        return NotImplemented
-
-    def __repr__(self):
-        return ('<Response: {0.status_code}, '
-                'headers={0.headers!r}>').format(self)
-
-    def replace(self, **kwargs) -> 'Response':
-        """Create a copy with replaced fields
-
-        Parameters
-        ----------
-        **kwargs
-            fields and values to replace
-        """
-        attrs = self._asdict()
-        attrs.update(kwargs)
-        return Response(**attrs)
 
 
 class Query(t.Generic[T], t.Iterable[Request]):
@@ -400,20 +198,6 @@ class related:
         return self._cls if obj is None else MethodType(self._cls, obj)
 
 
-class _SocketAdaptor:
-    def __init__(self, io):
-        self._file = io
-
-    def makefile(self, *args, **kwargs):
-        return self._file
-
-
-def basic_auth(credentials, request):
-    """Apply basic authentication to a request"""
-    encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
-    return request.with_headers({'Authorization': 'Basic ' + encoded})
-
-
 def execute(query: Query[T], *,
             auth: T_auth=None,
             client=urllib.request.build_opener(),
@@ -472,117 +256,6 @@ def execute_async(query: Query[T], *,
     return exec_func(query, client, authenticate)
 
 
-@singledispatch
-def send(client, request: Request) -> Response:
-    """Given a client, send a :class:`Request`,
-    returning a :class:`Response`.
-
-    A :func:`~functools.singledispatch` function.
-
-    Parameters
-    ----------
-    client: any registered client type
-        The client with which to send the request.
-
-        Client types registered by default:
-
-        * :class:`urllib.request.OpenerDirector`
-          (e.g. from :func:`~urllib.request.build_opener`)
-        * :class:`requests.Session`
-          (if `requests <http://docs.python-requests.org/>`_ is installed)
-
-    request
-        The request to send
-
-
-    Example of registering a new HTTP client:
-
-    >>> @send.register(MyClientClass)
-    ... def _send(client, request: Request) -> Response:
-    ...     r = client.send(request)
-    ...     return Response(r.status, r.read(), headers=r.get_headers())
-    """
-    raise TypeError('client {!r} not registered'.format(client))
-
-
-@send.register(urllib.request.OpenerDirector)
-def _urllib_send(opener, req: Request, **kwargs) -> Response:
-    """Send a request with an :mod:`urllib` opener"""
-    if req.content and not any(h.lower() == 'content-type'
-                               for h in req.headers):
-        req = req.with_headers({'Content-Type': 'application/octet-stream'})
-    url = req.url + '?' + urllib.parse.urlencode(req.params)
-    raw_req = urllib.request.Request(url, req.content, headers=req.headers,
-                                     method=req.method)
-    res = urllib.request.urlopen(raw_req, **kwargs)
-    return Response(res.getcode(), content=res.read(), headers=res.headers)
-
-
-@singledispatch
-@asyncio.coroutine
-def send_async(client, request: Request) -> _Awaitable(Response):
-    """Given a client, send a :class:`Request`,
-    returning an awaitable :class:`Response`.
-
-    A :func:`~functools.singledispatch` function.
-
-    Example of registering a new HTTP client:
-
-    >>> @send_async.register(MyClientClass)
-    ... async def _send(client, request: Request) -> Response:
-    ...     r = await client.send(request)
-    ...     return Response(r.status, r.read(), headers=r.get_headers())
-
-    Parameters
-    ----------
-    client: any registered client type
-        The client with which to send the request.
-
-        Client types supported by default:
-
-        * :class:`asyncio.AbstractEventLoop`
-          (e.g. from :func:`~asyncio.get_event_loop`)
-        * :class:`aiohttp.ClientSession`
-          (if `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed)
-
-        Note
-        ----
-        ``aiohttp`` is only supported on python 3.5.3+
-
-    request
-        The request to send
-    """
-    raise TypeError('client {!r} not registered'.format(client))
-
-
-@send_async.register(asyncio.AbstractEventLoop)
-@asyncio.coroutine
-def _asyncio_send(loop, req: Request) -> _Awaitable(Response):
-    """A rudimentary HTTP client using :mod:`asyncio`"""
-    if not any(h.lower() == 'user-agent' for h in req.headers):
-        req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
-    url = urllib.parse.urlsplit(
-        req.url + '?' + urllib.parse.urlencode(req.params))
-    open_ = partial(asyncio.open_connection, url.hostname, loop=loop)
-    connect = open_(443, ssl=True) if url.scheme == 'https' else open_(80)
-    reader, writer = yield from connect
-    try:
-        headers = '\r\n'.join([
-            '{} {} HTTP/1.1'.format(req.method, url.path + '?' + url.query),
-            'Host: ' + url.hostname,
-            'Connection: close',
-            'Content-Length: {}'.format(len(req.content or b'')),
-            '\r\n'.join(starmap('{}: {}'.format, req.headers.items())),
-        ])
-        writer.write(b'\r\n'.join([headers.encode(), b'', req.content or b'']))
-        response_bytes = BytesIO((yield from reader.read()))
-    finally:
-        writer.close()
-    resp = HTTPResponse(_SocketAdaptor(response_bytes))
-    resp.begin()
-    return Response(resp.getcode(), content=resp.read(), headers=resp.headers)
-
-
 def executor(**kwargs) -> _Executor:
     """Create a version of :func:`execute` with bound arguments.
 
@@ -603,62 +276,3 @@ def async_executor(**kwargs) -> _AExecutor:
         arguments to pass to :func:`execute_async`
     """
     return partial(execute_async, **kwargs)
-
-
-prefix_adder = partial(methodcaller, 'with_prefix')
-prefix_adder.__doc__ = "make a callable which adds a prefix to a request url"
-header_adder = partial(methodcaller, 'with_headers')
-header_adder.__doc__ = "make a callable which adds headers to a request"
-GET = partial(Request, 'GET')
-GET.__doc__ = "shortcut for a GET request"
-POST = partial(Request, 'POST')
-POST.__doc__ = "shortcut for a POST request"
-PUT = partial(Request, 'PUT')
-PUT.__doc__ = "shortcut for a PUT request"
-PATCH = partial(Request, 'PATCH')
-PATCH.__doc__ = "shortcut for a PATCH request"
-DELETE = partial(Request, 'DELETE')
-DELETE.__doc__ = "shortcut for a DELETE request"
-HEAD = partial(Request, 'HEAD')
-HEAD.__doc__ = "shortcut for a HEAD request"
-OPTIONS = partial(Request, 'OPTIONS')
-OPTIONS.__doc__ = "shortcut for a OPTIONS request"
-
-
-try:
-    import aiohttp
-except ImportError:  # pragma: no cover
-    pass
-else:
-    @send_async.register(aiohttp.ClientSession)
-    @asyncio.coroutine
-    def _aiohttp_send(session, req: Request) -> _Awaitable(Response):
-        """send a request with the `aiohttp` library"""
-        # this is basically a simplified `async with`
-        # in py3.4 compatible syntax
-        # see https://www.python.org/dev/peps/pep-0492/#new-syntax
-        resp = yield from session.request(
-            req.method, req.url,
-            params=req.params,
-            data=req.content,
-            headers=req.headers).__aenter__()
-        try:
-            content = yield from resp.read()
-        finally:
-            yield from resp.__aexit__(None, None, None)
-        return Response(resp.status, content=content, headers=resp.headers)
-
-
-try:
-    import requests
-except ImportError:  # pragma: no cover
-    pass
-else:
-    @send.register(requests.Session)
-    def _requests_send(session, req: Request) -> Response:
-        """send a request with the `requests` library"""
-        res = session.request(req.method, req.url,
-                              data=req.content,
-                              params=req.params,
-                              headers=req.headers)
-        return Response(res.status_code, res.content, headers=res.headers)
