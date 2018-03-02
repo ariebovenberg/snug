@@ -1,9 +1,8 @@
 """Basic HTTP abstractions and functionality"""
-import asyncio
 import sys
 import typing as t
 from base64 import b64encode
-from functools import partial, singledispatch
+from functools import partial
 from itertools import starmap, chain
 from operator import attrgetter, methodcaller
 
@@ -18,8 +17,6 @@ _Awaitable = (t.Awaitable.__getitem__  # pragma: no cover
 __all__ = [
     'Request',
     'Response',
-    'send',
-    'send_async',
     'header_adder',
     'prefix_adder',
     'GET',
@@ -75,56 +72,55 @@ class Request:
 
     Parameters
     ----------
-    method
+    method: str
         The http method
-    url
+    url: str
         The requested url
-    content
+    content: bytes or None
         The request content
-    params
+    paramsL Mapping
         The query parameters
-    headers
+    headers: Mapping
         request headers
     """
     __slots__ = 'method', 'url', 'content', 'params', 'headers'
     __hash__ = None
 
-    def __init__(self, method: str, url: str, content: bytes=None, *,
-                 params: _TextMapping=None,
-                 headers: _TextMapping=Headers()):
+    def __init__(self, method, url, content=None, *, params=None,
+                 headers=Headers()):
         self.method = method
         self.url = url
         self.content = content
         self.params = params or {}
         self.headers = headers
 
-    def with_headers(self, headers: _TextMapping) -> 'Request':
+    def with_headers(self, headers) -> 'Request':
         """Create a new request with added headers
 
         Parameters
         ----------
-        headers
+        headers: Mapping
             the headers to add
         """
         merged = dict(chain(self.headers.items(), headers.items()))
         return self.replace(headers=merged)
 
-    def with_prefix(self, prefix: str) -> 'Request':
+    def with_prefix(self, prefix) -> 'Request':
         """Create a new request with added url prefix
 
         Parameters
         ----------
-        prefix
+        prefix: str
             the URL prefix
         """
         return self.replace(url=prefix + self.url)
 
-    def with_params(self, params: _TextMapping) -> 'Request':
+    def with_params(self, params) -> 'Request':
         """Create a new request with added params
 
         Parameters
         ----------
-        params
+        params: Mapping
             the parameters to add
         """
         merged = dict(chain(self.params.items(), params.items()))
@@ -134,24 +130,27 @@ class Request:
         return {a: getattr(self, a) for a in self.__slots__}
 
     def __eq__(self, other):
-        """check for equality with another request"""
         if isinstance(other, Request):
             return self._asdict() == other._asdict()
         return NotImplemented
 
     def __ne__(self, other):
-        """check for inequality with another request"""
         if isinstance(other, Request):
             return self._asdict() != other._asdict()
         return NotImplemented
 
-    def replace(self, **kwargs) -> 'Request':
+    def replace(self, **kwargs):
         """Create a copy with replaced fields
 
         Parameters
         ----------
         **kwargs
             fields and values to replace
+
+        Returns
+        -------
+        Request
+            the new request
         """
         attrs = self._asdict()
         attrs.update(kwargs)
@@ -178,22 +177,20 @@ class Response:
     __hash__ = None
 
     def __init__(self, status_code: int, content: bytes=None, *,
-                 headers: _TextMapping=None):
+                 headers=Headers()):
         self.status_code = status_code
         self.content = content
-        self.headers = {} if headers is None else headers
+        self.headers = headers
 
     def _asdict(self):
         return {a: getattr(self, a) for a in self.__slots__}
 
     def __eq__(self, other):
-        """check for equality with another response"""
         if isinstance(other, Response):
             return self._asdict() == other._asdict()
         return NotImplemented
 
     def __ne__(self, other):
-        """check for inequality with another response"""
         if isinstance(other, Response):
             return self._asdict() != other._asdict()
         return NotImplemented
@@ -202,13 +199,18 @@ class Response:
         return ('<Response: {0.status_code}, '
                 'headers={0.headers!r}>').format(self)
 
-    def replace(self, **kwargs) -> 'Response':
+    def replace(self, **kwargs):
         """Create a copy with replaced fields
 
         Parameters
         ----------
         **kwargs
             fields and values to replace
+
+        Returns
+        -------
+        Response
+            the resulting response
         """
         attrs = self._asdict()
         attrs.update(kwargs)
@@ -239,73 +241,3 @@ HEAD = partial(Request, 'HEAD')
 HEAD.__doc__ = "shortcut for a HEAD request"
 OPTIONS = partial(Request, 'OPTIONS')
 OPTIONS.__doc__ = "shortcut for a OPTIONS request"
-
-
-@singledispatch
-def send(client, request: Request) -> Response:
-    """Given a client, send a :class:`Request`,
-    returning a :class:`Response`.
-
-    A :func:`~functools.singledispatch` function.
-
-    Parameters
-    ----------
-    client: any registered client type
-        The client with which to send the request.
-
-        Client types registered by default:
-
-        * :class:`urllib.request.OpenerDirector`
-          (e.g. from :func:`~urllib.request.build_opener`)
-        * :class:`requests.Session`
-          (if `requests <http://docs.python-requests.org/>`_ is installed)
-
-    request
-        The request to send
-
-
-    Example of registering a new HTTP client:
-
-    >>> @send.register(MyClientClass)
-    ... def _send(client, request: Request) -> Response:
-    ...     r = client.send(request)
-    ...     return Response(r.status, r.read(), headers=r.get_headers())
-    """
-    raise TypeError('client {!r} not registered'.format(client))
-
-
-@singledispatch
-@asyncio.coroutine
-def send_async(client, request: Request) -> _Awaitable(Response):
-    """Given a client, send a :class:`Request`,
-    returning an awaitable :class:`Response`.
-
-    A :func:`~functools.singledispatch` function.
-
-    Example of registering a new HTTP client:
-
-    >>> @send_async.register(MyClientClass)
-    ... async def _send(client, request: Request) -> Response:
-    ...     r = await client.send(request)
-    ...     return Response(r.status, r.read(), headers=r.get_headers())
-
-    Parameters
-    ----------
-    client: any registered client type
-        The client with which to send the request.
-
-        Client types supported by default:
-
-        * :class:`asyncio.AbstractEventLoop`
-          (e.g. from :func:`~asyncio.get_event_loop`)
-        * :class:`aiohttp.ClientSession`
-          (if `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed)
-
-        Note
-        ----
-        ``aiohttp`` is only supported on python 3.5.3+
-
-    request
-        The request to send
-    """
-    raise TypeError('client {!r} not registered'.format(client))

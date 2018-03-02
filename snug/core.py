@@ -5,7 +5,8 @@ import urllib.request
 from functools import partial
 from types import MethodType
 
-from .http import Request, Response, basic_auth, send, send_async
+from .http import Request, Response, basic_auth
+from .clients import send, send_async
 
 __all__ = [
     'Query',
