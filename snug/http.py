@@ -77,7 +77,7 @@ class Request:
         The requested url
     content: bytes or None
         The request content
-    paramsL Mapping
+    params: Mapping
         The query parameters
     headers: Mapping
         request headers

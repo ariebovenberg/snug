@@ -1,12 +1,11 @@
 import asyncio
-import sys
 import typing as t
 import urllib.request
 from functools import partial
 from types import MethodType
 
 from .clients import send, send_async
-from .http import Request, Response, basic_auth
+from .http import basic_auth
 
 __all__ = [
     'Query',
@@ -18,23 +17,17 @@ __all__ = [
 ]
 
 T = t.TypeVar('T')
-T_auth = t.TypeVar('T_auth')
-_Awaitable = (t.Awaitable.__getitem__  # pragma: no cover
-              if sys.version_info > (3, 5)
-              else lambda x: t.Generator[t.Any, t.Any, x])
-_Executor = t.Callable[['Query[T]'], T]
-_AExecutor = t.Callable[['Query[T]'], _Awaitable(T)]
-_AuthMethod = t.Callable[[T_auth, 'Request'], 'Request']
 
 
 def _identity(obj):
     return obj
 
 
-class Query(t.Generic[T], t.Iterable[Request]):
+class Query(t.Generic[T]):
     """Abstract base class for query-like objects.
     Any object whose :meth:`~object.__iter__`
-    returns a :class:`Request`/:class:`Response` generator implements it.
+    returns a :class:`~snug.http.Request`/:class:`~snug.http.Response`
+    generator implements it.
 
     Note
     ----
@@ -109,12 +102,16 @@ class Query(t.Generic[T], t.Iterable[Request]):
     >>> for chunk in response.iter_content():
     ...    ...
     """
-    def __iter__(self) -> t.Generator[Request, Response, T]:
-        """A generator iterator which resolves the query"""
+    def __iter__(self):
+        """A generator iterator which resolves the query
+
+        Returns
+        -------
+        ~typing.Generator[Request, Response, T]
+        """
         raise NotImplementedError()
 
-    def __execute__(self, client,
-                    authenticate: t.Callable[[Request], Request]) -> T:
+    def __execute__(self, client, authenticate):
         """Default execution logic for a query,
         which uses the query's :meth:`~Query.__iter__`.
         May be overriden for full control of query execution,
@@ -129,8 +126,13 @@ class Query(t.Generic[T], t.Iterable[Request]):
         ----------
         client
             the client instance passed to :func:`execute`
-        authenticate
-            a callable to authenticate a :class:`Request`
+        authenticate: ~typing.Callable[[Request], Request]
+            a callable to authenticate a :class:`~snug.http.Request`
+
+        Returns
+        -------
+        T
+            the query result
         """
         gen = iter(self)
         request = next(gen)
@@ -142,8 +144,7 @@ class Query(t.Generic[T], t.Iterable[Request]):
                 return e.value
 
     @asyncio.coroutine
-    def __execute_async__(self, client,
-                          authenticate: t.Callable[[Request], Request]) -> T:
+    def __execute_async__(self, client, authenticate):
         """Default asynchronous execution logic for a query,
         which uses the query's :meth:`~Query.__iter__`.
         May be overriden for full control of query execution,
@@ -158,8 +159,13 @@ class Query(t.Generic[T], t.Iterable[Request]):
         ----------
         client
             the client instance passed to :func:`execute`
-        authenticate
-            a callable to authenticate a :class:`Request`
+        authenticate: ~typing.Callable[[Request], Request]
+            a callable to authenticate a :class:`~snug.http.Request`
+
+        Returns
+        -------
+        T
+            the query result
         """
         gen = iter(self)
         request = next(gen)
@@ -199,17 +205,17 @@ class related:
         return self._cls if obj is None else MethodType(self._cls, obj)
 
 
-def execute(query: Query[T], *,
-            auth: T_auth=None,
+def execute(query, *,
+            auth=None,
             client=urllib.request.build_opener(),
-            auth_method: _AuthMethod=basic_auth) -> T:
+            auth_method=basic_auth):
     """Execute a query, returning its result
 
     Parameters
     ----------
-    query
+    query: Query[T]
         the query to resolve
-    auth
+    auth: T_auth
         the authentication credentials. If using the default ``auth_method``,
         ``auth`` must be a (username, password)-tuple.
     client
@@ -217,7 +223,7 @@ def execute(query: Query[T], *,
         Its type must have been registered
         with :func:`send`.
         If not given, the built-in :mod:`urllib` module is used.
-    auth_method
+    auth_method: ~typing.Callable[[T_auth, Request], Request]
         the authentication method to use
     """
     exec_func = getattr(type(query), '__execute__', Query.__execute__)
@@ -225,17 +231,17 @@ def execute(query: Query[T], *,
     return exec_func(query, client, authenticate)
 
 
-def execute_async(query: Query[T], *,
-                  auth: T_auth=None,
+def execute_async(query, *,
+                  auth=None,
                   client=asyncio.get_event_loop(),
-                  auth_method: _AuthMethod=basic_auth) -> _Awaitable(T):
+                  auth_method=basic_auth):
     """Execute a query asynchronously, returning its result
 
     Parameters
     ----------
-    query
+    query: Query[T]
         the query to resolve
-    auth
+    auth: T_auth
         the authentication credentials. If using the default ``auth_method``,
         ``auth`` must be a (username, password)-tuple.
     client
@@ -243,7 +249,7 @@ def execute_async(query: Query[T], *,
         Its type must have been registered
         with :func:`send_async`.
         If not given, the built-in :mod:`asyncio` module is used.
-    auth_method
+    auth_method: ~typing.Callable[[T_auth, Request], Request]
         the authentication method to use
 
     Note
@@ -257,7 +263,7 @@ def execute_async(query: Query[T], *,
     return exec_func(query, client, authenticate)
 
 
-def executor(**kwargs) -> _Executor:
+def executor(**kwargs):
     """Create a version of :func:`execute` with bound arguments.
 
     Parameters
@@ -268,7 +274,7 @@ def executor(**kwargs) -> _Executor:
     return partial(execute, **kwargs)
 
 
-def async_executor(**kwargs) -> _AExecutor:
+def async_executor(**kwargs):
     """Create a version of :func:`execute_async` with bound arguments.
 
     Parameters

@@ -43,6 +43,7 @@ def send(client, request):
     Response
         the resulting response
 
+
     Example of registering a new HTTP client:
 
     >>> @send.register(MyClientClass)
@@ -84,6 +85,7 @@ def send_async(client, request):
     -------
     Response
         the resulting response
+
 
     Example of registering a new HTTP client:
 
