@@ -61,7 +61,35 @@ class Headers(Mapping):
         return hash(frozenset(self._inner.items()))
 
 
-class Request:
+class Slots(object):
+
+    def _asdict(self):
+        return {a: getattr(self, a) for a in self.__slots__}
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self._asdict() == other._asdict()
+        return NotImplemented
+
+    def __ne__(self, other):
+        if isinstance(other, self.__class__):
+            return self._asdict() != other._asdict()
+        return NotImplemented
+
+    def replace(self, **kwargs):
+        """Create a copy with replaced fields
+
+        Parameters
+        ----------
+        **kwargs
+            fields and values to replace
+        """
+        attrs = self._asdict()
+        attrs.update(kwargs)
+        return self.__class__(**attrs)
+
+
+class Request(Slots):
     """A simple HTTP request.
 
     Parameters
@@ -120,42 +148,12 @@ class Request:
         merged = dict(chain(self.params.items(), params.items()))
         return self.replace(params=merged)
 
-    def _asdict(self):
-        return {a: getattr(self, a) for a in self.__slots__}
-
-    def __eq__(self, other):
-        if isinstance(other, Request):
-            return self._asdict() == other._asdict()
-        return NotImplemented
-
-    def __ne__(self, other):
-        if isinstance(other, Request):
-            return self._asdict() != other._asdict()
-        return NotImplemented
-
-    def replace(self, **kwargs):
-        """Create a copy with replaced fields
-
-        Parameters
-        ----------
-        **kwargs
-            fields and values to replace
-
-        Returns
-        -------
-        Request
-            the new request
-        """
-        attrs = self._asdict()
-        attrs.update(kwargs)
-        return Request(**attrs)
-
     def __repr__(self):
         return ('<Request: {0.method} {0.url}, params={0.params!r}, '
                 'headers={0.headers!r}>').format(self)
 
 
-class Response:
+class Response(Slots):
     """A simple HTTP response.
 
     Parameters
@@ -175,39 +173,9 @@ class Response:
         self.content = content
         self.headers = headers
 
-    def _asdict(self):
-        return {a: getattr(self, a) for a in self.__slots__}
-
-    def __eq__(self, other):
-        if isinstance(other, Response):
-            return self._asdict() == other._asdict()
-        return NotImplemented
-
-    def __ne__(self, other):
-        if isinstance(other, Response):
-            return self._asdict() != other._asdict()
-        return NotImplemented
-
     def __repr__(self):
         return ('<Response: {0.status_code}, '
                 'headers={0.headers!r}>').format(self)
-
-    def replace(self, **kwargs):
-        """Create a copy with replaced fields
-
-        Parameters
-        ----------
-        **kwargs
-            fields and values to replace
-
-        Returns
-        -------
-        Response
-            the resulting response
-        """
-        attrs = self._asdict()
-        attrs.update(kwargs)
-        return Response(**attrs)
 
 
 def basic_auth(credentials, request):
