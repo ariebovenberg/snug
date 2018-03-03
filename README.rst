@@ -258,6 +258,30 @@ and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
    pip install requests
    pip install aiohttp
 
+Python 2 caveats
+----------------
+
+Writing python2-compatible queries is supported, with two important caveats:
+
+1. Returning values from generators is not natively supported in python2.
+   Use the ``gentools.py2_compatible`` decorator to do this. 
+   The resulting query can be run on python 2 and 3.
+
+.. code-block:: python
+
+    from gentools import py2_compatible, return_
+
+    @py2_compatible
+    def repo(name, owner):
+        """get a github repo by owner and name"""
+        request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
+        response = yield request
+        return_(json.loads(response.content))
+
+2. Async functionality is not available on python2.
+   Python2-compatible queries will be able to be run asychronously on python3.
+
+
 Alternatives
 ------------
 

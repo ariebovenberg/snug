@@ -1,6 +1,7 @@
 import pytest
 
 import snug
+from snug.compat import PY3
 
 
 class TestRequest:
@@ -39,21 +40,6 @@ class TestRequest:
     def test_repr(self):
         req = snug.GET('my/url')
         assert 'GET my/url' in repr(req)
-
-
-def test_send_with_unknown_client():
-    class MyClass:
-        pass
-    with pytest.raises(TypeError, match='MyClass'):
-        snug.send(MyClass(), snug.GET('foo'))
-
-
-def test_async_send_with_unknown_client(loop):
-    class MyClass:
-        pass
-
-    with pytest.raises(TypeError, match='MyClass'):
-        loop.run_until_complete(snug.send_async(MyClass(), snug.GET('foo')))
 
 
 class TestResponse:
@@ -188,8 +174,9 @@ class TestHeaders:
 
     def test_keys(self, headers):
         assert 'Content-Type' in headers.keys()
-        assert 'Content-type' in headers.keys()
-        assert 'Content-Disposition' not in headers.keys()
+        if PY3:
+            assert 'Content-type' in headers.keys()
+            assert 'Content-Disposition' not in headers.keys()
         assert set(headers.keys()) == {'Content-Type', 'accept'}
 
     def test_len(self, headers):

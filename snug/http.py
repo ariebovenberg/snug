@@ -1,6 +1,4 @@
 """Basic HTTP abstractions and functionality"""
-import sys
-import typing as t
 from base64 import b64encode
 from collections import Mapping
 from functools import partial
@@ -8,9 +6,6 @@ from itertools import chain, starmap
 from operator import attrgetter, methodcaller
 
 _TextMapping = Mapping
-_Awaitable = (t.Awaitable.__getitem__  # pragma: no cover
-              if sys.version_info > (3, 5)
-              else lambda x: t.Generator[t.Any, t.Any, x])
 
 
 __all__ = [
@@ -42,13 +37,13 @@ class Headers(Mapping):
         self._casing = {k.lower(): k for k in inner}
         self._inner = {k.lower(): v for k, v in inner.items()}
 
-    def __getitem__(self, name: str):
+    def __getitem__(self, name):
         return self._inner[name.lower()]
 
     __len__ = property(attrgetter('_inner.__len__'))
 
     def __iter__(self):
-        yield from self._casing.values()
+        return iter(self._casing.values())
 
     def __repr__(self):
         content = ', '.join(starmap(
@@ -85,7 +80,7 @@ class Request:
     __slots__ = 'method', 'url', 'content', 'params', 'headers'
     __hash__ = None
 
-    def __init__(self, method, url, content=None, *, params=None,
+    def __init__(self, method, url, content=None, params=None,
                  headers=Headers()):
         self.method = method
         self.url = url
@@ -93,7 +88,7 @@ class Request:
         self.params = params or {}
         self.headers = headers
 
-    def with_headers(self, headers) -> 'Request':
+    def with_headers(self, headers):
         """Create a new request with added headers
 
         Parameters
@@ -104,7 +99,7 @@ class Request:
         merged = dict(chain(self.headers.items(), headers.items()))
         return self.replace(headers=merged)
 
-    def with_prefix(self, prefix) -> 'Request':
+    def with_prefix(self, prefix):
         """Create a new request with added url prefix
 
         Parameters
@@ -114,7 +109,7 @@ class Request:
         """
         return self.replace(url=prefix + self.url)
 
-    def with_params(self, params) -> 'Request':
+    def with_params(self, params):
         """Create a new request with added params
 
         Parameters
@@ -165,18 +160,17 @@ class Response:
 
     Parameters
     ----------
-    status_code
+    status_code: int
         The HTTP status code
-    content
+    content: bytes or None
         The response content
-    headers
+    headers: Mapping
         The headers of the response. Defaults to an empty :class:`dict`.
     """
     __slots__ = 'status_code', 'content', 'headers'
     __hash__ = None
 
-    def __init__(self, status_code: int, content: bytes=None, *,
-                 headers=Headers()):
+    def __init__(self, status_code, content=None, headers=Headers()):
         self.status_code = status_code
         self.content = content
         self.headers = headers

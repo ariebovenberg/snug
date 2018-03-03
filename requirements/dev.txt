@@ -5,4 +5,5 @@ pytest-coverage
 wheel
 twine
 isort
-mock
+mock;python_version<"3.4"
+gentools

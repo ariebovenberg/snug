@@ -1,10 +1,8 @@
-import asyncio
 import typing as t
-import urllib.request
 from functools import partial
-from types import MethodType
 
-from .clients import send, send_async
+from .clients import send
+from .compat import event_loop, func_from_method, urllib_request
 from .http import basic_auth
 
 __all__ = [
@@ -141,43 +139,17 @@ class Query(t.Generic[T]):
             try:
                 request = gen.send(response)
             except StopIteration as e:
-                return e.value
+                return e.args[0]
 
-    @asyncio.coroutine
+    # this method is overwritten when importing the _async module (py3 only)
     def __execute_async__(self, client, authenticate):
-        """Default asynchronous execution logic for a query,
-        which uses the query's :meth:`~Query.__iter__`.
-        May be overriden for full control of query execution,
-        at the cost of reusability.
-
-        Note
-        ----
-        You shouldn't need to override this method, except in rare cases
-        where implementing :meth:`Query.__iter__` does not suffice.
-
-        Parameters
-        ----------
-        client
-            the client instance passed to :func:`execute`
-        authenticate: ~typing.Callable[[Request], Request]
-            a callable to authenticate a :class:`~snug.http.Request`
-
-        Returns
-        -------
-        T
-            the query result
-        """
-        gen = iter(self)
-        request = next(gen)
-        while True:
-            response = yield from send_async(client, authenticate(request))
-            try:
-                request = gen.send(response)
-            except StopIteration as e:
-                return e.value
+        raise NotImplementedError('python 3+ required to execute async')
 
 
-class related:
+_default_execute_method = func_from_method(Query.__execute__)
+
+
+class related(object):
     """Decorate classes to make them callable as methods.
     This can be used to implement related queries
     through nested classes.
@@ -202,12 +174,10 @@ class related:
         self._cls = cls
 
     def __get__(self, obj, objtype=None):
-        return self._cls if obj is None else MethodType(self._cls, obj)
+        return self._cls if obj is None else partial(self._cls, obj)
 
 
-def execute(query, *,
-            auth=None,
-            client=urllib.request.build_opener(),
+def execute(query, auth=None, client=urllib_request.build_opener(),
             auth_method=basic_auth):
     """Execute a query, returning its result
 
@@ -226,15 +196,12 @@ def execute(query, *,
     auth_method: ~typing.Callable[[T_auth, Request], Request]
         the authentication method to use
     """
-    exec_func = getattr(type(query), '__execute__', Query.__execute__)
+    exec_func = getattr(type(query), '__execute__', _default_execute_method)
     authenticate = _identity if auth is None else partial(auth_method, auth)
     return exec_func(query, client, authenticate)
 
 
-def execute_async(query, *,
-                  auth=None,
-                  client=asyncio.get_event_loop(),
-                  auth_method=basic_auth):
+def execute_async(query, auth=None, client=event_loop, auth_method=basic_auth):
     """Execute a query asynchronously, returning its result
 
     Parameters

@@ -1,29 +1,26 @@
-import asyncio
-import inspect
 import sys
-import urllib.request
-from unittest import mock
 
 import pytest
+from gentools import py2_compatible, return_
 
 import snug
+
+try:
+    import urllib.request as urllib
+    from unittest import mock
+except ImportError:
+    import urllib2 as urllib
+    import mock
+
 
 live = pytest.mark.skipif(not pytest.config.getoption('--live'),
                           reason='skip live data test')
 
 
-class MockAsyncClient:
-    def __init__(self, response):
-        self.response = response
-
-    @asyncio.coroutine
-    def send(self, req):
-        yield from asyncio.sleep(0)
-        self.request = req
-        return self.response
+py3 = pytest.mark.skipif(sys.version_info > (3, ), reason='python 3+ only')
 
 
-class MockClient:
+class MockClient(object):
     def __init__(self, response):
         self.response = response
 
@@ -33,14 +30,6 @@ class MockClient:
 
 
 snug.send.register(MockClient, MockClient.send)
-snug.send_async.register(MockAsyncClient, MockAsyncClient.send)
-
-
-@asyncio.coroutine
-def awaitable(obj):
-    """an awaitable returning given object"""
-    yield from asyncio.sleep(0)
-    return obj
 
 
 def test__execute__():
@@ -60,53 +49,23 @@ def test__execute__():
         'foo/posts/december/': b'hello world'
     })
 
-    class MyQuery:
+    class MyQuery(object):
+        @py2_compatible
         def __iter__(self):
             redirect = yield '/posts/latest'
             redirect = yield redirect.split(':')[1]
             response = yield redirect.split(':')[1]
-            return response.decode('ascii')
+            return_(response.decode('ascii'))
 
-    assert snug.Query.__execute__(
+    assert snug.core._default_execute_method(
         MyQuery(),
         client=client,
         authenticate=lambda s: 'foo' + s) == 'hello world'
 
 
-def test__execute_async__(loop):
-
-    class StringClient:
-        def __init__(self, mappings):
-            self.mappings = mappings
-
-        def send(self, req):
-            return self.mappings[req]
-
-    snug.send_async.register(StringClient, StringClient.send)
-
-    client = StringClient({
-        'foo/posts/latest': awaitable('redirect:/posts/latest/'),
-        'foo/posts/latest/': awaitable('redirect:/posts/december/'),
-        'foo/posts/december/': awaitable(b'hello world'),
-    })
-
-    class MyQuery:
-        def __iter__(self):
-            redirect = yield '/posts/latest'
-            redirect = yield redirect.split(':')[1]
-            response = yield redirect.split(':')[1]
-            return response.decode('ascii')
-
-    future = snug.Query.__execute_async__(
-        MyQuery(),
-        client=client,
-        authenticate=lambda s: 'foo' + s)
-
-    if sys.version_info > (3, 5):
-        assert inspect.isawaitable(future)
-
-    result = loop.run_until_complete(future)
-    assert result == 'hello world'
+@py2_compatible
+def myquery():
+    return_((yield snug.GET('my/url')))
 
 
 class TestExecute:
@@ -114,19 +73,13 @@ class TestExecute:
     @mock.patch('snug.core.send', autospec=True)
     def test_defaults(self, send):
 
-        def myquery():
-            return (yield snug.GET('my/url'))
-
         assert snug.execute(myquery()) == send.return_value
         client, req = send.call_args[0]
-        assert isinstance(client, urllib.request.OpenerDirector)
+        assert isinstance(client, urllib.OpenerDirector)
         assert req == snug.GET('my/url')
 
     def test_custom_client(self):
         client = MockClient(snug.Response(204))
-
-        def myquery():
-            return (yield snug.GET('my/url'))
 
         result = snug.execute(myquery(), client=client)
         assert result == snug.Response(204)
@@ -135,7 +88,7 @@ class TestExecute:
     def test_custom_execute(self):
         client = MockClient(snug.Response(204))
 
-        class MyQuery:
+        class MyQuery(object):
             def __execute__(self, client, authenticate):
                 return client.send(snug.GET('my/url'))
 
@@ -145,9 +98,6 @@ class TestExecute:
 
     def test_auth(self):
         client = MockClient(snug.Response(204))
-
-        def myquery():
-            return (yield snug.GET('my/url'))
 
         result = snug.execute(myquery(),
                               auth=('user', 'pw'),
@@ -163,9 +113,6 @@ class TestExecute:
                 'Authorization': 'Bearer {}'.format(token)
             })
 
-        def myquery():
-            return (yield snug.GET('my/url'))
-
         client = MockClient(snug.Response(204))
         result = snug.execute(myquery(), auth='foo', client=client,
                               auth_method=token_auth)
@@ -175,87 +122,14 @@ class TestExecute:
             'my/url', headers={'Authorization': 'Bearer foo'})
 
 
-class TestExecuteAsync:
-
-    @mock.patch('snug.core.send_async',
-                return_value=awaitable(snug.Response(204)))
-    def test_defaults(self, send, loop):
-
-        def myquery():
-            return (yield snug.GET('my/url'))
-
-        future = snug.execute_async(myquery())
-        result = loop.run_until_complete(future)
-        assert result == snug.Response(204)
-        client, req = send.call_args[0]
-        assert isinstance(client, asyncio.AbstractEventLoop)
-        assert req == snug.GET('my/url')
-
-    def test_custom_client(self, loop):
-        client = MockAsyncClient(snug.Response(204))
-
-        def myquery():
-            return (yield snug.GET('my/url'))
-
-        future = snug.execute_async(myquery(), client=client)
-        result = loop.run_until_complete(future)
-        assert result == snug.Response(204)
-        assert client.request == snug.GET('my/url')
-
-    def test_custom_execute(self, loop):
-        client = MockAsyncClient(snug.Response(204))
-
-        class MyQuery:
-            def __execute_async__(self, client, authenticate):
-                return client.send(snug.GET('my/url'))
-
-        future = snug.execute_async(MyQuery(), client=client)
-        result = loop.run_until_complete(future)
-        assert result == snug.Response(204)
-        assert client.request == snug.GET('my/url')
-
-    def test_auth(self, loop):
-        client = MockAsyncClient(snug.Response(204))
-
-        def myquery():
-            return (yield snug.GET('my/url'))
-
-        future = snug.execute_async(myquery(),
-                                    auth=('user', 'pw'),
-                                    client=client)
-        result = loop.run_until_complete(future)
-        assert result == snug.Response(204)
-        assert client.request == snug.GET(
-            'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
-
-    def test_auth_method(self, loop):
-
-        def token_auth(token, request):
-            return request.with_headers({
-                'Authorization': 'Bearer {}'.format(token)
-            })
-
-        def myquery():
-            return (yield snug.GET('my/url'))
-
-        client = MockAsyncClient(snug.Response(204))
-        future = snug.execute_async(myquery(), auth='foo', client=client,
-                                    auth_method=token_auth)
-        result = loop.run_until_complete(future)
-
-        assert result == snug.Response(204)
-        assert client.request == snug.GET(
-            'my/url', headers={'Authorization': 'Bearer foo'})
-
-
 def test_executor():
-    exec = snug.executor(client='foo')
-    assert exec.keywords == {'client': 'foo'}
+    executor = snug.executor(client='foo')
+    assert executor.keywords == {'client': 'foo'}
 
 
 def test_async_executor():
-    exec = snug.async_executor(client='foo')
-    assert exec.keywords == {'client': 'foo'}
+    executor = snug.async_executor(client='foo')
+    assert executor.keywords == {'client': 'foo'}
 
 
 def test_relation():
