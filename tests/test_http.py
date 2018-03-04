@@ -1,3 +1,6 @@
+from collections import Mapping
+from operator import attrgetter
+
 import snug
 
 
@@ -17,6 +20,20 @@ class AlwaysInEquals:
         return True
 
 
+class FrozenDict(Mapping):
+
+    def __init__(self, inner):
+        self._inner = dict(inner)
+
+    __len__ = property(attrgetter('_inner.__len__'))
+    __iter__ = property(attrgetter('_inner.__iter__'))
+    __getitem__ = property(attrgetter('_inner.__getitem__'))
+    __repr__ = property(attrgetter('_inner.__repr__'))
+
+    def __hash__(self):
+        return frozenset(self._inner.items())
+
+
 class TestRequest:
 
     def test_defaults(self):
@@ -28,6 +45,13 @@ class TestRequest:
         assert req.with_headers({'other-header': 3}) == snug.GET(
             'my/url', headers={'foo': 'bla', 'other-header': 3})
 
+    def test_with_headers_other_mappingtype(self):
+        req = snug.GET('my/url', headers=FrozenDict({'foo': 'bar'}))
+        added = req.with_headers({'bla': 'qux'})
+        assert added == snug.GET('my/url', headers={'foo': 'bar',
+                                                    'bla': 'qux'})
+        assert isinstance(added.headers, FrozenDict)
+
     def test_with_prefix(self):
         req = snug.GET('my/url/')
         assert req.with_prefix('mysite.com/') == snug.GET(
@@ -37,6 +61,13 @@ class TestRequest:
         req = snug.GET('my/url/', params={'foo': 'bar'})
         assert req.with_params({'other': 3}) == snug.GET(
             'my/url/', params={'foo': 'bar', 'other': 3})
+
+    def test_with_params_other_mappingtype(self):
+        req = snug.GET('my/url', params=FrozenDict({'foo': 'bar'}))
+        added = req.with_params({'bla': 'qux'})
+        assert added == snug.GET('my/url', params={'foo': 'bar',
+                                                   'bla': 'qux'})
+        assert isinstance(added.params, FrozenDict)
 
     def test_equality(self):
         req = snug.Request('GET', 'my/url')

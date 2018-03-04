@@ -1,3 +1,4 @@
+"""Types and functionality relating to queries"""
 import typing as t
 from functools import partial
 

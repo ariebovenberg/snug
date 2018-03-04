@@ -1,6 +1,11 @@
+"""
+The entire public API is available at root level::
+
+    from snug import Query, Request, send_async, ...
+"""
 import sys
 
-from .core import *  # noqa
+from .query import *  # noqa
 from .http import *  # noqa
 from .clients import *  # noqa
 

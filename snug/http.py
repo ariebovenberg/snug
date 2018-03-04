@@ -1,9 +1,9 @@
 """Basic HTTP abstractions and functionality"""
 from base64 import b64encode
-from collections import OrderedDict
+from collections import Mapping
 from functools import partial
 from itertools import chain
-from operator import methodcaller
+from operator import attrgetter, methodcaller
 
 __all__ = [
     'Request',
@@ -20,11 +20,23 @@ __all__ = [
 ]
 
 
+class _FrozenDict(Mapping):
+    __slots__ = '_inner'
+
+    def __init__(self, inner=()):
+        self._inner = dict(inner)
+
+    __len__ = property(attrgetter('_inner.__len__'))
+    __iter__ = property(attrgetter('_inner.__iter__'))
+    __getitem__ = property(attrgetter('_inner.__getitem__'))
+    __repr__ = property(attrgetter('_inner.__repr__'))
+
+
 class _SlotsMixin(object):
     __slots__ = ()
 
     def _asdict(self):
-        return OrderedDict((a, getattr(self, a)) for a in self.__slots__)
+        return {a: getattr(self, a) for a in self.__slots__}
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -44,8 +56,12 @@ class _SlotsMixin(object):
         **kwargs
             fields and values to replace
         """
-        merged = dict(chain(self._asdict().items(), kwargs.items()))
-        return self.__class__(**merged)
+        return type(self)(**_merge_maps(self._asdict(), kwargs))
+
+
+def _merge_maps(m1, m2):
+    """merge two Mapping objects, keeping the type of the first mapping"""
+    return type(m1)(chain(m1.items(), m2.items()))
 
 
 class Request(_SlotsMixin):
@@ -60,19 +76,20 @@ class Request(_SlotsMixin):
     content: bytes or None
         The request content
     params: Mapping
-        The query parameters. Defaults to an empty :class:`dict`.
+        The query parameters.
     headers: Mapping
-        Request headers. Defaults to an empty :class:`dict`.
+        Request headers.
     """
     __slots__ = 'method', 'url', 'content', 'params', 'headers'
     __hash__ = None
 
-    def __init__(self, method, url, content=None, params=None, headers=None):
+    def __init__(self, method, url, content=None,
+                 params=_FrozenDict(), headers=_FrozenDict()):
         self.method = method
         self.url = url
         self.content = content
-        self.params = {} if params is None else params
-        self.headers = {} if headers is None else headers
+        self.params = params
+        self.headers = headers
 
     def with_headers(self, headers):
         """Create a new request with added headers
@@ -82,9 +99,7 @@ class Request(_SlotsMixin):
         headers: Mapping
             the headers to add
         """
-        merged = self.headers.copy()
-        merged.update(headers)
-        return self.replace(headers=merged)
+        return self.replace(headers=_merge_maps(self.headers, headers))
 
     def with_prefix(self, prefix):
         """Create a new request with added url prefix
@@ -104,9 +119,7 @@ class Request(_SlotsMixin):
         params: Mapping
             the query parameters to add
         """
-        merged = self.params.copy()
-        merged.update(params)
-        return self.replace(params=merged)
+        return self.replace(params=_merge_maps(self.params, params))
 
     def __repr__(self):
         return ('<Request: {0.method} {0.url}, params={0.params!r}, '
@@ -128,7 +141,7 @@ class Response(_SlotsMixin):
     __slots__ = 'status_code', 'content', 'headers'
     __hash__ = None
 
-    def __init__(self, status_code, content=None, headers=None):
+    def __init__(self, status_code, content=None, headers=_FrozenDict()):
         self.status_code = status_code
         self.content = content
         self.headers = headers

@@ -8,8 +8,8 @@ from io import BytesIO
 from itertools import starmap
 
 from .clients import send_async
-from .core import Query
 from .http import Response
+from .query import Query
 
 _ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
 

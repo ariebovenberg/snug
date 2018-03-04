@@ -1,7 +1,12 @@
 API reference
 =============
 
-.. automodule:: snug.core
+.. automodule:: snug
+
+Query
+-----
+
+.. automodule:: snug.query
    :members:
    :special-members:
    :exclude-members: __next_in_mro__,__weakref__,__mro__,__init__,__repr__,\

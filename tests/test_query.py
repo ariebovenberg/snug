@@ -16,8 +16,6 @@ except ImportError:
 
 live = pytest.mark.skipif(not pytest.config.getoption('--live'),
                           reason='skip live data test')
-
-
 py3 = pytest.mark.skipif(sys.version_info < (3, ), reason='python 3+ only')
 
 
@@ -58,7 +56,7 @@ def test__execute__():
             response = yield redirect.split(':')[1]
             return_(response.decode('ascii'))
 
-    assert snug.core._default_execute_method(
+    assert snug.query._default_execute_method(
         MyQuery(),
         client=client,
         authenticate=lambda s: 'foo' + s) == 'hello world'
@@ -71,7 +69,7 @@ def myquery():
 
 class TestExecute:
 
-    @mock.patch('snug.core.send', autospec=True)
+    @mock.patch('snug.query.send', autospec=True)
     def test_defaults(self, send):
 
         assert snug.execute(myquery()) == send.return_value
@@ -167,7 +165,7 @@ def test_relation():
 
 def test_identity():
     obj = object()
-    assert snug.core._identity(obj) is obj
+    assert snug.query._identity(obj) is obj
 
 
 @py3
