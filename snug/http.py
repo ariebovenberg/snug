@@ -1,12 +1,13 @@
 """Basic HTTP abstractions and functionality"""
+import abc
 from base64 import b64encode
-from collections import Mapping
+from collections import (Mapping, OrderedDict, Counter, Sequence, Iterable,
+                         Sized)
 from functools import partial
 from itertools import chain, starmap
 from operator import attrgetter, methodcaller
 
-_TextMapping = Mapping
-
+from .compat import singledispatch
 
 __all__ = [
     'Request',
@@ -20,17 +21,113 @@ __all__ = [
     'DELETE',
     'HEAD',
     'OPTIONS',
+    'as_queryparams',
     'Headers',
+    'QueryParams',
+    'OrderedQueryParams',
+    'UnorderedQueryParams'
 ]
 
 
-# why a dedicated class?
-# - it allows us to deal with headers in a case-insensitive manner
-# - it allows us to make it immutable which is easier to reason about.
-# - it may be hashable, allowing Request to be hashable
+class QueryParams(Iterable, Sized):
+    """an immutable, possibly ordered, non-unique set of query parameters"""
+    __slots__ = ()
+    __hash__ = None
+
+    @abc.abstractmethod
+    def __len__(self):
+        """The number of query parameters"""
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def __iter__(self):
+        """Iterate over the key-value pairs"""
+        raise NotImplementedError()
+
+    def __ne__(self, other):
+        equality = self.__eq__(other)
+        return NotImplemented if equality is NotImplemented else not equality
+
+
+class UnorderedQueryParams(QueryParams):
+    __slots__ = '_items'
+
+    def __init__(self, items):
+        self._items = Counter(items)
+
+    def __iter__(self):
+        return iter(self._items.elements())
+
+    def __len__(self):
+        return sum(self._items.values())
+
+    def __eq__(self, other):
+        if isinstance(other, Mapping):
+            return self._items == Counter(other.items())
+        elif isinstance(other, UnorderedQueryParams):
+            return self._items == other._items
+        return NotImplemented
+
+    def __add__(self, other):
+        if isinstance(other, Mapping):
+            return UnorderedQueryParams(self._items + Counter(other.items()))
+        if isinstance(other, UnorderedQueryParams):
+            return UnorderedQueryParams(self._items + other._items)
+        return NotImplemented
+
+    def __repr__(self):
+        content = ' & '.join(map('='.join, self))
+        return '{{{}}}'.format(content or '<empty>')
+
+
+class OrderedQueryParams(QueryParams):
+    __slots__ = '_items'
+
+    def __init__(self, items):
+        self._items = tuple(items)
+
+    __iter__ = property(attrgetter('_items.__iter__'))
+    __len__ = property(attrgetter('_items.__len__'))
+
+    def __eq__(self, other):
+        if isinstance(other, Sequence):
+            return self._items == tuple(other)
+        if isinstance(other, OrderedQueryParams):
+            return self._items == other._items
+        return NotImplemented
+
+    def __add__(self, other):
+        if isinstance(other, (tuple, list)):
+            return OrderedQueryParams(self._items + tuple(other))
+        if isinstance(other, OrderedQueryParams):
+            return OrderedQueryParams(self._items + other._items)
+        return NotImplemented
+
+    def __repr__(self):
+        content = ' & '.join(map('='.join, self))
+        return '[{}]'.format(content or '<empty>')
+
+
+@singledispatch
+def as_queryparams(obj):
+    if isinstance(obj, Mapping):
+        return UnorderedQueryParams(obj.items())
+    return OrderedQueryParams(iter(obj))
+
+
+@as_queryparams.register(OrderedDict)
+def _odict_as_queryparams(obj):
+    return OrderedQueryParams(obj.items())
+
+
+as_queryparams.register(Counter, UnorderedQueryParams)
+as_queryparams.register(QueryParams, lambda x: x)
+
+
 class Headers(Mapping):
-    """Case-insensitive, immutable, hashable mapping of headers"""
+    """Case-insensitive, immutable, mapping of headers"""
     __slots__ = '_inner', '_casing'
+    __hash__ = None
 
     def __init__(self, items=()):
         inner = dict(items)
@@ -57,14 +154,12 @@ class Headers(Mapping):
             return self._inner == Headers(other)._inner
         return NotImplemented
 
-    def __hash__(self):
-        return hash(frozenset(self._inner.items()))
 
-
-class Slots(object):
+class _SlotsMixin(object):
+    __slots__ = ()
 
     def _asdict(self):
-        return {a: getattr(self, a) for a in self.__slots__}
+        return OrderedDict((a, getattr(self, a)) for a in self.__slots__)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -84,12 +179,11 @@ class Slots(object):
         **kwargs
             fields and values to replace
         """
-        attrs = self._asdict()
-        attrs.update(kwargs)
-        return self.__class__(**attrs)
+        merged = dict(chain(self._asdict().items(), kwargs.items()))
+        return self.__class__(**merged)
 
 
-class Request(Slots):
+class Request(_SlotsMixin):
     """A simple HTTP request.
 
     Parameters
@@ -100,15 +194,16 @@ class Request(Slots):
         The requested url
     content: bytes or None
         The request content
-    params: Mapping
-        The query parameters
+    params: ~typing.Mapping or ~typing.Iterable
+        The query parameters. A dict or seqeunce of key-value pairs.
     headers: Mapping
         request headers
     """
     __slots__ = 'method', 'url', 'content', 'params', 'headers'
     __hash__ = None
 
-    def __init__(self, method, url, content=None, params=None,
+    def __init__(self, method, url, content=None,
+                 params=UnorderedQueryParams({}),
                  headers=Headers()):
         self.method = method
         self.url = url
@@ -153,7 +248,7 @@ class Request(Slots):
                 'headers={0.headers!r}>').format(self)
 
 
-class Response(Slots):
+class Response(_SlotsMixin):
     """A simple HTTP response.
 
     Parameters
@@ -163,7 +258,7 @@ class Response(Slots):
     content: bytes or None
         The response content
     headers: Mapping
-        The headers of the response. Defaults to an empty :class:`dict`.
+        The headers of the response.
     """
     __slots__ = 'status_code', 'content', 'headers'
     __hash__ = None

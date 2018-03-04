@@ -1,3 +1,5 @@
+from collections import Counter, OrderedDict
+
 import pytest
 
 import snug
@@ -128,7 +130,6 @@ class TestHeaders:
         }
         assert headers == equivalent
         assert headers == snug.Headers(equivalent)
-        assert hash(headers) == hash(snug.Headers(equivalent))
 
         assert not headers == {
             'Content-Type': 'application/json',
@@ -159,10 +160,6 @@ class TestHeaders:
             'Content-TYPE': 'application/pdf',
             'Accept': 'text/plain'
         }
-        assert hash(headers) != hash(snug.Headers({
-            'Content-TYPE': 'application/pdf',
-            'Accept': 'text/plain'
-        }))
         assert not headers != AlwaysEquals()
         assert headers != AlwaysInEquals()
 
@@ -214,3 +211,246 @@ class TestHeaders:
             assert value in rep
 
         assert repr(snug.Headers()) == '{<empty>}'
+
+
+@pytest.fixture
+def params():
+    return snug.UnorderedQueryParams(Counter({('foo', '6'): 2,
+                                              ('bla', 'bar'): 1}))
+
+
+@pytest.fixture
+def ordered_params():
+    return snug.OrderedQueryParams([
+        ('foo', '6'), ('bar', 'qux'), ('bla', 'bla'),
+        ('foo', '6'), ('foo', '9')])
+
+
+class TestAsQueryParams:
+
+    def test_iterable(self):
+        assert snug.as_queryparams((
+            ('foo', '6'), ('bar', 'qux'), ('bla', 'bla'),
+            ('foo', '6'), ('foo', '9')
+        )) == snug.OrderedQueryParams([
+            ('foo', '6'), ('bar', 'qux'), ('bla', 'bla'),
+            ('foo', '6'), ('foo', '9')
+        ])
+
+    def test_mapping(self):
+        assert snug.as_queryparams({
+            'foo': '6', 'bar': 'bla'
+        }) == snug.UnorderedQueryParams(Counter({
+            ('foo', '6'): 1,
+            ('bar', 'bla'): 1,
+        }))
+
+    def test_counter(self):
+        assert snug.as_queryparams(Counter({
+            ('foo', '6'): 1,
+            ('bar', 'bla'): 2,
+        })) == snug.UnorderedQueryParams(Counter({
+            ('bar', 'bla'): 2,
+            ('foo', '6'): 1,
+        }))
+
+    def test_ordered_dict(self):
+        assert snug.as_queryparams(OrderedDict([
+            ('foo', '6'), ('bar', 'qux'), ('bla', 'bla'),
+        ])) == snug.OrderedQueryParams([
+            ('foo', '6'), ('bar', 'qux'), ('bla', 'bla'),
+        ])
+
+    def test_already_queryparams(self, params, ordered_params):
+        assert snug.as_queryparams(params) == params
+        assert snug.as_queryparams(ordered_params) == ordered_params
+
+
+class TestUnorderedQueryParams:
+
+    def test_empty(self):
+        params = snug.UnorderedQueryParams(Counter())
+        assert isinstance(params, snug.UnorderedQueryParams)
+        assert len(params) == 0
+        assert list(params) == []
+
+    def test_iter(self, params):
+        assert Counter(params) == Counter({
+            ('foo', '6'): 2,
+            ('bla', 'bar'): 1,
+        })
+
+    def test_dict_equality(self):
+        param_dict = {'foo': '6', 'bar': 'bla'}
+        assert snug.as_queryparams(param_dict) == param_dict
+
+    def test_equality(self, params):
+        assert params == params
+        same = snug.UnorderedQueryParams(Counter({
+            ('foo', '6'): 2,
+            ('bla', 'bar'): 1,
+        }))
+        other = snug.UnorderedQueryParams(Counter({
+            ('fooo', '6'): 2,
+            ('bla', 'bar'): 1,
+        }))
+
+        assert params == same
+        assert not params == other
+
+        # determined by other object
+        assert params == AlwaysEquals()
+        assert not params == AlwaysInEquals()
+
+    def test_inequality(self, params):
+        assert not params != params
+        same = snug.UnorderedQueryParams(Counter({
+            ('bla', 'bar'): 1,
+            ('foo', '6'): 2,
+        }))
+        other = snug.UnorderedQueryParams(Counter({
+            ('foo', '6'): 2,
+            ('bla', 'bar'): 2,
+        }))
+
+        assert params != other
+        assert not params != same
+
+        # determined by other object
+        assert params == AlwaysEquals()
+        assert not params == AlwaysInEquals()
+
+    def test_add(self, params):
+        added = params + snug.UnorderedQueryParams(Counter({
+            ('foo', '6'): 1,
+            ('bla', 'baz'): 1,
+        }))
+        assert added == snug.UnorderedQueryParams({
+            ('foo', '6'): 3,
+            ('bla', 'baz'): 1,
+            ('bla', 'bar'): 1
+        })
+        assert added == params + {
+            'foo': '6',
+            'bla': 'baz',
+        }
+        assert params + AlwaysAddsToOne() == 1
+
+        with pytest.raises(TypeError):
+            params + 'foo'
+
+    def test_len(self, params):
+        assert len(params) == 3
+
+    def test_bool(self, params):
+        assert params
+        assert not snug.UnorderedQueryParams({})
+
+    def test_repr(self, params):
+        rep = repr(params)
+        for key, value in params:
+            assert key in rep
+            assert value in rep
+
+        assert repr(snug.UnorderedQueryParams({})) == '{<empty>}'
+
+
+class AlwaysAddsToOne(object):
+    def __radd__(self, other):
+        return 1
+
+
+class TestOrderedQueryParams:
+
+    def test_empty(self):
+        params = snug.OrderedQueryParams(())
+        assert isinstance(params, snug.OrderedQueryParams)
+        assert len(params) == 0
+        assert list(params) == []
+
+    def test_iter(self, ordered_params):
+        assert list(ordered_params) == [
+            ('foo', '6'), ('bar', 'qux'), ('bla', 'bla'),
+            ('foo', '6'), ('foo', '9')
+        ]
+
+    def test_seq_equality(self):
+        param_seq = [('foo', '6'), ('bar', 'bla'), ('foo', '9')]
+        assert snug.OrderedQueryParams(param_seq) == param_seq
+
+    def test_equality(self, ordered_params):
+        params = ordered_params
+        assert params == params
+        same = snug.OrderedQueryParams([
+            ('foo', '6'), ('bar', 'qux'), ('bla', 'bla'),
+            ('foo', '6'), ('foo', '9')
+        ])
+        other = snug.OrderedQueryParams([
+            ('foo', '6'), ('bar', 'qux'), ('bla', 'bla'),
+            ('foo', '9'), ('foo', '6')
+        ])
+
+        # true cases
+        assert params == same
+
+        # false cases
+        assert not params == other
+
+        # determined by other object
+        assert params == AlwaysEquals()
+        assert not params == AlwaysInEquals()
+
+    def test_inequality(self, ordered_params):
+        params = ordered_params
+        assert not params != params
+        same = snug.OrderedQueryParams([
+            ('foo', '6'), ('bar', 'qux'), ('bla', 'bla'),
+            ('foo', '6'), ('foo', '9')
+        ])
+        other = snug.OrderedQueryParams([
+            ('foo', '6'), ('bar', 'qux'), ('bla', 'bla'),
+            ('foo', '9'), ('foo', '6')
+        ])
+
+        # true cases
+        assert params != other
+
+        # false cases
+        assert not params != same
+
+        # determined by other object
+        assert not params != AlwaysEquals()
+        assert params != AlwaysInEquals()
+
+    def test_len(self, ordered_params):
+        assert len(ordered_params) == 5
+
+    def test_bool(self, ordered_params):
+        assert ordered_params
+        assert not snug.OrderedQueryParams(())
+
+    def test_repr(self, ordered_params):
+        rep = repr(ordered_params)
+        for key, value in ordered_params:
+            assert key in rep
+            assert value in rep
+
+        assert repr(snug.OrderedQueryParams(())) == '[<empty>]'
+
+    def test_add(self, ordered_params):
+        added = ordered_params + snug.OrderedQueryParams([
+            ('bla', 'boo'),
+            ('foo', '10'),
+        ])
+        assert added == snug.OrderedQueryParams([
+            ('foo', '6'), ('bar', 'qux'), ('bla', 'bla'),
+            ('foo', '6'), ('foo', '9'), ('bla', 'boo'), ('foo', '10')
+        ])
+        assert ordered_params + [
+            ('bla', 'boo'),
+            ('foo', '10'),
+        ] == added
+        assert params + AlwaysAddsToOne() == 1
+
+        with pytest.raises(TypeError):
+            ordered_params + 'foo'
