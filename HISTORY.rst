@@ -4,7 +4,7 @@ Release history
 development
 +++++++++++
 
-1.1.0 (2018-02-??)
+1.1.0 (2018-03-04)
 ++++++++++++++++++
 
 - python 2 compatibility
