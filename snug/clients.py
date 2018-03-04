@@ -92,7 +92,7 @@ def _urllib_send(opener, req, **kwargs):
     if req.content and not any(h.lower() == 'content-type'
                                for h in req.headers):
         req = req.with_headers({'Content-Type': 'application/octet-stream'})
-    url = req.url + '?' + urlencode(list(req.params))
+    url = req.url + '?' + urlencode(req.params)
     raw_req = urllib_request.Request(url, req.content, headers=req.headers)
     set_urllib_method(raw_req, req.method)
     res = opener.open(raw_req, **kwargs)
@@ -109,6 +109,6 @@ else:
         """send a request with the `requests` library"""
         res = session.request(req.method, req.url,
                               data=req.content,
-                              params=list(req.params),
+                              params=req.params,
                               headers=req.headers)
         return Response(res.status_code, res.content, headers=res.headers)

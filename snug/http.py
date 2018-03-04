@@ -1,13 +1,9 @@
 """Basic HTTP abstractions and functionality"""
-import abc
 from base64 import b64encode
-from collections import (Mapping, OrderedDict, Counter, Sequence, Iterable,
-                         Sized)
+from collections import OrderedDict
 from functools import partial
-from itertools import chain, starmap
-from operator import attrgetter, methodcaller
-
-from .compat import singledispatch
+from itertools import chain
+from operator import methodcaller
 
 __all__ = [
     'Request',
@@ -21,138 +17,7 @@ __all__ = [
     'DELETE',
     'HEAD',
     'OPTIONS',
-    'as_queryparams',
-    'Headers',
-    'QueryParams',
-    'OrderedQueryParams',
-    'UnorderedQueryParams'
 ]
-
-
-class QueryParams(Iterable, Sized):
-    """an immutable, possibly ordered, non-unique set of query parameters"""
-    __slots__ = ()
-    __hash__ = None
-
-    @abc.abstractmethod
-    def __len__(self):
-        """The number of query parameters"""
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def __iter__(self):
-        """Iterate over the key-value pairs"""
-        raise NotImplementedError()
-
-    def __ne__(self, other):
-        equality = self.__eq__(other)
-        return NotImplemented if equality is NotImplemented else not equality
-
-
-class UnorderedQueryParams(QueryParams):
-    __slots__ = '_items'
-
-    def __init__(self, items):
-        self._items = Counter(items)
-
-    def __iter__(self):
-        return iter(self._items.elements())
-
-    def __len__(self):
-        return sum(self._items.values())
-
-    def __eq__(self, other):
-        if isinstance(other, Mapping):
-            return self._items == Counter(other.items())
-        elif isinstance(other, UnorderedQueryParams):
-            return self._items == other._items
-        return NotImplemented
-
-    def __add__(self, other):
-        if isinstance(other, Mapping):
-            return UnorderedQueryParams(self._items + Counter(other.items()))
-        if isinstance(other, UnorderedQueryParams):
-            return UnorderedQueryParams(self._items + other._items)
-        return NotImplemented
-
-    def __repr__(self):
-        content = ' & '.join(map('='.join, self))
-        return '{{{}}}'.format(content or '<empty>')
-
-
-class OrderedQueryParams(QueryParams):
-    __slots__ = '_items'
-
-    def __init__(self, items):
-        self._items = tuple(items)
-
-    __iter__ = property(attrgetter('_items.__iter__'))
-    __len__ = property(attrgetter('_items.__len__'))
-
-    def __eq__(self, other):
-        if isinstance(other, Sequence):
-            return self._items == tuple(other)
-        if isinstance(other, OrderedQueryParams):
-            return self._items == other._items
-        return NotImplemented
-
-    def __add__(self, other):
-        if isinstance(other, (tuple, list)):
-            return OrderedQueryParams(self._items + tuple(other))
-        if isinstance(other, OrderedQueryParams):
-            return OrderedQueryParams(self._items + other._items)
-        return NotImplemented
-
-    def __repr__(self):
-        content = ' & '.join(map('='.join, self))
-        return '[{}]'.format(content or '<empty>')
-
-
-@singledispatch
-def as_queryparams(obj):
-    if isinstance(obj, Mapping):
-        return UnorderedQueryParams(obj.items())
-    return OrderedQueryParams(iter(obj))
-
-
-@as_queryparams.register(OrderedDict)
-def _odict_as_queryparams(obj):
-    return OrderedQueryParams(obj.items())
-
-
-as_queryparams.register(Counter, UnorderedQueryParams)
-as_queryparams.register(QueryParams, lambda x: x)
-
-
-class Headers(Mapping):
-    """Case-insensitive, immutable, mapping of headers"""
-    __slots__ = '_inner', '_casing'
-    __hash__ = None
-
-    def __init__(self, items=()):
-        inner = dict(items)
-        self._casing = {k.lower(): k for k in inner}
-        self._inner = {k.lower(): v for k, v in inner.items()}
-
-    def __getitem__(self, name):
-        return self._inner[name.lower()]
-
-    __len__ = property(attrgetter('_inner.__len__'))
-
-    def __iter__(self):
-        return iter(self._casing.values())
-
-    def __repr__(self):
-        content = ', '.join(starmap(
-            '{}: {!r}'.format,
-            zip(self._casing.values(),
-                self._inner.values()))) if self else '<empty>'
-        return '{{{}}}'.format(content)
-
-    def __eq__(self, other):
-        if isinstance(other, Mapping):
-            return self._inner == Headers(other)._inner
-        return NotImplemented
 
 
 class _SlotsMixin(object):
@@ -194,24 +59,20 @@ class Request(_SlotsMixin):
         The requested url
     content: bytes or None
         The request content
-    params: ~typing.Mapping[str, str] or ~typing.Iterable[(str, str)] \
-            or QueryParams
-        The query parameters. If given an :class:`~collections.OrderedDict`
-        or iterable, becomes order-sensitive.
+    params: Mapping
+        The query parameters. Defaults to an empty :class:`dict`.
     headers: Mapping
-        request headers
+        Request headers. Defaults to an empty :class:`dict`.
     """
     __slots__ = 'method', 'url', 'content', 'params', 'headers'
     __hash__ = None
 
-    def __init__(self, method, url, content=None,
-                 params=UnorderedQueryParams({}),
-                 headers=Headers()):
+    def __init__(self, method, url, content=None, params=None, headers=None):
         self.method = method
         self.url = url
         self.content = content
-        self.params = as_queryparams(params)
-        self.headers = headers
+        self.params = {} if params is None else params
+        self.headers = {} if headers is None else headers
 
     def with_headers(self, headers):
         """Create a new request with added headers
@@ -221,7 +82,8 @@ class Request(_SlotsMixin):
         headers: Mapping
             the headers to add
         """
-        merged = dict(chain(self.headers.items(), headers.items()))
+        merged = self.headers.copy()
+        merged.update(headers)
         return self.replace(headers=merged)
 
     def with_prefix(self, prefix):
@@ -239,10 +101,12 @@ class Request(_SlotsMixin):
 
         Parameters
         ----------
-        params: ~typing.Mapping[str, str] or ~typing.Iterable[(str, str)] \
-                or QueryParams
+        params: Mapping
+            the query parameters to add
         """
-        return self.replace(params=self.params + as_queryparams(params))
+        merged = self.params.copy()
+        merged.update(params)
+        return self.replace(params=merged)
 
     def __repr__(self):
         return ('<Request: {0.method} {0.url}, params={0.params!r}, '
@@ -264,7 +128,7 @@ class Response(_SlotsMixin):
     __slots__ = 'status_code', 'content', 'headers'
     __hash__ = None
 
-    def __init__(self, status_code, content=None, headers=Headers()):
+    def __init__(self, status_code, content=None, headers=None):
         self.status_code = status_code
         self.content = content
         self.headers = headers
