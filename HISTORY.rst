@@ -7,6 +7,7 @@ development
 1.1.0 (2018-02-??)
 ++++++++++++++++++
 
+- python 2 compatibility
 - implement overridable ``__execute__``, ``__execute_async__``
 - improvements to ``aiohttp``, ``urllib`` clients
 
