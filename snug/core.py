@@ -115,6 +115,8 @@ class Query(t.Generic[T]):
         May be overriden for full control of query execution,
         at the cost of reusability.
 
+        .. versionadded:: 1.1
+
         Note
         ----
         You shouldn't need to override this method, except in rare cases
