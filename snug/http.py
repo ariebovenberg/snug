@@ -97,7 +97,7 @@ class Request(_SlotsMixin):
         return self.replace(url=prefix + self.url)
 
     def with_params(self, params):
-        """Create a new request with added params
+        """Create a new request with added query parameters
 
         Parameters
         ----------
@@ -123,7 +123,7 @@ class Response(_SlotsMixin):
     content: bytes or None
         The response content
     headers: Mapping
-        The headers of the response.
+        The headers of the response. Defaults to an empty :class:`dict`.
     """
     __slots__ = 'status_code', 'content', 'headers'
     __hash__ = None
