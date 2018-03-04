@@ -2,8 +2,8 @@
 -r docs.txt
 pytest
 pytest-coverage
-pytest-asyncio
 wheel
 twine
 isort
-dataclasses
+mock;python_version<"3.4"
+gentools

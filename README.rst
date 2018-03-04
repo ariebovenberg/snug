@@ -10,19 +10,17 @@ Snug 🧣
 .. image:: https://img.shields.io/pypi/pyversions/snug.svg
     :target: https://pypi.python.org/pypi/snug
 
-.. image:: https://travis-ci.org/ariebovenberg/snug.svg?branch=master
+.. image:: https://img.shields.io/travis/ariebovenberg/snug.svg
     :target: https://travis-ci.org/ariebovenberg/snug
 
-.. image:: https://codecov.io/gh/ariebovenberg/snug/branch/master/graph/badge.svg
+.. image:: https://img.shields.io/codecov/c/github/ariebovenberg/snug.svg
   :target: https://codecov.io/gh/ariebovenberg/snug
 
-.. image:: https://readthedocs.org/projects/snug/badge/?version=latest
-    :target: http://snug.readthedocs.io/en/latest/?badge=latest
-    :alt: Documentation Status
+.. image:: https://img.shields.io/readthedocs/snug.svg
+    :target: http://snug.readthedocs.io/
 
-.. image:: https://api.codeclimate.com/v1/badges/00312aa548eb87fe11b4/maintainability
+.. image:: https://img.shields.io/codeclimate/maintainability/ariebovenberg/snug.svg
    :target: https://codeclimate.com/github/ariebovenberg/snug/maintainability
-   :alt: Maintainability
 
 
 **Snug** is a tiny toolkit for writing reusable interactions with web APIs. Key features:
@@ -259,6 +257,30 @@ and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
 
    pip install requests
    pip install aiohttp
+
+Python 2
+--------
+
+Writing python2-compatible queries is supported, with two important caveats:
+
+1. Returning values from generators is not natively supported in python2.
+   Use the ``gentools.py2_compatible`` decorator to do this.
+   The resulting query can be run on python 2 and 3.
+
+.. code-block:: python
+
+    from gentools import py2_compatible, return_
+
+    @py2_compatible
+    def repo(name, owner):
+        """get a github repo by owner and name"""
+        request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
+        response = yield request
+        return_(json.loads(response.content))
+
+2. Async functionality is not available on python2.
+   Python2-compatible queries will be able to be run asychronously on python3.
+
 
 Alternatives
 ------------
