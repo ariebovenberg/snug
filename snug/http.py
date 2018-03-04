@@ -194,8 +194,10 @@ class Request(_SlotsMixin):
         The requested url
     content: bytes or None
         The request content
-    params: ~typing.Mapping or ~typing.Iterable
-        The query parameters. A dict or seqeunce of key-value pairs.
+    params: ~typing.Mapping[str, str] or ~typing.Iterable[(str, str)] \
+            or QueryParams
+        The query parameters. If given an :class:`~collections.OrderedDict`
+        or iterable, becomes order-sensitive.
     headers: Mapping
         request headers
     """
@@ -208,7 +210,7 @@ class Request(_SlotsMixin):
         self.method = method
         self.url = url
         self.content = content
-        self.params = params or {}
+        self.params = as_queryparams(params)
         self.headers = headers
 
     def with_headers(self, headers):
@@ -237,11 +239,10 @@ class Request(_SlotsMixin):
 
         Parameters
         ----------
-        params: Mapping
-            the parameters to add
+        params: ~typing.Mapping[str, str] or ~typing.Iterable[(str, str)] \
+                or QueryParams
         """
-        merged = dict(chain(self.params.items(), params.items()))
-        return self.replace(params=merged)
+        return self.replace(params=self.params + as_queryparams(params))
 
     def __repr__(self):
         return ('<Request: {0.method} {0.url}, params={0.params!r}, '

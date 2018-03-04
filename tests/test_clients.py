@@ -107,28 +107,22 @@ class TestSendWithAsyncio:
         assert data['headers']['User-Agent'] == 'snug/dev'
 
 
+@live
 def test_requests_send():
     requests = pytest.importorskip("requests")
-    session = mock.Mock(spec=requests.Session)
-    req = snug.GET('https://www.api.github.com/organizations',
-                   params={'since': 3043},
-                   headers={'Accept': 'application/vnd.github.v3+json'})
-    req = snug.POST('http://httpbin.org/post',
-                    content=b'foo',
-                    params={'bla': 5},
-                    headers={'User-Agent': 'snug/dev'})
+    session = requests.Session()
+
+    req = snug.POST('https://httpbin.org/post',
+                    content=b'{"foo": 4}',
+                    params={'bla': '99'},
+                    headers={'Accept': 'application/json'})
+
     response = snug.send(session, req)
-    assert response == snug.Response(
-        status_code=session.request.return_value.status_code,
-        content=session.request.return_value.content,
-        headers=session.request.return_value.headers,
-    )
-    session.request.assert_called_once_with(
-        'POST',
-        'http://httpbin.org/post',
-        data=b'foo',
-        params={'bla': 5},
-        headers={'User-Agent': 'snug/dev'})
+    assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
+    data = json.loads(response.content.decode())
+    assert data['args'] == {'bla': '99'}
+    assert json.loads(data['data']) == {'foo': 4}
+    assert data['headers']['Accept'] == 'application/json'
 
 
 @py3
@@ -140,7 +134,7 @@ class TestAiohttpSend:
 
         req = snug.POST('https://httpbin.org/post',
                         content=b'{"foo": 4}',
-                        params={'bla': 99},
+                        params={'bla': '99'},
                         headers={'Accept': 'application/json'})
 
         response = loop.run_until_complete(using_aiohttp(req))
@@ -156,7 +150,7 @@ class TestAiohttpSend:
 
         req = snug.POST('https://httpbin.org/post',
                         content=b'{"foo": 4}',
-                        params={'bla': 99},
+                        params={'bla': '99'},
                         headers={'Accept': 'application/json'})
         with mock.patch('aiohttp.client_reqrep.ClientResponse.read', error):
             with pytest.raises(ValueError, match='foo'):

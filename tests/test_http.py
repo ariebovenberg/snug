@@ -22,10 +22,18 @@ class TestRequest:
         assert req.with_prefix('mysite.com/') == snug.GET(
             'mysite.com/my/url/')
 
-    def test_with_params(self):
+    def test_with_params_unordered(self):
         req = snug.GET('my/url/', params={'foo': 'bar'})
         assert req.with_params({'other': 3}) == snug.GET(
             'my/url/', params={'foo': 'bar', 'other': 3})
+
+    def test_with_params_ordered(self):
+        req = snug.GET('my/url/', params=[('foo', 'bar'), ('bla', 'qux')])
+        assert req.with_params([('other', '3')]) == snug.GET(
+            'my/url/', params=[
+                ('foo', 'bar'),
+                ('bla', 'qux'),
+                ('other', '3')])
 
     def test_equality(self):
         req = snug.Request('GET', 'my/url')
@@ -36,8 +44,10 @@ class TestRequest:
         assert not req == req.replace(headers={'foo': 'bar'})
         assert req != req.replace(headers={'foo': 'bar'})
 
-        assert not req == object()
-        assert req != object()
+        assert req == AlwaysEquals()
+        assert not req != AlwaysEquals()
+        assert req != AlwaysInEquals()
+        assert not req == AlwaysInEquals()
 
     def test_repr(self):
         req = snug.GET('my/url')
@@ -320,7 +330,7 @@ class TestUnorderedQueryParams:
         assert params == AlwaysEquals()
         assert not params == AlwaysInEquals()
 
-    def test_add(self, params):
+    def test_add(self, params, ordered_params):
         added = params + snug.UnorderedQueryParams(Counter({
             ('foo', '6'): 1,
             ('bla', 'baz'): 1,
