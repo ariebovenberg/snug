@@ -1,9 +1,4 @@
-from collections import Counter, OrderedDict
-
-import pytest
-
 import snug
-from snug.compat import PY3
 
 
 class AlwaysEquals:
