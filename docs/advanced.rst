@@ -9,9 +9,9 @@ describing more advanced functionality.
 Executors
 ---------
 
-To make it easier to call :func:`~snug.execute`/:func:`~snug.execute_async`
+To make it easier to call :func:`~snug.query.execute`/:func:`~snug.query.execute_async`
 repeatedly with specific arguments,
-the :func:`~snug.executor`/:func:`~snug.async_executor`
+the :func:`~snug.query.executor`/:func:`~snug.query.async_executor`
 shortcut can be used.
 
 .. code-block:: python3
@@ -42,7 +42,7 @@ In the github API example, we may wish to define common logic for:
 
 We can use a function-based approach with
 `gentools <http://gentools.readthedocs.io/>`_,
-or a class-based approach by subclassing :class:`~snug.Query`.
+or a class-based approach by subclassing :class:`~snug.query.Query`.
 We'll explore the functional style first.
 
 Function-based approach
@@ -117,7 +117,7 @@ Below is an example of the ``repo`` query extended with related queries.
 It demonstrates two ways of declaring related queries:
 
 * as a method
-* as a nested class with the :func:`~snug.related` decorator.
+* as a nested class with the :func:`~snug.query.related` decorator.
 
 .. literalinclude:: ../tutorial/relations.py
    :emphasize-lines: 15,20,33
@@ -149,10 +149,10 @@ Authentication methods
 The default authentication method is HTTP Basic authentication.
 To use another type of authentication,
 use the ``auth_method`` argument
-of :func:`~snug.executor`/:func:`~snug.async_executor`.
+of :func:`~snug.query.executor`/:func:`~snug.query.async_executor`.
 
 ``auth_method`` will be called with credentials (the ``auth`` parameter),
-and a :class:`~snug.Request` instance.
+and a :class:`~snug.http.Request` instance.
 It should return an authenticated request.
 
 To illutrate, here is a simple example for token-based authentication:
@@ -175,17 +175,17 @@ However, it may occur that advanced, client-specific features are needed.
 For example, streaming data or multipart requests/responses.
 
 For this purpose, you can use the
-:meth:`~snug.Query.__execute__`\/:meth:`~snug.Query.__execute_async__` hook.
+:meth:`~snug.query.Query.__execute__`\/:meth:`~snug.query.Query.__execute_async__` hook.
 Implementing this method allows full customization of a query's execution.
 The downside is that the query will become dependent
 on the client, which limits its reusability.
 
-The :meth:`~snug.Query.__execute__`\/:meth:`~snug.Query.__execute_async__`
+The :meth:`~snug.query.Query.__execute__`\/:meth:`~snug.query.Query.__execute_async__`
 methods take two (positional) arguments:
 
-* ``client`` -- the client which was passed to :func:`~snug.execute`.
-* ``authenticate`` -- a callable which takes a :class:`~snug.Request`,
-  and returns an authenticated :class:`~snug.Request`.
+* ``client`` -- the client which was passed to :func:`~snug.query.execute`.
+* ``authenticate`` -- a callable which takes a :class:`~snug.http.Request`,
+  and returns an authenticated :class:`~snug.http.Request`.
 
 The following example shows how this can be used to implement streaming responses
 to download github repository `assets <https://developer.github.com/v3/repos/releases/#get-a-single-release-asset>`_.
@@ -255,7 +255,7 @@ Registering HTTP clients
 
 By default, clients for `requests <http://docs.python-requests.org/>`_
 and `aiohttp <http://aiohttp.readthedocs.io/>`_ are registered.
-Register new clients with :func:`~snug.send` or :func:`~snug.send_async`.
+Register new clients with :func:`~snug.clients.send` or :func:`~snug.clients.send_async`.
 
 These functions are :func:`~functools.singledispatch` functions.
 A new client type can be registered as follows:
