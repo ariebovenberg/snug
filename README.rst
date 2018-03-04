@@ -258,13 +258,13 @@ and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
    pip install requests
    pip install aiohttp
 
-Python 2 caveats
-----------------
+Python 2
+--------
 
 Writing python2-compatible queries is supported, with two important caveats:
 
 1. Returning values from generators is not natively supported in python2.
-   Use the ``gentools.py2_compatible`` decorator to do this. 
+   Use the ``gentools.py2_compatible`` decorator to do this.
    The resulting query can be run on python 2 and 3.
 
 .. code-block:: python
