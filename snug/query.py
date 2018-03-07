@@ -198,6 +198,11 @@ def execute(query, auth=None, client=urllib_request.build_opener(),
         If not given, the built-in :mod:`urllib` module is used.
     auth_method: ~typing.Callable[[T_auth, Request], Request]
         the authentication method to use
+
+    Returns
+    -------
+    T
+        the query result
     """
     exec_func = getattr(type(query), '__execute__', _default_execute_method)
     authenticate = _identity if auth is None else partial(auth_method, auth)
@@ -222,6 +227,11 @@ def execute_async(query, auth=None, client=event_loop, auth_method=basic_auth):
     auth_method: ~typing.Callable[[T_auth, Request], Request]
         the authentication method to use
 
+    Returns
+    -------
+    T
+        the query result
+
     Note
     ----
     The default client is very rudimentary.
@@ -240,6 +250,11 @@ def executor(**kwargs):
     ----------
     **kwargs
         arguments to pass to :func:`execute`
+
+    Returns
+    -------
+    ~typing.Callable[[Query[T]], T]
+        an :func:`execute`-like function
     """
     return partial(execute, **kwargs)
 
@@ -251,5 +266,10 @@ def async_executor(**kwargs):
     ----------
     **kwargs
         arguments to pass to :func:`execute_async`
+
+    Returns
+    -------
+    ~typing.Callable[[Query[T]], ~typing.Awaitable[T]]
+        an :func:`execute_async`-like function
     """
     return partial(execute_async, **kwargs)
