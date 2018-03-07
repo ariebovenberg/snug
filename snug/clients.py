@@ -67,7 +67,7 @@ def send_async(client, request):
         ----
         ``aiohttp`` is only supported on python 3.5.3+
 
-    request
+    request: Request
         The request to send
 
     Returns
