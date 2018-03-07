@@ -4,6 +4,11 @@ Release history
 development
 +++++++++++
 
+1.1.3 (2018-03-07)
+++++++++++++++++++
+
+- remove ``tutorial`` directory from build
+
 1.1.2 (2018-03-07)
 ++++++++++++++++++
 
