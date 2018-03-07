@@ -44,5 +44,5 @@ setup(
     keywords=['api-wrapper', 'http', 'generators', 'async',
               'graphql', 'rest', 'rpc'],
     python_requires='>=2.7',
-    packages=find_packages(exclude=('examples', 'tests', 'docs')),
+    packages=find_packages(exclude=('examples', 'tests', 'docs', 'tutorial')),
 )
