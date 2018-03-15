@@ -224,7 +224,7 @@ def execute(query, auth=_identity, client=urllib_request.build_opener(),
     return exec_func(query, client, auth)
 
 
-def execute_async(query, auth=None, client=event_loop, auth_method=basic_auth):
+def execute_async(query, auth=_identity, client=event_loop, auth_method=None):
     """Execute a query asynchronously, returning its result
 
     Parameters
@@ -260,10 +260,16 @@ def execute_async(query, auth=None, client=event_loop, auth_method=basic_auth):
     The default client is very rudimentary.
     Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
+    if auth_method is None:
+        auth = auth if callable(auth) else partial(basic_auth, auth)
+    else:
+        warnings.warn('auth_method will be removed in version 1.3. '
+                      'Pass a callable to `auth` instead',
+                      DeprecationWarning)
+        auth = _identity if auth is None else partial(auth_method, auth)
     exec_func = getattr(
         type(query), '__execute_async__', Query.__execute_async__)
-    authenticate = _identity if auth is None else partial(auth_method, auth)
-    return exec_func(query, client, authenticate)
+    return exec_func(query, client, auth)
 
 
 def executor(**kwargs):

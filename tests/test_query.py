@@ -128,7 +128,90 @@ class TestExecute:
 
         with pytest.warns(DeprecationWarning, match='auth_method'):
             result = snug.execute(myquery(), auth='foo', client=client,
-                                auth_method=token_auth)
+                                  auth_method=token_auth)
+
+        assert result == snug.Response(204)
+        assert client.request == snug.GET(
+            'my/url', headers={'Authorization': 'Bearer foo'})
+
+
+@py3
+class TestExecuteAsync:
+
+    def test_defaults(self, loop):
+        import asyncio
+        from .py3_only import awaitable
+
+        with mock.patch('snug._async.send_async',
+                        return_value=awaitable(snug.Response(204))) as send:
+
+            future = snug.execute_async(myquery())
+            result = loop.run_until_complete(future)
+            assert result == snug.Response(204)
+            client, req = send.call_args[0]
+            assert isinstance(client, asyncio.AbstractEventLoop)
+            assert req == snug.GET('my/url')
+
+    def test_custom_client(self, loop):
+        from .py3_only import MockAsyncClient
+        client = MockAsyncClient(snug.Response(204))
+
+        future = snug.execute_async(myquery(), client=client)
+        result = loop.run_until_complete(future)
+        assert result == snug.Response(204)
+        assert client.request == snug.GET('my/url')
+
+    def test_custom_execute(self, loop):
+        from .py3_only import MockAsyncClient
+        client = MockAsyncClient(snug.Response(204))
+
+        class MyQuery:
+            def __execute_async__(self, client, authenticate):
+                return client.send(snug.GET('my/url'))
+
+        future = snug.execute_async(MyQuery(), client=client)
+        result = loop.run_until_complete(future)
+        assert result == snug.Response(204)
+        assert client.request == snug.GET('my/url')
+
+    def test_auth(self, loop):
+        from .py3_only import MockAsyncClient
+        client = MockAsyncClient(snug.Response(204))
+
+        future = snug.execute_async(myquery(),
+                                    auth=('user', 'pw'),
+                                    client=client)
+        result = loop.run_until_complete(future)
+        assert result == snug.Response(204)
+        assert client.request == snug.GET(
+            'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
+
+    def test_auth_callable(self, loop):
+        from .py3_only import MockAsyncClient
+        client = MockAsyncClient(snug.Response(204))
+        auther = methodcaller('with_headers', {'X-My-Auth': 'letmein'})
+
+        future = snug.execute_async(myquery(),
+                                    auth=auther,
+                                    client=client)
+        result = loop.run_until_complete(future)
+        assert result == snug.Response(204)
+        assert client.request == snug.GET(
+            'my/url', headers={'X-My-Auth': 'letmein'})
+
+    def test_auth_method(self, loop):
+        from .py3_only import MockAsyncClient
+
+        def token_auth(token, request):
+            return request.with_headers({
+                'Authorization': 'Bearer {}'.format(token)
+            })
+
+        client = MockAsyncClient(snug.Response(204))
+        with pytest.warns(DeprecationWarning, match='auth_method'):
+            future = snug.execute_async(myquery(), auth='foo', client=client,
+                                        auth_method=token_auth)
+            result = loop.run_until_complete(future)
 
         assert result == snug.Response(204)
         assert client.request == snug.GET(
@@ -220,72 +303,3 @@ def test__execute_async__(loop):
 
     result = loop.run_until_complete(future)
     assert result == 'hello world'
-
-
-@py3
-class TestExecuteAsync:
-
-    def test_defaults(self, loop):
-        import asyncio
-        from .py3_only import awaitable
-
-        with mock.patch('snug._async.send_async',
-                        return_value=awaitable(snug.Response(204))) as send:
-
-            future = snug.execute_async(myquery())
-            result = loop.run_until_complete(future)
-            assert result == snug.Response(204)
-            client, req = send.call_args[0]
-            assert isinstance(client, asyncio.AbstractEventLoop)
-            assert req == snug.GET('my/url')
-
-    def test_custom_client(self, loop):
-        from .py3_only import MockAsyncClient
-        client = MockAsyncClient(snug.Response(204))
-
-        future = snug.execute_async(myquery(), client=client)
-        result = loop.run_until_complete(future)
-        assert result == snug.Response(204)
-        assert client.request == snug.GET('my/url')
-
-    def test_custom_execute(self, loop):
-        from .py3_only import MockAsyncClient
-        client = MockAsyncClient(snug.Response(204))
-
-        class MyQuery:
-            def __execute_async__(self, client, authenticate):
-                return client.send(snug.GET('my/url'))
-
-        future = snug.execute_async(MyQuery(), client=client)
-        result = loop.run_until_complete(future)
-        assert result == snug.Response(204)
-        assert client.request == snug.GET('my/url')
-
-    def test_auth(self, loop):
-        from .py3_only import MockAsyncClient
-        client = MockAsyncClient(snug.Response(204))
-
-        future = snug.execute_async(myquery(),
-                                    auth=('user', 'pw'),
-                                    client=client)
-        result = loop.run_until_complete(future)
-        assert result == snug.Response(204)
-        assert client.request == snug.GET(
-            'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
-
-    def test_auth_method(self, loop):
-        from .py3_only import MockAsyncClient
-
-        def token_auth(token, request):
-            return request.with_headers({
-                'Authorization': 'Bearer {}'.format(token)
-            })
-
-        client = MockAsyncClient(snug.Response(204))
-        future = snug.execute_async(myquery(), auth='foo', client=client,
-                                    auth_method=token_auth)
-        result = loop.run_until_complete(future)
-
-        assert result == snug.Response(204)
-        assert client.request == snug.GET(
-            'my/url', headers={'Authorization': 'Bearer foo'})
