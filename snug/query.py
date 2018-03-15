@@ -188,16 +188,24 @@ def execute(query, auth=None, client=urllib_request.build_opener(),
     ----------
     query: Query[T]
         the query to resolve
-    auth: T_auth
-        the authentication credentials. If using the default ``auth_method``,
-        ``auth`` must be a (username, password)-tuple.
+    auth: ~typing.Tuple[str, str] or ~typing.Callable[[Request], Request]
+        A (username, password)-tuple for basic authentication,
+        or a callable used to authenticate requests.
     client
         The HTTP client to use.
         Its type must have been registered
         with :func:`~snug.clients.send`.
         If not given, the built-in :mod:`urllib` module is used.
     auth_method: ~typing.Callable[[T_auth, Request], Request]
-        the authentication method to use
+        the authentication method to use.
+
+        .. deprecated:: 1.2
+
+        .. warning::
+
+           This parameter will be removed in version 1.3.
+           Pass a callable to `auth` to implement different
+           authentication methods.
 
     Returns
     -------
@@ -216,16 +224,24 @@ def execute_async(query, auth=None, client=event_loop, auth_method=basic_auth):
     ----------
     query: Query[T]
         the query to resolve
-    auth: T_auth
-        the authentication credentials. If using the default ``auth_method``,
-        ``auth`` must be a (username, password)-tuple.
+    auth: ~typing.Tuple[str, str] or ~typing.Callable[[Request], Request]
+        A (username, password)-tuple for basic authentication,
+        or a callable used to authenticate requests.
     client
         The HTTP client to use.
         Its type must have been registered
         with :func:`~snug.clients.send_async`.
         If not given, the built-in :mod:`asyncio` module is used.
     auth_method: ~typing.Callable[[T_auth, Request], Request]
-        the authentication method to use
+        the authentication method to use.
+
+        .. deprecated:: 1.2
+
+        .. warning::
+
+           This parameter will be removed in version 1.3.
+           Pass a callable to `auth` to implement different
+           authentication methods.
 
     Returns
     -------
