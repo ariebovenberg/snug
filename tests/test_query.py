@@ -1,5 +1,6 @@
 import inspect
 import sys
+from operator import methodcaller
 
 import pytest
 from gentools import py2_compatible, return_
@@ -105,6 +106,17 @@ class TestExecute:
         assert client.request == snug.GET(
             'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
 
+    def test_auth_callable(self):
+        client = MockClient(snug.Response(204))
+        auther = methodcaller('with_headers', {'X-My-Auth': 'letmein'})
+
+        result = snug.execute(myquery(),
+                              auth=auther,
+                              client=client)
+        assert result == snug.Response(204)
+        assert client.request == snug.GET(
+            'my/url', headers={'X-My-Auth': 'letmein'})
+
     def test_auth_method(self):
 
         def token_auth(token, request):
@@ -113,8 +125,10 @@ class TestExecute:
             })
 
         client = MockClient(snug.Response(204))
-        result = snug.execute(myquery(), auth='foo', client=client,
-                              auth_method=token_auth)
+
+        with pytest.warns(DeprecationWarning, match='auth_method'):
+            result = snug.execute(myquery(), auth='foo', client=client,
+                                auth_method=token_auth)
 
         assert result == snug.Response(204)
         assert client.request == snug.GET(

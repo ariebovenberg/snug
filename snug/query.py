@@ -1,5 +1,6 @@
 """Types and functionality relating to queries"""
 import typing as t
+import warnings
 from functools import partial
 
 from .clients import send
@@ -180,8 +181,8 @@ class related(object):
         return self._cls if obj is None else partial(self._cls, obj)
 
 
-def execute(query, auth=None, client=urllib_request.build_opener(),
-            auth_method=basic_auth):
+def execute(query, auth=_identity, client=urllib_request.build_opener(),
+            auth_method=None):
     """Execute a query, returning its result
 
     Parameters
@@ -212,9 +213,15 @@ def execute(query, auth=None, client=urllib_request.build_opener(),
     T
         the query result
     """
+    if auth_method is None:
+        auth = auth if callable(auth) else partial(basic_auth, auth)
+    else:
+        warnings.warn('auth_method will be removed in version 1.3. '
+                      'Pass a callable to `auth` instead',
+                      DeprecationWarning)
+        auth = _identity if auth is None else partial(auth_method, auth)
     exec_func = getattr(type(query), '__execute__', _default_execute_method)
-    authenticate = _identity if auth is None else partial(auth_method, auth)
-    return exec_func(query, client, authenticate)
+    return exec_func(query, client, auth)
 
 
 def execute_async(query, auth=None, client=event_loop, auth_method=basic_auth):
