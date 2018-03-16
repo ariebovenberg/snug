@@ -181,6 +181,16 @@ class related(object):
         return self._cls if obj is None else partial(self._cls, obj)
 
 
+def _make_auth(auth, auth_method):
+    if auth_method is None:
+        return auth if callable(auth) else basic_auth(auth)
+    else:
+        warnings.warn('The `auth_method` parameter will be removed'
+                      'in version 1.3. Pass a callable to `auth` instead',
+                      DeprecationWarning)
+        return _identity if auth is None else partial(auth_method, auth)
+
+
 def execute(query, auth=_identity, client=urllib_request.build_opener(),
             auth_method=None):
     """Execute a query, returning its result
@@ -213,15 +223,8 @@ def execute(query, auth=_identity, client=urllib_request.build_opener(),
     T
         the query result
     """
-    if auth_method is None:
-        auth = auth if callable(auth) else partial(basic_auth, auth)
-    else:
-        warnings.warn('auth_method will be removed in version 1.3. '
-                      'Pass a callable to `auth` instead',
-                      DeprecationWarning)
-        auth = _identity if auth is None else partial(auth_method, auth)
     exec_func = getattr(type(query), '__execute__', _default_execute_method)
-    return exec_func(query, client, auth)
+    return exec_func(query, client, _make_auth(auth, auth_method))
 
 
 def execute_async(query, auth=_identity, client=event_loop, auth_method=None):
@@ -260,16 +263,8 @@ def execute_async(query, auth=_identity, client=event_loop, auth_method=None):
     The default client is very rudimentary.
     Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
-    if auth_method is None:
-        auth = auth if callable(auth) else partial(basic_auth, auth)
-    else:
-        warnings.warn('auth_method will be removed in version 1.3. '
-                      'Pass a callable to `auth` instead',
-                      DeprecationWarning)
-        auth = _identity if auth is None else partial(auth_method, auth)
-    exec_func = getattr(
-        type(query), '__execute_async__', Query.__execute_async__)
-    return exec_func(query, client, auth)
+    exc_fn = getattr(type(query), '__execute_async__', Query.__execute_async__)
+    return exc_fn(query, client, _make_auth(auth, auth_method))
 
 
 def executor(**kwargs):
