@@ -17,7 +17,8 @@ token = CRED_PATH.read_text().strip()
 @pytest.fixture(scope='module')
 async def exec():
     async with aiohttp.ClientSession() as client:
-        yield slack.async_executor(auth=token, client=client)
+        yield snug.async_executor(auth=slack.token_auth(token),
+                                  client=client)
 
 
 @pytest.mark.asyncio
