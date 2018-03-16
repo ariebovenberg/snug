@@ -181,40 +181,48 @@ class related(object):
         return self._cls if obj is None else partial(self._cls, obj)
 
 
+# a temporary routine until `auth_method` is removed in version 1.3
 def _make_auth(auth, auth_method):
-    if auth_method is None:
+    if auth is None:
+        return _identity
+    elif auth_method is None:
         return auth if callable(auth) else basic_auth(auth)
     else:
         warnings.warn('The `auth_method` parameter will be removed'
                       'in version 1.3. Pass a callable to `auth` instead',
                       DeprecationWarning)
-        return _identity if auth is None else partial(auth_method, auth)
+        return partial(auth_method, auth)
 
 
-def execute(query, auth=_identity, client=urllib_request.build_opener(),
+def execute(query, auth=None, client=urllib_request.build_opener(),
             auth_method=None):
     """Execute a query, returning its result
 
     Parameters
     ----------
     query: Query[T]
-        the query to resolve
-    auth: ~typing.Tuple[str, str] or ~typing.Callable[[Request], Request]
-        A (username, password)-tuple for basic authentication,
-        or a callable used to authenticate requests.
+        The query to resolve
+    auth: ~typing.Tuple[str, str] \
+        or ~typing.Callable[[Request], Request] or None
+        This may be:
+
+        * A (username, password)-tuple for basic authentication
+        * A callable to authenticate requests.
+        * ``None`` (no authentication)
     client
         The HTTP client to use.
         Its type must have been registered
         with :func:`~snug.clients.send`.
         If not given, the built-in :mod:`urllib` module is used.
     auth_method: ~typing.Callable[[T_auth, Request], Request]
-        the authentication method to use.
+        The authentication method to use.
 
         .. deprecated:: 1.2
+           the `auth_method`-parameter
 
         .. warning::
 
-           This parameter will be removed in version 1.3.
+           The `auth_method` parameter will be removed in version 1.3.
            Pass a callable to `auth` to implement different
            authentication methods.
 
@@ -227,29 +235,34 @@ def execute(query, auth=_identity, client=urllib_request.build_opener(),
     return exec_func(query, client, _make_auth(auth, auth_method))
 
 
-def execute_async(query, auth=_identity, client=event_loop, auth_method=None):
+def execute_async(query, auth=None, client=event_loop, auth_method=None):
     """Execute a query asynchronously, returning its result
 
     Parameters
     ----------
     query: Query[T]
-        the query to resolve
-    auth: ~typing.Tuple[str, str] or ~typing.Callable[[Request], Request]
-        A (username, password)-tuple for basic authentication,
-        or a callable used to authenticate requests.
+        The query to resolve
+    auth: ~typing.Tuple[str, str] \
+        or ~typing.Callable[[Request], Request] or None
+        This may be:
+
+        * A (username, password)-tuple for basic authentication
+        * A callable to authenticate requests.
+        * ``None`` (no authentication)
     client
         The HTTP client to use.
         Its type must have been registered
         with :func:`~snug.clients.send_async`.
         If not given, the built-in :mod:`asyncio` module is used.
     auth_method: ~typing.Callable[[T_auth, Request], Request]
-        the authentication method to use.
+        The authentication method to use.
 
         .. deprecated:: 1.2
+           the `auth_method`-parameter
 
         .. warning::
 
-           This parameter will be removed in version 1.3.
+           The `auth_method` parameter will be removed in version 1.3.
            Pass a callable to `auth` to implement different
            authentication methods.
 

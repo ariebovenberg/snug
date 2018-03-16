@@ -106,6 +106,15 @@ class TestExecute:
         assert client.request == snug.GET(
             'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
 
+    def test_none_auth(self):
+        client = MockClient(snug.Response(204))
+
+        result = snug.execute(myquery(),
+                              auth=None,
+                              client=client)
+        assert result == snug.Response(204)
+        assert client.request == snug.GET('my/url')
+
     def test_auth_callable(self):
         client = MockClient(snug.Response(204))
         auther = methodcaller('with_headers', {'X-My-Auth': 'letmein'})
@@ -185,6 +194,17 @@ class TestExecuteAsync:
         assert result == snug.Response(204)
         assert client.request == snug.GET(
             'my/url', headers={'Authorization': 'Basic dXNlcjpwdw=='})
+
+    def test_none_auth(self, loop):
+        from .py3_only import MockAsyncClient
+        client = MockAsyncClient(snug.Response(204))
+
+        future = snug.execute_async(myquery(),
+                                    auth=None,
+                                    client=client)
+        result = loop.run_until_complete(future)
+        assert result == snug.Response(204)
+        assert client.request == snug.GET('my/url')
 
     def test_auth_callable(self, loop):
         from .py3_only import MockAsyncClient
