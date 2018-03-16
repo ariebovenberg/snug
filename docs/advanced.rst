@@ -148,21 +148,24 @@ Authentication methods
 
 The default authentication method is HTTP Basic authentication.
 To use another type of authentication,
-use the ``auth_method`` argument
+pass a callable as the ``auth`` parameter
 of :func:`~snug.query.executor`/:func:`~snug.query.async_executor`.
 
-``auth_method`` will be called with credentials (the ``auth`` parameter),
-and a :class:`~snug.http.Request` instance.
-It should return an authenticated request.
+This callable takes a :class:`~snug.http.Request`,
+and should return an authenticated copy.
 
 To illutrate, here is a simple example for token-based authentication:
 
 .. code-block:: python3
 
-   def token_auth(token, request)
-       return request.with_headers({'Authorization': f'token {token}'})
+   class Token:
+       def __init__(self, token):
+           self._headers = {'Authorization': f'token {token}'}
 
-   exec = snug.executor(auth='my token', auth_method=token_auth)
+       def __call__(self, request):
+           return request.with_headers(self._headers)
+
+   exec = snug.executor(auth=Token('my token'))
 
 See the slack API example for a real-world use-case.
 
@@ -184,7 +187,7 @@ The :meth:`~snug.query.Query.__execute__`\/:meth:`~snug.query.Query.__execute_as
 methods take two (positional) arguments:
 
 * ``client`` -- the client which was passed to :func:`~snug.query.execute`.
-* ``authenticate`` -- a callable which takes a :class:`~snug.http.Request`,
+* ``auth`` -- a callable which takes a :class:`~snug.http.Request`,
   and returns an authenticated :class:`~snug.http.Request`.
 
 The following example shows how this can be used to implement streaming responses
@@ -202,20 +205,20 @@ to download github repository `assets <https://developer.github.com/v3/repos/rel
                f'/{repo_name}/releases/assets/{id}',
                headers={'Accept': 'application/octet-stream'})
 
-       def __execute__(self, client, authenticate):
+       def __execute__(self, client, auth):
            """executes the query, returning a streaming requests response"""
            assert isinstance(client, requests.Session)
-           req = authenticate(self.request)
+           req = auth(self.request)
            return client.request(req.method, req.url,
                                  data=req.content,
                                  params=req.params,
                                  headers=req.headers,
                                  stream=True)
 
-       async def __execute_async__(self, client, authenticate):
+       async def __execute_async__(self, client, auth):
            """executes the query, returning an aiohttp response"""
            assert isinstance(client, aiohttp.Session)
-           req = authenticate(self.request)
+           req = auth(self.request)
            return client.request(req.method, req.url,
                                  data=req.content,
                                  params=req.params,
