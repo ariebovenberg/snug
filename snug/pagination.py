@@ -2,35 +2,42 @@
 import abc
 import typing as t
 
-from .query import Query
+from .query import Query, executor, execute
 
 __all__ = [
-    # 'Pagelike',
+    'Pagelike',
     'Page',
     'paginate',
 ]
 
-
 T = t.TypeVar('T')
 
 
-# class Pagelike(t.Generic[T]):
-#     """ABC for page-like objects"""
+class Pagelike(t.Generic[T]):
+    """ABC for page-like objects"""
 
-#     @abc.abstractproperty
-#     def next(self):
-#         """The next query in page sequence
+    def content(self):
+        """The contents of the current page
 
-#         Returns
-#         -------
-#         ~snug.Query[Pagelike[T]]] or None
-#             The query
-#         """
-#         raise NotImplementedError()
+        Returns
+        -------
+        T
+            The page contents
+        """
+        raise NotImplementedError()
+
+    def next(self):
+        """The next query in page sequence
+
+        Returns
+        -------
+        ~snug.Query[Pagelike[T]]] or None
+            The query
+        """
+        raise NotImplementedError()
 
 
-# class Page(Pagelike[T]):
-class Page(t.Generic[T]):
+class Page(Pagelike[T]):
     """A simple, concrete :class:`Pagelike` object
 
     Parameters
@@ -40,7 +47,7 @@ class Page(t.Generic[T]):
     next: ~snug.Query[Pagelike[T]]] or None
         the next page
     """
-    def __init__(self, content, next):
+    def __init__(self, content, next=None):
         self.content, self.next = content, next
 
 
@@ -56,24 +63,35 @@ class paginate(Query):
     Query[Paginator[T]]
         A query returning a paginator
     """
-    def __init__(self, query):
-        self._query = query
+    def __init__(self, initial):
+        self._initial = initial
 
     def __execute__(self, client, auth):
-        import pdb; pdb.set_trace()
+        return Paginator(self._initial, client, auth)
 
-    def __execute_async(self, client, auth):
+    def __execute_async__(self, client, auth):
         raise NotImplementedError
 
 
 class Paginator(t.Iterator[T]):
+    """An iterator which keeps executing the next query in the page sequece
 
-    def __init__(self):
-        pass
+    .. note::
+
+       you shouln't have to initialize this class yourself,
+       use :class:`paginate`.
+    """
+    def __init__(self, query, client, auth):
+        self._execute = executor(auth=auth, client=client)
+        self._next_page_query = query
 
     def __next__(self):
         """the content of the next page"""
-        
+        if self._next_page_query is None:
+            raise StopIteration()
+        page = self._execute(self._next_page_query)
+        self._next_page_query = page.next
+        return page.content
 
 
 class AsyncPaginator(t.AsyncIterator[T]):
