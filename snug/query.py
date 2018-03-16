@@ -1,5 +1,6 @@
 """Types and functionality relating to queries"""
 import typing as t
+import warnings
 from functools import partial
 
 from .clients import send
@@ -180,24 +181,42 @@ class related(object):
         return self._cls if obj is None else partial(self._cls, obj)
 
 
-def execute(query, auth=None, client=urllib_request.build_opener(),
-            auth_method=basic_auth):
+def _make_auth(auth, auth_method):
+    if auth_method is None:
+        return auth if callable(auth) else basic_auth(auth)
+    else:
+        warnings.warn('The `auth_method` parameter will be removed'
+                      'in version 1.3. Pass a callable to `auth` instead',
+                      DeprecationWarning)
+        return _identity if auth is None else partial(auth_method, auth)
+
+
+def execute(query, auth=_identity, client=urllib_request.build_opener(),
+            auth_method=None):
     """Execute a query, returning its result
 
     Parameters
     ----------
     query: Query[T]
         the query to resolve
-    auth: T_auth
-        the authentication credentials. If using the default ``auth_method``,
-        ``auth`` must be a (username, password)-tuple.
+    auth: ~typing.Tuple[str, str] or ~typing.Callable[[Request], Request]
+        A (username, password)-tuple for basic authentication,
+        or a callable used to authenticate requests.
     client
         The HTTP client to use.
         Its type must have been registered
         with :func:`~snug.clients.send`.
         If not given, the built-in :mod:`urllib` module is used.
     auth_method: ~typing.Callable[[T_auth, Request], Request]
-        the authentication method to use
+        the authentication method to use.
+
+        .. deprecated:: 1.2
+
+        .. warning::
+
+           This parameter will be removed in version 1.3.
+           Pass a callable to `auth` to implement different
+           authentication methods.
 
     Returns
     -------
@@ -205,27 +224,34 @@ def execute(query, auth=None, client=urllib_request.build_opener(),
         the query result
     """
     exec_func = getattr(type(query), '__execute__', _default_execute_method)
-    authenticate = _identity if auth is None else partial(auth_method, auth)
-    return exec_func(query, client, authenticate)
+    return exec_func(query, client, _make_auth(auth, auth_method))
 
 
-def execute_async(query, auth=None, client=event_loop, auth_method=basic_auth):
+def execute_async(query, auth=_identity, client=event_loop, auth_method=None):
     """Execute a query asynchronously, returning its result
 
     Parameters
     ----------
     query: Query[T]
         the query to resolve
-    auth: T_auth
-        the authentication credentials. If using the default ``auth_method``,
-        ``auth`` must be a (username, password)-tuple.
+    auth: ~typing.Tuple[str, str] or ~typing.Callable[[Request], Request]
+        A (username, password)-tuple for basic authentication,
+        or a callable used to authenticate requests.
     client
         The HTTP client to use.
         Its type must have been registered
         with :func:`~snug.clients.send_async`.
         If not given, the built-in :mod:`asyncio` module is used.
     auth_method: ~typing.Callable[[T_auth, Request], Request]
-        the authentication method to use
+        the authentication method to use.
+
+        .. deprecated:: 1.2
+
+        .. warning::
+
+           This parameter will be removed in version 1.3.
+           Pass a callable to `auth` to implement different
+           authentication methods.
 
     Returns
     -------
@@ -237,10 +263,8 @@ def execute_async(query, auth=None, client=event_loop, auth_method=basic_auth):
     The default client is very rudimentary.
     Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
-    exec_func = getattr(
-        type(query), '__execute_async__', Query.__execute_async__)
-    authenticate = _identity if auth is None else partial(auth_method, auth)
-    return exec_func(query, client, authenticate)
+    exc_fn = getattr(type(query), '__execute_async__', Query.__execute_async__)
+    return exc_fn(query, client, _make_auth(auth, auth_method))
 
 
 def executor(**kwargs):

@@ -4,6 +4,12 @@ Release history
 development
 +++++++++++
 
+1.2.0 (2018-03-??)
+++++++++++++++++++
+
+- ``auth`` parameter accepts callables
+- deprecate ``auth_method`` to remove in version 1.3
+
 1.1.3 (2018-03-07)
 ++++++++++++++++++
 
