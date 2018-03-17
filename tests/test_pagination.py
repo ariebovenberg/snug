@@ -1,6 +1,6 @@
-import snug
-
 from gentools import py2_compatible, return_
+
+import snug
 
 
 @py2_compatible
@@ -30,7 +30,7 @@ snug.send.register(MockClient, MockClient.send)
 
 class TestPaginate:
 
-    def test_ok(self):
+    def test_execute(self):
         mock_client = MockClient({
             ('max: 10', 'cursor: 0'): {
                 'objects': list(range(3, 13)),
@@ -45,7 +45,8 @@ class TestPaginate:
                 'next_cursor': None
             },
         })
-        paginated = snug.paginate(mylist(max_items=10))
+        paginated = snug.paginated(mylist(max_items=10))
+        assert isinstance(paginated, snug.Query)
         paginator = snug.execute(paginated, client=mock_client)
 
         result = list(paginator)

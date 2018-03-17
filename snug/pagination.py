@@ -1,130 +1,111 @@
 """Tools for pagination"""
 import abc
 import typing as t
+from operator import attrgetter
 
-from .query import Query, executor, execute
+from .compat import PY3
+from .query import Query, executor
 
 __all__ = [
-    'Pagelike',
+    'paginated',
     'Page',
-    'paginate',
+    'Pagelike',
 ]
 
+AsyncIterator = getattr(t, 'AsyncIterator', t.Iterator)
 T = t.TypeVar('T')
 
 
 class Pagelike(t.Generic[T]):
-    """ABC for page-like objects"""
+    """ABC for page-like objects.
+    Any object implementing the attributes
+    :py:attr:`~Pagelike.content` and :py:attr:`~Pagelike.next`
+    implements this interface.
+    """
+    __slots__ = ()
 
+    @abc.abstractproperty
     def content(self):
-        """The contents of the current page
+        """The content of the current page
 
         Returns
         -------
         T
-            The page contents
+            The page content
         """
         raise NotImplementedError()
 
+    @abc.abstractproperty
     def next(self):
-        """The next query in page sequence
+        """The query to retrieve the next page
 
         Returns
         -------
         ~snug.Query[Pagelike[T]]] or None
-            The query
+            The next query
         """
         raise NotImplementedError()
 
 
 class Page(Pagelike[T]):
-    """A simple, concrete :class:`Pagelike` object
+    """A simple :class:`Pagelike` object
 
     Parameters
     ----------
     content: T
-        content of the page
+        The page content
     next: ~snug.Query[Pagelike[T]]] or None
-        the next page
+        The query to retrieve the next page
     """
+    __slots__ = '_content', '_next'
+
     def __init__(self, content, next=None):
-        self.content, self.next = content, next
+        self._content, self._next = content, next
+
+    content = property(attrgetter('_content'))
+    next = property(attrgetter('_next'))
 
 
-class paginate(Query):
-    """Create a paginator over this query
+class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
+    """A paginated version of a query
 
     Parameters
     ----------
-    query: Query[T]
-
-    Returns
-    -------
-    Query[Paginator[T]]
-        A query returning a paginator
+    query: Query[Pagelike[T]]
+        The query to paginate
     """
-    def __init__(self, initial):
-        self._initial = initial
+    __slots__ = '_query'
+
+    def __init__(self, query):
+        self._query = query
 
     def __execute__(self, client, auth):
-        return Paginator(self._initial, client, auth)
+        return Paginator(self._query, client, auth)
 
     def __execute_async__(self, client, auth):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class Paginator(t.Iterator[T]):
-    """An iterator which keeps executing the next query in the page sequece
+    """An iterator which keeps executing the next query in the page sequece"""
+    __slots__ = '_execute', '_next_query'
 
-    .. note::
-
-       you shouln't have to initialize this class yourself,
-       use :class:`paginate`.
-    """
     def __init__(self, query, client, auth):
         self._execute = executor(auth=auth, client=client)
-        self._next_page_query = query
+        self._next_query = query
+
+    def __iter__(self):
+        return self
 
     def __next__(self):
         """the content of the next page"""
-        if self._next_page_query is None:
+        if self._next_query is None:
             raise StopIteration()
-        page = self._execute(self._next_page_query)
-        self._next_page_query = page.next
+        page = self._execute(self._next_query)
+        self._next_query = page.next
         return page.content
 
+    if not PY3:  # pragma: no cover
+        next = __next__
 
-class AsyncPaginator(t.AsyncIterator[T]):
-    """TODO: implement"""
-
-
-# def list_channels(cursor=None) -> snug.Query[Page[Channel]]:
-#     """list slack channels"""
-#     request = snug.GET(f'https://slack.com/api/channels.list',
-#                        params={'cursor': cursor} if cursor else {})
-#     response = yield request
-#     raw_obj = json.loads(response.content)
-#     next_cursor = raw_obj['response_metadata']['next_cursor']
-#     return Page(raw_obj['channels'],
-#                 # next_cursor may be None
-#                 next=next_cursor and list_channels(cursor=next_cursor))
-
-
-# class Paginated(snug.Query):
-
-#     def __init__(self, initial: snug.Query[Page[T]]):
-#         self._initial = initial
-
-#     def __execute__(self, client, authenticate) -> t.Iterable[T]:
-#         pass
-
-#     def __execute_async__(self, client, authenticate) -> t.AsyncIterable[T]:
-#         pass
-
-
-# # for page in snug.execute(paginate(list_channels())):
-# #     ...  # do stuff
-
-
-# # async for page in snug.execute_async(paginate(list_channels())):
-# #     ...  # do stuff
+# TODO: AsyncPaginator

@@ -31,6 +31,19 @@ HTTP
 .. autodata:: snug.OPTIONS
 
 
+Pagination
+----------
+
+.. automodule:: snug.pagination
+
+.. autoclass:: snug.paginated
+
+.. autoclass:: snug.Page
+
+.. autoclass:: snug.Pagelike
+   :members:
+
+
 Clients
 -------
 
@@ -39,16 +52,3 @@ Clients
    :special-members:
    :exclude-members: __next_in_mro__,__weakref__,__mro__,__init__,__repr__,\
       ,__eq__,__ne__,__hash__,__len__
-
-
-Pagination
-----------
-
-.. automodule:: snug.pagination
-   :members:
-   :special-members:
-   :exclude-members: __next_in_mro__,__weakref__,__mro__,__init__,__repr__,\
-      ,__eq__,__ne__,__hash__,__len__
-
-
-
