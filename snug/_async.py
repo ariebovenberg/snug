@@ -2,6 +2,7 @@
 import asyncio
 import sys
 import urllib.request
+import typing as t
 from functools import partial
 from http.client import HTTPResponse
 from io import BytesIO
@@ -11,6 +12,7 @@ from .clients import send_async
 from .http import Response
 from .query import Query
 
+T = t.TypeVar('T')
 _ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
 
 
@@ -109,3 +111,24 @@ def __execute_async__(self, client, authenticate):
             request = gen.send(response)
         except StopIteration as e:
             return e.value
+
+
+class AsyncPaginator(t.AsyncIterator[T]):
+    """An async iterator which keeps executing
+    the next query in the page sequence"""
+    __slots__ = '_executor', '_next_query'
+
+    def __init__(self, next_query, executor):
+        self._next_query, self._executor = next_query, executor
+
+    def __aiter__(self):
+        return self
+
+    @asyncio.coroutine
+    def __anext__(self):
+        """the content of the next page"""
+        if self._next_query is None:
+            raise StopAsyncIteration()
+        page = yield from self._executor(self._next_query)
+        self._next_query = page.next
+        return page.content
