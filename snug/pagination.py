@@ -1,4 +1,4 @@
-"""Tools for pagination"""
+"""Tools for pagination."""
 import abc
 import sys
 import typing as t
@@ -31,7 +31,7 @@ class Pagelike(t.Generic[T]):
 
     @abc.abstractproperty
     def content(self):
-        """The contents of the page
+        """The contents of the page.
 
         Returns
         -------
@@ -48,7 +48,7 @@ class Pagelike(t.Generic[T]):
         Returns
         -------
         ~snug.Query[Pagelike[T]]] or None
-            The next query
+            The next query.
         """
         raise NotImplementedError()
 
@@ -61,7 +61,7 @@ class Page(Pagelike[T]):
     content: T
         The page content.
     next: ~snug.Query[Pagelike[T]]] or None
-        The query to retrieve the next page
+        The query to retrieve the next page.
     """
     __slots__ = '_content', '_next'
 
@@ -97,6 +97,7 @@ class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
 
         def foo_page(...) -> Query[Pagelike[Foo]]  # example query
             ...
+            return Page(...)
 
         query = paginated(foo_page(...))
 
@@ -112,10 +113,24 @@ class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
         self._query = query
 
     def __execute__(self, client, auth):
+        """Execute the paginated query.
+
+        Returns
+        -------
+        ~typing.Iterator[T]
+            An iterator yielding page content.
+        """
         return Paginator(self._query, executor(client=client, auth=auth))
 
     if HAS_PEP492:
         def __execute_async__(self, client, auth):
+            """Execute the paginated query asynchronously.
+
+            Returns
+            -------
+            ~typing.AsyncIterator[T]
+                An asynchronous iterator yielding page content.
+            """
             return AsyncPaginator(self._query,
                                   async_executor(client=client, auth=auth))
     else:  # pragma: no cover
@@ -126,7 +141,7 @@ class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
 
 class Paginator(t.Iterator[T]):
     """An iterator which keeps executing the next query in the page sequece,
-    returning the page content"""
+    returning the page content."""
     __slots__ = '_executor', '_next_query'
 
     def __init__(self, next_query, executor):

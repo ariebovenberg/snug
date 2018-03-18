@@ -1,4 +1,5 @@
-"""python 3 only objects"""
+"""python 3 only objects.
+In a separate module to prevent syntax-errors on python 2"""
 import asyncio
 
 import pytest
@@ -41,15 +42,3 @@ class MockAsyncClient:
 
 
 snug.send_async.register(MockAsyncClient, MockAsyncClient.send)
-
-
-@asyncio.coroutine
-def consume_aiter(iterable):
-    """consume an async iterable to a list"""
-    result = []
-    while True:
-        try:
-            result.append((yield from iterable.__anext__()))
-        except StopAsyncIteration:
-            break
-    return result
