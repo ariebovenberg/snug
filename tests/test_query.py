@@ -59,8 +59,8 @@ def test__execute__():
 
     assert snug.query._default_execute_method(
         MyQuery(),
-        client=client,
-        authenticate=lambda s: 'foo' + s) == 'hello world'
+        client,
+        lambda s: 'foo' + s) == 'hello world'
 
 
 @py2_compatible
@@ -89,7 +89,7 @@ class TestExecute:
         client = MockClient(snug.Response(204))
 
         class MyQuery(object):
-            def __execute__(self, client, authenticate):
+            def __execute__(self, client, auth):
                 return client.send(snug.GET('my/url'))
 
         result = snug.execute(MyQuery(), client=client)
@@ -175,7 +175,7 @@ class TestExecuteAsync:
         client = MockAsyncClient(snug.Response(204))
 
         class MyQuery:
-            def __execute_async__(self, client, authenticate):
+            def __execute_async__(self, client, auth):
                 return client.send(snug.GET('my/url'))
 
         future = snug.execute_async(MyQuery(), client=client)
@@ -315,8 +315,8 @@ def test__execute_async__(loop):
 
     future = snug.Query.__execute_async__(
         MyQuery(),
-        client=client,
-        authenticate=lambda s: 'foo' + s)
+        client,
+        lambda s: 'foo' + s)
 
     if sys.version_info > (3, 5):
         assert inspect.isawaitable(future)
