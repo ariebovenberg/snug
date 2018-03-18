@@ -3,7 +3,6 @@ import abc
 import sys
 import typing as t
 from operator import attrgetter
-from functools import partial
 
 from .compat import PY3
 from .query import Query, executor, async_executor
@@ -14,8 +13,12 @@ __all__ = [
     'Pagelike',
 ]
 
+HAS_PEP492 = sys.version_info > (3, 5, 2)
 AsyncIterator = getattr(t, 'AsyncIterator', t.Iterator)
 T = t.TypeVar('T')
+
+if HAS_PEP492:  # pragma: no cover
+    from ._async import AsyncPaginator
 
 
 class Pagelike(t.Generic[T]):
@@ -111,13 +114,19 @@ class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
     def __execute__(self, client, auth):
         return Paginator(self._query, executor(client=client, auth=auth))
 
-    def __execute_async__(self, client, auth):
-        raise NotImplementedError(
-            'async execution of paginated queries is python 3.5.2+ only')
+    if HAS_PEP492:
+        def __execute_async__(self, client, auth):
+            return AsyncPaginator(self._query,
+                                  async_executor(client=client, auth=auth))
+    else:  # pragma: no cover
+        def __execute_async__(self, client, auth):
+            raise NotImplementedError(
+                'async execution of paginated queries is python 3.5.2+ only')
 
 
 class Paginator(t.Iterator[T]):
-    """An iterator which keeps executing the next query in the page sequece"""
+    """An iterator which keeps executing the next query in the page sequece,
+    returning the page content"""
     __slots__ = '_executor', '_next_query'
 
     def __init__(self, next_query, executor):
@@ -127,7 +136,6 @@ class Paginator(t.Iterator[T]):
         return self
 
     def __next__(self):
-        """the content of the next page"""
         if self._next_query is None:
             raise StopIteration()
         page = self._executor(self._next_query)
@@ -136,12 +144,3 @@ class Paginator(t.Iterator[T]):
 
     if not PY3:  # pragma: no cover
         next = __next__
-
-
-if sys.version_info > (3, 5, 2):
-    from ._async import AsyncPaginator
-
-    @partial(setattr, paginated, '__execute_async__')
-    def __execute_async__(self, client, auth):
-        return AsyncPaginator(self._query,
-                              async_executor(client=client, auth=auth))
