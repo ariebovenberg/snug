@@ -25,90 +25,13 @@ shortcut can be used.
    # we can still override arguments
    exec(another_query, auth=('bob', 'hunter2'))
 
-.. _composing:
-
-Composing queries
------------------
-
-To keep everything nice and modular, queries may be composed and extended.
-In the github API example, we may wish to define common logic for:
-
-* prefixing urls with ``https://api.github.com``
-* setting the required headers
-* parsing responses to JSON
-* deserializing JSON into objects
-* raising descriptive exceptions from responses
-* following redirects
-
-We can use a function-based approach with
-`gentools <http://gentools.readthedocs.io/>`_,
-or a class-based approach by subclassing :class:`~snug.query.Query`.
-We'll explore the functional style first.
-
-Function-based approach
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Preparing requests
-^^^^^^^^^^^^^^^^^^
-
-Outgoing requests of a query can be modified with
-the :class:`~gentools.core.map_yield` decorator.
-
-.. literalinclude:: ../tutorial/composed0.py
-   :lines: 3-21
-   :emphasize-lines: 10,16
-
-Parsing responses
-^^^^^^^^^^^^^^^^^
-
-Responses being sent to a query can be modified with
-the :class:`~gentools.core.map_send` decorator.
-
-.. literalinclude:: ../tutorial/composed2.py
-   :lines: 3-4,11-36
-   :emphasize-lines: 17,24
-
-Relaying queries
-^^^^^^^^^^^^^^^^
-
-For advanced cases, each requests/response interaction of a query
-can be relayed through another generator.
-This can be done with the :class:`~gentools.core.relay` decorator.
-This can be useful if response handling is dependent on the request,
-or more complex control flow.
-The following example shows how this can be used to implement redirects.
-
-.. literalinclude:: ../tutorial/composed3.py
-   :lines: 3-4,24-36
-   :emphasize-lines: 10
-
-See the :ref:`recipes <recipes>` for more examples.
-
-
-Loading return values
-^^^^^^^^^^^^^^^^^^^^^
-
-To modify the return value of a generator,
-use the :class:`~gentools.core.map_return` decorator.
-
-.. literalinclude:: ../tutorial/composed4.py
-   :lines: 3-5,12-13,33-43
-   :emphasize-lines: 11
-
-Object-oriented approach
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Below is a roughly equivalent, object-oriented approach:
-
-.. literalinclude:: ../tutorial/composed_oop.py
-
 .. _nested:
 
 Related queries
 ---------------
 
 With class-based queries, it is possible to create an
-expressive, chained API. 
+expressive, chained API.
 The github API, for example is full of related queries:
 creating a new issue related to a repository,
 or retrieving gists for a user.
@@ -152,7 +75,7 @@ pass a callable as the ``auth`` parameter
 of :func:`~snug.query.executor`/:func:`~snug.query.async_executor`.
 
 This callable takes a :class:`~snug.http.Request`,
-and should return an authenticated copy.
+and should return an authenticated :class:`~snug.http.Request`.
 
 To illutrate, here is a simple example for token-based authentication:
 
@@ -165,22 +88,81 @@ To illutrate, here is a simple example for token-based authentication:
        def __call__(self, request):
            return request.with_headers(self._headers)
 
-   exec = snug.executor(auth=Token('my token'))
+   snug.execute(my_query, auth=Token('my token'))
 
 See the slack API example for a real-world use-case.
 
+Pagination
+----------
+
+Often in web APIs results are obtained through pagination.
+We can define queries in such a way that
+page content can be iterated over with ease.
+
+To support pagination, a query should return
+a :class:`~snug.pagination.Page`
+(or :class:`~snug.pagination.Pagelike`) object.
+
+This can be illustrated by github's
+`organizations endpoint <https://developer.github.com/v3/orgs/#list-all-organizations>`_.
+
+.. code-block:: python3
+
+   import snug
+   import json
+
+   def organizations(since: int=None):
+       """retrieve a page of organizations since a particular id"""
+       response = yield snug.GET('https://api.github.com/v3/organizations',
+                                 params={'since': since} if since else {})
+       orgs = json.loads(response.content)
+       return snug.Page(org_list, next=organizations(since=orgs[-1]['id']))
+
+The query can be executed as-is...
+
+.. code-block:: python3
+
+   >>> snug.execute(organizations())
+   Page([{"id": 44, ...}, ...])
+
+
+...but it can also be wrapped in a :class:`~snug.pagination.paginated` query,
+so that it can be iterated over:
+
+.. code-block:: python3
+
+   paginated = snug.paginated(organizations(since=44))
+   for org_list in snug.execute(paginated):
+       ...
+
+Asynchronous execution results in a asychronous iterator:
+
+.. code-block:: python3
+
+   async for org_list in snug.execute_async(paginated):
+       ...
+
+
 Full customization
 ------------------
+
+In some cases it is necessary to have more control over query
+execution. For example, if:
+
+* HTTP client-specific features are needed
+  (e.g. streaming responses, multipart data)
+* implementing advanced execution logic
 
 One of the main advantages of queries is that they can be executed
 with any HTTP client.
 However, it may occur that advanced, client-specific features are needed.
 For example, streaming data or multipart requests/responses.
+Also,
 
 For this purpose, you can use the
 :meth:`~snug.query.Query.__execute__`\/:meth:`~snug.query.Query.__execute_async__` hook.
 Implementing this method allows full customization of a query's execution.
-The downside is that the query will become dependent
+The downside is that the query may become dependent
 on the client, which limits its reusability.
 
 The :meth:`~snug.query.Query.__execute__`\/:meth:`~snug.query.Query.__execute_async__`
@@ -301,3 +283,80 @@ Writing python2-compatible queries is supported, with two important caveats:
 
 2. Async functionality is not available on python2. Nonetheless,
    Python2-compatible queries can be run asychronously on python3.
+
+.. _composing:
+
+Composing queries
+-----------------
+
+To keep everything nice and modular, queries may be composed and extended.
+In the github API example, we may wish to define common logic for:
+
+* prefixing urls with ``https://api.github.com``
+* setting the required headers
+* parsing responses to JSON
+* deserializing JSON into objects
+* raising descriptive exceptions from responses
+* following redirects
+
+We can use a function-based approach with
+`gentools <http://gentools.readthedocs.io/>`_,
+or a class-based approach by subclassing :class:`~snug.query.Query`.
+We'll explore the functional style first.
+
+Function-based approach
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Preparing requests
+^^^^^^^^^^^^^^^^^^
+
+Outgoing requests of a query can be modified with
+the :class:`~gentools.core.map_yield` decorator.
+
+.. literalinclude:: ../tutorial/composed0.py
+   :lines: 3-21
+   :emphasize-lines: 10,16
+
+Parsing responses
+^^^^^^^^^^^^^^^^^
+
+Responses being sent to a query can be modified with
+the :class:`~gentools.core.map_send` decorator.
+
+.. literalinclude:: ../tutorial/composed2.py
+   :lines: 3-4,11-36
+   :emphasize-lines: 17,24
+
+Relaying queries
+^^^^^^^^^^^^^^^^
+
+For advanced cases, each requests/response interaction of a query
+can be relayed through another generator.
+This can be done with the :class:`~gentools.core.relay` decorator.
+This can be useful if response handling is dependent on the request,
+or more complex control flow.
+The following example shows how this can be used to implement redirects.
+
+.. literalinclude:: ../tutorial/composed3.py
+   :lines: 3-4,24-36
+   :emphasize-lines: 10
+
+See the :ref:`recipes <recipes>` for more examples.
+
+
+Loading return values
+^^^^^^^^^^^^^^^^^^^^^
+
+To modify the return value of a generator,
+use the :class:`~gentools.core.map_return` decorator.
+
+.. literalinclude:: ../tutorial/composed4.py
+   :lines: 3-5,12-13,33-43
+   :emphasize-lines: 11
+
+Object-oriented approach
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Below is a roughly equivalent, object-oriented approach:
+
+.. literalinclude:: ../tutorial/composed_oop.py

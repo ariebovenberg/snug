@@ -36,11 +36,12 @@ Pagination
 
 .. automodule:: snug.pagination
 
-.. autoclass:: snug.paginated
+.. autoclass:: snug.pagination.paginated
+   :members: __execute__, __execute_async__
 
-.. autoclass:: snug.Page
+.. autoclass:: snug.pagination.Page
 
-.. autoclass:: snug.Pagelike
+.. autoclass:: snug.pagination.Pagelike
    :members:
 
 
