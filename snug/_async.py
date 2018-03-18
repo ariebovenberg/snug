@@ -78,7 +78,7 @@ else:
 
 @partial(setattr, Query, '__execute_async__')
 @asyncio.coroutine
-def __execute_async__(self, client, authenticate):
+def __execute_async__(self, client, auth):
     """Default asynchronous execution logic for a query,
     which uses the query's :meth:`~Query.__iter__`.
     May be overriden for full control of query execution,
@@ -95,7 +95,7 @@ def __execute_async__(self, client, authenticate):
     ----------
     client
         the client instance passed to :func:`execute`
-    authenticate: ~typing.Callable[[Request], Request]
+    auth: ~typing.Callable[[Request], Request]
         a callable to authenticate a :class:`~snug.http.Request`
 
     Returns
@@ -106,7 +106,7 @@ def __execute_async__(self, client, authenticate):
     gen = iter(self)
     request = next(gen)
     while True:
-        response = yield from send_async(client, authenticate(request))
+        response = yield from send_async(client, auth(request))
         try:
             request = gen.send(response)
         except StopIteration as e:

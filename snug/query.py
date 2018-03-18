@@ -111,7 +111,7 @@ class Query(t.Generic[T]):
         """
         raise NotImplementedError()
 
-    def __execute__(self, client, authenticate):
+    def __execute__(self, client, auth):
         """Default execution logic for a query,
         which uses the query's :meth:`~Query.__iter__`.
         May be overriden for full control of query execution,
@@ -128,7 +128,7 @@ class Query(t.Generic[T]):
         ----------
         client
             the client instance passed to :func:`execute`
-        authenticate: ~typing.Callable[[Request], Request]
+        auth: ~typing.Callable[[Request], Request]
             a callable to authenticate a :class:`~snug.http.Request`
 
         Returns
@@ -139,14 +139,14 @@ class Query(t.Generic[T]):
         gen = iter(self)
         request = next(gen)
         while True:
-            response = send(client, authenticate(request))
+            response = send(client, auth(request))
             try:
                 request = gen.send(response)
             except StopIteration as e:
                 return e.args[0]
 
     # this method is overwritten when importing the _async module (py3 only)
-    def __execute_async__(self, client, authenticate):
+    def __execute_async__(self, client, auth):
         raise NotImplementedError('python 3+ required to execute async')
 
 
