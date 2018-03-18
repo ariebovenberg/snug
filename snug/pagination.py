@@ -26,6 +26,7 @@ class Pagelike(t.Generic[T]):
     Any object implementing the attributes
     :py:attr:`~Pagelike.content` and :py:attr:`~Pagelike.next`
     implements this interface.
+    A query returning such an object may be :class:`paginated`.
     """
     __slots__ = ()
 

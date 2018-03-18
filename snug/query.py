@@ -231,8 +231,8 @@ def execute(query, auth=None, client=urllib_request.build_opener(),
     T
         the query result
     """
-    exec_func = getattr(type(query), '__execute__', _default_execute_method)
-    return exec_func(query, client, _make_auth(auth, auth_method))
+    exec_fn = getattr(type(query), '__execute__', _default_execute_method)
+    return exec_fn(query, client, _make_auth(auth, auth_method))
 
 
 def execute_async(query, auth=None, client=event_loop, auth_method=None):
