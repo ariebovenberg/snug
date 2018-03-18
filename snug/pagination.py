@@ -5,7 +5,7 @@ import typing as t
 from operator import attrgetter
 
 from .compat import PY3
-from .query import Query, executor, async_executor
+from .query import Query, async_executor, executor
 
 __all__ = [
     'paginated',

@@ -1,8 +1,8 @@
 """Patch in async-exclusive functionality. Only for python 3+"""
 import asyncio
 import sys
-import urllib.request
 import typing as t
+import urllib.request
 from functools import partial
 from http.client import HTTPResponse
 from io import BytesIO
