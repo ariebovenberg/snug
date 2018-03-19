@@ -3,11 +3,10 @@
 .. versionadded:: 1.2
 """
 import abc
-import sys
 import typing as t
 from operator import attrgetter
 
-from .compat import PY3
+from .compat import HAS_PEP492, PY3
 from .query import Query, async_executor, executor
 
 __all__ = [
@@ -16,8 +15,7 @@ __all__ = [
     'Pagelike',
 ]
 
-HAS_PEP492 = sys.version_info > (3, 5, 2)
-AsyncIterator = getattr(t, 'AsyncIterator', t.Iterator)
+AsyncIterator = t.AsyncIterator if HAS_PEP492 else object
 T = t.TypeVar('T')
 
 if HAS_PEP492:  # pragma: no cover

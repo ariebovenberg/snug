@@ -9,6 +9,7 @@ from io import BytesIO
 from itertools import starmap
 
 from .clients import send_async
+from .compat import HAS_PEP492
 from .http import Response
 from .query import Query
 
@@ -113,7 +114,7 @@ def __execute_async__(self, client, auth):
             return e.value
 
 
-class AsyncPaginator(t.AsyncIterator[T]):
+class AsyncPaginator(t.AsyncIterator[T] if HAS_PEP492 else object):
     """An async iterator which keeps executing
     the next query in the page sequence"""
     __slots__ = '_executor', '_next_query'
