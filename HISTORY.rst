@@ -9,7 +9,7 @@ development
 
 - ``auth`` parameter accepts callables
 - deprecate ``auth_method`` parameter (to remove in version 1.3)
-- pagination tools
+- pagination module
 
 1.1.3 (2018-03-07)
 ++++++++++++++++++

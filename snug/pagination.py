@@ -1,4 +1,7 @@
-"""Tools for pagination."""
+"""Tools for pagination.
+
+.. versionadded:: 1.2
+"""
 import abc
 import sys
 import typing as t
@@ -80,7 +83,9 @@ class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
     """A paginated version of a query.
     Executing it returns an :term:`iterator`
     or :term:`async iterator <asynchronous iterator>`.
-    If the wrapped query is reusable, the paginated query is also.
+
+    If the wrapped query is reusable,
+    the paginated query is also reusable.
 
     Parameters
     ----------
