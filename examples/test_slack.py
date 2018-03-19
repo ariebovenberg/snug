@@ -23,11 +23,11 @@ async def exec():
 
 @pytest.mark.asyncio
 async def test_channel_list(exec):
-    lookup = slack.channels.list(exclude_archived=True)
+    lookup = slack.channels.list_(exclude_archived=True)
 
     if live:
         result = await exec(lookup)
-        assert isinstance(result[0], slack.Channel)
+        assert isinstance(result.content[0], slack.Channel)
 
     query = iter(lookup)
 
@@ -38,7 +38,7 @@ async def test_channel_list(exec):
     outcome = sendreturn(query, snug.Response(200, CHANNEL_LIST_RESULT))
     assert isinstance(outcome[0], slack.Channel)
     assert len(outcome[0].members) == 2
-    assert outcome.next_cursor == "dGVhbTpDMUg5UkVTR0w="
+    assert outcome.next.cursor == "dGVhbTpDMUg5UkVTR0w="
 
 
 @pytest.mark.asyncio
