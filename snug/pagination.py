@@ -15,7 +15,7 @@ __all__ = [
     'Pagelike',
 ]
 
-AsyncIterator = t.AsyncIterator if HAS_PEP492 else object
+AsyncIterator = t.AsyncIterator if HAS_PEP492 else t.Iterable
 T = t.TypeVar('T')
 
 if HAS_PEP492:  # pragma: no cover
