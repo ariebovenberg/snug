@@ -104,6 +104,23 @@ class TestSendWithAsyncio:
         assert json.loads(data['data']) == {'foo': 4}
         assert data['headers']['User-Agent'] == 'snug/dev'
 
+    def test_nonascii_headers(self, loop):
+        req = snug.Request('GET', 'http://httpbin.org/get',
+                           headers={'X-Foo': 'blå'})
+        response = loop.run_until_complete(snug.send_async(loop, req))
+        assert response == snug.Response(200, mock.ANY, headers=mock.ANY)
+        data = json.loads(response.content.decode())
+        assert data['url'] == 'http://httpbin.org/get'
+        assert data['args'] == {}
+        assert data['headers']['X-Foo'] == 'blå'
+
+    def test_head(self, loop):
+        req = snug.Request('HEAD', 'http://httpbin.org/anything',
+                           headers={'X-Foo': 'foo'})
+        response = loop.run_until_complete(snug.send_async(loop, req))
+        assert response == snug.Response(200, b'', headers=mock.ANY)
+        assert 'Content-Type' in response.headers
+
 
 @live
 def test_requests_send():

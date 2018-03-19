@@ -44,11 +44,13 @@ def _asyncio_send(loop, req):
             'Content-Length: {}'.format(len(req.content or b'')),
             '\r\n'.join(starmap('{}: {}'.format, req.headers.items())),
         ])
-        writer.write(b'\r\n'.join([headers.encode(), b'', req.content or b'']))
+        writer.write(b'\r\n'.join([headers.encode('latin-1'),
+                                   b'', req.content or b'']))
         response_bytes = BytesIO((yield from reader.read()))
     finally:
         writer.close()
-    resp = HTTPResponse(_SocketAdaptor(response_bytes))
+    resp = HTTPResponse(_SocketAdaptor(response_bytes),
+                        method=req.method, url=req.url)
     resp.begin()
     return Response(resp.getcode(), content=resp.read(), headers=resp.headers)
 
