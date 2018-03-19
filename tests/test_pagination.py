@@ -21,8 +21,6 @@ def mylist(max_items=5, cursor=0):
 
 py35 = pytest.mark.skipif(sys.version_info < (3, 5, 2),
                           reason='python 3.5.2+ only')
-paginated = snug.paginated(mylist(max_items=10))
-
 
 class MockClient(object):
 
@@ -47,7 +45,16 @@ snug.send.register(MockClient, MockClient.send)
 snug.send_async.register(MockAsyncClient, MockAsyncClient.send)
 
 
+def test_page_repr():
+    page = snug.Page('blabla')
+    assert 'blabla' in repr(page)
+
+
 class TestPaginate:
+
+    def test_repr(self):
+        inner = mylist(max_items=6)
+        assert repr(inner) in repr(snug.paginated(inner))
 
     def test_execute(self):
         mock_client = MockClient({
@@ -64,6 +71,7 @@ class TestPaginate:
                 'next_cursor': None
             },
         })
+        paginated = snug.paginated(mylist(max_items=10))
         assert isinstance(paginated, snug.Query)
         paginator = snug.execute(paginated, client=mock_client)
 

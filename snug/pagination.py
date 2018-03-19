@@ -72,6 +72,9 @@ class Page(Pagelike[T]):
     content = property(attrgetter('_content'))
     next = property(attrgetter('_next'))
 
+    def __repr__(self):
+        return 'Page({})'.format(self._content)
+
 
 class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
     """A paginated version of a query.
@@ -138,6 +141,9 @@ class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
         def __execute_async__(self, client, auth):
             raise NotImplementedError(
                 'async execution of paginated queries is python 3.5.2+ only')
+
+    def __repr__(self):
+        return 'paginated({})'.format(self._query)
 
 
 class Paginator(t.Iterator[T]):
