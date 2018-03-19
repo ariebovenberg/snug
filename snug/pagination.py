@@ -80,6 +80,7 @@ class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
     """A paginated version of a query.
     Executing it returns an :term:`iterator`
     or :term:`async iterator <asynchronous iterator>`.
+    If the wrapped query is reusable, the paginated query is also.
 
     Parameters
     ----------
@@ -129,6 +130,10 @@ class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
     if HAS_PEP492:
         def __execute_async__(self, client, auth):
             """Execute the paginated query asynchronously.
+
+            Note
+            ----
+            This method does not need to be awaited.
 
             Returns
             -------

@@ -95,7 +95,7 @@ See the slack API example for a real-world use-case.
 Pagination
 ----------
 
-Often in web APIs results are obtained through pagination.
+Often in web APIs, results are obtained through pagination.
 We can define queries in such a way that
 page content can be iterated over with ease.
 
@@ -113,10 +113,11 @@ This can be illustrated by github's
 
    def organizations(since: int=None):
        """retrieve a page of organizations since a particular id"""
-       response = yield snug.GET('https://api.github.com/v3/organizations',
+       response = yield snug.GET('https://api.github.com/organizations',
                                  params={'since': since} if since else {})
        orgs = json.loads(response.content)
-       return snug.Page(org_list, next=organizations(since=orgs[-1]['id']))
+       next_query = organizations(since=orgs[-1]['id']) if orgs else None
+       return snug.Page(orgs, next=next_query)
 
 The query can be executed as-is...
 
@@ -126,38 +127,52 @@ The query can be executed as-is...
    Page([{"id": 44, ...}, ...])
 
 
-...but it can also be wrapped in a :class:`~snug.pagination.paginated` query,
-so that it can be iterated over:
+...but it can also be wrapped with :class:`~snug.pagination.paginated`.
+Executing the paginated query returns an iterator which automatically
+fetches the content of next pages as needed.
 
 .. code-block:: python3
 
-   paginated = snug.paginated(organizations(since=44))
-   for org_list in snug.execute(paginated):
+   paginated_query = snug.paginated(organizations(since=44))
+   for org_list in snug.execute(paginated_query):
        ...
 
-Asynchronous execution results in a asychronous iterator:
+Note that:
+
+* The pagination iterator yields the page *content*
+  (not the :class:`~snug.pagination.Page` itself).
+* :class:`~snug.pagination.paginated` objects are reusable (if the wrapped query is).
+* The page content may be any type.
+
+Asynchronous execution results in an asychronous iterator.
+Note that the result of :func:`~snug.query.execute_async` itself is
+not awaited in this case.
 
 .. code-block:: python3
 
-   async for org_list in snug.execute_async(paginated):
+   async for org_list in snug.execute_async(paginated_query):
        ...
 
+Custom page types
+~~~~~~~~~~~~~~~~~
 
-Full customization
-------------------
+It is possible to implement more full-featured page-like objects.
+This can be useful, for example, to implement an iterable interface,
+or to add attributes.
+Custom page types can be created by subclassing
+:class:`~snug.pagination.Pagelike`, or implementing its interface.
+
+See the slack API example for a practical use-case.
+
+Low-level control
+-----------------
 
 In some cases it is necessary to have more control over query
-execution. For example, if:
+execution. For example, when:
 
 * HTTP client-specific features are needed
   (e.g. streaming responses, multipart data)
 * implementing advanced execution logic
-
-One of the main advantages of queries is that they can be executed
-with any HTTP client.
-However, it may occur that advanced, client-specific features are needed.
-For example, streaming data or multipart requests/responses.
-Also,
 
 For this purpose, you can use the
 :meth:`~snug.query.Query.__execute__`\/:meth:`~snug.query.Query.__execute_async__` hook.
