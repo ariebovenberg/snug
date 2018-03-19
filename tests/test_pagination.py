@@ -6,21 +6,28 @@ from gentools import py2_compatible, return_
 import snug
 
 
-@py2_compatible
-def mylist(max_items=5, cursor=0):
-    response = yield ('max: {}'.format(max_items), 'cursor: {}'.format(cursor))
-    objs = response['objects']
-    next_cursor = response['next_cursor']
-    if next_cursor is None:
-        next_query = None
-    else:
-        next_query = mylist(max_items=max_items,
-                            cursor=next_cursor)
-    return_(snug.Page(objs, next=next_query))
+class mylist(object):
+
+    def __init__(self, max_items=5, cursor=0):
+        self.max_items, self.cursor = max_items, cursor
+
+    @py2_compatible
+    def __iter__(self):
+        response = yield ('max: {}'.format(self.max_items),
+                          'cursor: {}'.format(self.cursor))
+        objs = response['objects']
+        next_cursor = response['next_cursor']
+        if next_cursor is None:
+            next_query = None
+        else:
+            next_query = mylist(max_items=self.max_items,
+                                cursor=next_cursor)
+        return_(snug.Page(objs, next=next_query))
 
 
 py35 = pytest.mark.skipif(sys.version_info < (3, 5, 2),
                           reason='python 3.5.2+ only')
+
 
 class MockClient(object):
 
@@ -82,6 +89,9 @@ class TestPaginate:
             [1, 4],
         ]
 
+        # is reusable
+        assert list(snug.execute(paginated, client=mock_client))
+
     @py35
     def test_execute_async(self, loop):
         from .py35_only import consume_aiter
@@ -110,3 +120,7 @@ class TestPaginate:
             list(range(13, 23)),
             [1, 4],
         ]
+
+        # is reusable
+        assert loop.run_until_complete(consume_aiter(
+            snug.execute_async(paginated, client=mock_client)))
