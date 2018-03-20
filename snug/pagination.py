@@ -28,6 +28,15 @@ class Pagelike(t.Generic[T]):
     :py:attr:`~Pagelike.content` and :py:attr:`~Pagelike.next`
     implements this interface.
     A query returning such an object may be :class:`paginated`.
+
+    Note
+    ----
+    Pagelike is a :class:`~typing.Generic`.
+    This means you may write ``Pagelike[<type-of-content>]``
+    as a descriptive type annotation.
+
+    For example: ``Pagelike[List[str]]`` indicates a page-like
+    object whose ``content`` is a list of strings.
     """
     __slots__ = ()
 
