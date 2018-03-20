@@ -35,7 +35,7 @@ def _asyncio_send(loop, req, *, timeout=10, max_redirects=10):
         req.url + '?' + urllib.parse.urlencode(req.params))
     open_ = partial(asyncio.open_connection, url.hostname, loop=loop)
     connect = open_(443, ssl=True) if url.scheme == 'https' else open_(80)
-    reader, writer = yield from asyncio.wait_for(connect, timeout=timeout)
+    reader, writer = yield from connect
     try:
         headers = '\r\n'.join([
             '{} {} HTTP/1.1'.format(req.method, url.path + '?' + url.query),
@@ -46,7 +46,8 @@ def _asyncio_send(loop, req, *, timeout=10, max_redirects=10):
         ])
         writer.write(b'\r\n'.join([headers.encode('latin-1'),
                                    b'', req.content or b'']))
-        response_bytes = BytesIO((yield from reader.read()))
+        response_bytes = BytesIO(
+            (yield from asyncio.wait_for(reader.read(), timeout=timeout)))
     finally:
         writer.close()
     resp = HTTPResponse(_SocketAdaptor(response_bytes),
