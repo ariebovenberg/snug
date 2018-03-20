@@ -121,6 +121,14 @@ class TestSendWithAsyncio:
         assert response == snug.Response(200, b'', headers=mock.ANY)
         assert 'Content-Type' in response.headers
 
+    def test_timeout(self, loop):
+        import asyncio
+
+        req = snug.Request('GET', 'http://httpbin.org/delay/2')
+        with pytest.raises(asyncio.TimeoutError):
+            loop.run_until_complete(
+                snug.send_async(loop, req, timeout=.5))
+
 
 @live
 def test_requests_send():

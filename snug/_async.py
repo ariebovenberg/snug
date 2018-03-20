@@ -27,7 +27,7 @@ class _SocketAdaptor:
 
 @send_async.register(asyncio.AbstractEventLoop)
 @asyncio.coroutine
-def _asyncio_send(loop, req):
+def _asyncio_send(loop, req, timeout=10):
     """A rudimentary HTTP client using :mod:`asyncio`"""
     if not any(h.lower() == 'user-agent' for h in req.headers):
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
@@ -35,7 +35,7 @@ def _asyncio_send(loop, req):
         req.url + '?' + urllib.parse.urlencode(req.params))
     open_ = partial(asyncio.open_connection, url.hostname, loop=loop)
     connect = open_(443, ssl=True) if url.scheme == 'https' else open_(80)
-    reader, writer = yield from connect
+    reader, writer = yield from asyncio.wait_for(connect, timeout=timeout)
     try:
         headers = '\r\n'.join([
             '{} {} HTTP/1.1'.format(req.method, url.path + '?' + url.query),
