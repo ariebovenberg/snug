@@ -173,3 +173,63 @@ The resulting query class can be used as follows:
    [{"number": ..., ...}, ...]
 
 
+Method chaining
+---------------
+
+With the following helper class, it is possible to
+access all query functionality by method chaining:
+
+.. code-block:: python3
+
+   import snug
+
+   class Explorer:
+
+       def __init__(self, obj, *, executor=snug.execute):
+           self.__wrapped__ = obj
+           self._executor = executor
+
+       def execute(self, **kwargs):
+           """execute the wrapped object as a query
+
+           Parameters
+           ----------
+           **kwargs
+               arguments passed to the executor
+           """
+           return self._executor(self.__wrapped__, **kwargs)
+
+       def __getattr__(self, name):
+           """return an attribute of the underlying object, wrapped"""
+           return Explorer(getattr(self.__wrapped__, name),
+                           executor=self._executor)
+
+       def __repr__(self):
+           return f'Explorer({self.__wrapped__!r})'
+
+       def __call__(self, *args, **kwargs):
+           """call the underlying object, wrapping the result"""
+           return Explorer(self.__wrapped__(*args, **kwargs),
+                           executor=self._executor)
+
+       def paginated(self):
+           """make the wrapped query paginated"""
+           return Explorer(snug.paginated(self.__wrapped__))
+
+
+This allows us to write expressions like this:
+
+.. code-block:: python3
+
+   import github
+
+   bound_ghub = Explorer(github, executor=...)
+   issues = (bound_ghub.repo('Hello-World', owner='octocat')
+             .issues(state='closed')
+             .paginated()
+             .execute())
+
+   # instead of:
+   issues = snug.execute(snug.paginated(
+       my_github.repo('Hello-World', owner='octocat')
+       .issues(state='closed')))

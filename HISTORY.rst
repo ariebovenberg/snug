@@ -11,6 +11,7 @@ development
 - deprecate ``auth_method`` parameter (to remove in version 1.3)
 - paginated queries
 - make ``asyncio`` client more robust
+- added two new recipes
 
 1.1.3 (2018-03-07)
 ++++++++++++++++++
