@@ -116,3 +116,60 @@ Here is an annotated example of testing the example gitub ``repo`` query:
        assert result['description'] == 'My first repository on github!'
 
 The slack and NS API tests show real-world cases for this.
+
+Django-like querysets
+---------------------
+
+Class-based queries can be used to create a queryset-like API.
+We can use github's issues endpoint to illustrate:
+
+.. code-block:: python3
+
+   import snug
+
+   class issues(snug.Query):
+       """select assigned issues within an organization"""
+
+       def __init__(self, org, state='open', labels='', sort='created',
+                    direction='desc', since=None):
+           self.org = org
+           self.params = {
+               'state': state,
+               'labels': labels,
+               'sort': sort,
+               'direction': direction,
+           }
+           if since:
+               self.params['since'] = since
+
+       def filter(self, state=None, labels=None):
+           updated = self.params.copy()
+           if state is not None: updated['state'] = state
+           if labels is not None: updated['labels'] = labels
+           return issues(self.org, **updated)
+
+       def ascending(self):
+           return issues(self.org, **{**self.params, 'direction': 'asc'})
+
+       def sort_by(self, sort):
+           return issues(self.org, **{**self.params, 'sort': sort})
+
+       def __iter__(self):
+           req = snug.GET(f'https://api.github.com/orgs/{self.org}/issues',
+                          params=self.params)
+           resp = yield req
+           return json.loads(resp.content)
+
+
+The resulting query class can be used as follows:
+
+   >>> my_query = (issues(org='github')
+   ...            .filter(state='all')
+   ...            .filter(labels='bug,ui')
+   ...            .sort_by('updated')
+   ...            .ascending())
+   ...
+   >>> snug.execute(my_query, auth=('me', 'password'))
+   [{"number": ..., ...}, ...]
+
+
