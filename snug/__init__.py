@@ -8,6 +8,7 @@ import sys
 from .query import *  # noqa
 from .http import *  # noqa
 from .clients import *  # noqa
+from .pagination import *  # noqa
 
 from . import http, clients  # noqa
 

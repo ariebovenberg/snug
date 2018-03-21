@@ -31,6 +31,20 @@ HTTP
 .. autodata:: snug.OPTIONS
 
 
+Pagination
+----------
+
+.. automodule:: snug.pagination
+
+.. autoclass:: snug.pagination.paginated
+   :members: __execute__, __execute_async__
+
+.. autoclass:: snug.pagination.Page
+
+.. autoclass:: snug.pagination.Pagelike
+   :members:
+
+
 Clients
 -------
 

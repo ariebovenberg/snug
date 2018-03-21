@@ -1,6 +1,7 @@
 """Patch in async-exclusive functionality. Only for python 3+"""
 import asyncio
 import sys
+import typing as t
 import urllib.request
 from functools import partial
 from http.client import HTTPResponse
@@ -8,9 +9,11 @@ from io import BytesIO
 from itertools import starmap
 
 from .clients import send_async
+from .compat import HAS_PEP492
 from .http import Response
 from .query import Query
 
+T = t.TypeVar('T')
 _ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
 
 
@@ -24,7 +27,7 @@ class _SocketAdaptor:
 
 @send_async.register(asyncio.AbstractEventLoop)
 @asyncio.coroutine
-def _asyncio_send(loop, req):
+def _asyncio_send(loop, req, *, timeout=10, max_redirects=10):
     """A rudimentary HTTP client using :mod:`asyncio`"""
     if not any(h.lower() == 'user-agent' for h in req.headers):
         req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
@@ -41,13 +44,23 @@ def _asyncio_send(loop, req):
             'Content-Length: {}'.format(len(req.content or b'')),
             '\r\n'.join(starmap('{}: {}'.format, req.headers.items())),
         ])
-        writer.write(b'\r\n'.join([headers.encode(), b'', req.content or b'']))
-        response_bytes = BytesIO((yield from reader.read()))
+        writer.write(b'\r\n'.join([headers.encode('latin-1'),
+                                   b'', req.content or b'']))
+        response_bytes = BytesIO(
+            (yield from asyncio.wait_for(reader.read(), timeout=timeout)))
     finally:
         writer.close()
-    resp = HTTPResponse(_SocketAdaptor(response_bytes))
+    resp = HTTPResponse(_SocketAdaptor(response_bytes),
+                        method=req.method, url=req.url)
     resp.begin()
-    return Response(resp.getcode(), content=resp.read(), headers=resp.headers)
+    status = resp.getcode()
+    if 300 <= status < 400 and 'Location' in resp.headers and max_redirects:
+        new_url = urllib.parse.urljoin(req.url, resp.headers['Location'])
+        return (yield from _asyncio_send(
+            loop, req.replace(url=new_url),
+            timeout=timeout,
+            max_redirects=max_redirects-1))
+    return Response(status, content=resp.read(), headers=resp.headers)
 
 
 try:
@@ -76,7 +89,7 @@ else:
 
 @partial(setattr, Query, '__execute_async__')
 @asyncio.coroutine
-def __execute_async__(self, client, authenticate):
+def __execute_async__(self, client, auth):
     """Default asynchronous execution logic for a query,
     which uses the query's :meth:`~Query.__iter__`.
     May be overriden for full control of query execution,
@@ -93,7 +106,7 @@ def __execute_async__(self, client, authenticate):
     ----------
     client
         the client instance passed to :func:`execute`
-    authenticate: ~typing.Callable[[Request], Request]
+    auth: ~typing.Callable[[Request], Request]
         a callable to authenticate a :class:`~snug.http.Request`
 
     Returns
@@ -104,8 +117,29 @@ def __execute_async__(self, client, authenticate):
     gen = iter(self)
     request = next(gen)
     while True:
-        response = yield from send_async(client, authenticate(request))
+        response = yield from send_async(client, auth(request))
         try:
             request = gen.send(response)
         except StopIteration as e:
             return e.value
+
+
+class AsyncPaginator(t.AsyncIterator[T] if HAS_PEP492 else object):
+    """An async iterator which keeps executing
+    the next query in the page sequence"""
+    __slots__ = '_executor', '_next_query'
+
+    def __init__(self, next_query, executor):
+        self._next_query, self._executor = next_query, executor
+
+    def __aiter__(self):
+        return self
+
+    @asyncio.coroutine
+    def __anext__(self):
+        """the content of the next page"""
+        if self._next_query is None:
+            raise StopAsyncIteration()
+        page = yield from self._executor(self._next_query)
+        self._next_query = page.next_query
+        return page.content

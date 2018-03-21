@@ -151,10 +151,10 @@ class Response(_SlotsMixin):
                 'headers={0.headers!r}>').format(self)
 
 
-def basic_auth(credentials, request):
+def basic_auth(credentials):
     """Apply basic authentication to a request"""
     encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
-    return request.with_headers({'Authorization': 'Basic ' + encoded})
+    return header_adder({'Authorization': 'Basic ' + encoded})
 
 
 prefix_adder = partial(methodcaller, 'with_prefix')

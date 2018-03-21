@@ -76,81 +76,6 @@ The example below shows a reusable implementation using
   snug.execute(q)
   # NotModified()
 
-Pagination
-----------
-
-Pagination is one of the things that each API seems to do differently.
-One way of implementing pagination is to return some sort
-of ``Page`` object containing the current list of objects,
-together with queries referencing the next pages.
-This way, paginating through results becomes explicit.
-
-Below is an example of the slack web API,
-which uses cursor-based pagination.
-
-.. code-block:: python3
-
-   class Page:
-       def __init__(self, objects, next):
-           self.objects, self.next = objects, next
-
-       def __iter__(self):
-           yield from self.objects
-
-   def list_channels(cursor=None) -> snug.Query[Page]:
-       """list slack channels"""
-       request = snug.GET(f'https://slack.com/api/channels.list',
-                          params={'cursor': cursor} if cursor else {})
-       response = yield request
-       raw_obj = json.loads(response.content)
-       next_cursor = raw_obj['response_metadata']['next_cursor']
-       return Page(raw_obj['channels'],
-                   # next_cursor may be None
-                   next=next_cursor and list_channels(cursor=next_cursor))
-
-The query is then usable as:
-
-.. code-block:: python3
-
-   >>> exec = snug.executor(auth=...)
-   >>> page1 = exec(list_channels())
-   >>> list(page1)
-   [{"name": ...}, ...]
-   >>> page2 = exec(page1.next)
-   >>> list(page2)
-   [{"name": ...}, ...]
-   >>> exec(page2.next)
-  [{"name": ...}, ...]
-
-An alternative is to evaluate all pages in one query.
-Note that this will fetch **all** results eagerly, so use with care.
-
-.. code-block:: python3
-
-   def all_channels():
-       """get all slack channels"""
-       request = snug.GET(f'https://slack.com/api/channels.list',
-                          params={'cursor': cursor} if cursor else {})
-       response = yield request
-       raw_obj = json.loads(response.content)
-       channels = raw_obj['channels']
-       next_cursor = raw_obj['response_metadata']['next_cursor']
-
-       while next_cursor:
-           request = snug.GET(f'https://slack.com/api/channels.list',
-                              params={'cursor': next_cursor})
-           response = yield request
-           raw_obj = json.loads(response.content)
-           channels.extend(raw_obj['channels'])
-           next_cursor = raw_obj['response_metadata']['next_cursor']
-
-       return channels
-
-We can then query for all results:
-
-   >>> exec(all_channels(), auth=...)
-   [{"name": ...}, ...]
-
 
 Testing
 -------
@@ -191,3 +116,120 @@ Here is an annotated example of testing the example gitub ``repo`` query:
        assert result['description'] == 'My first repository on github!'
 
 The slack and NS API tests show real-world cases for this.
+
+Django-like querysets
+---------------------
+
+Class-based queries can be used to create a queryset-like API.
+We can use github's issues endpoint to illustrate:
+
+.. code-block:: python3
+
+   import snug
+
+   class issues(snug.Query):
+       """select assigned issues within an organization"""
+
+       def __init__(self, org, state='open', labels='', sort='created',
+                    direction='desc', since=None):
+           self.org = org
+           self.params = {
+               'state': state,
+               'labels': labels,
+               'sort': sort,
+               'direction': direction,
+           }
+           if since:
+               self.params['since'] = since
+
+       def filter(self, state=None, labels=None):
+           updated = self.params.copy()
+           if state is not None: updated['state'] = state
+           if labels is not None: updated['labels'] = labels
+           return issues(self.org, **updated)
+
+       def ascending(self):
+           return issues(self.org, **{**self.params, 'direction': 'asc'})
+
+       def sort_by(self, sort):
+           return issues(self.org, **{**self.params, 'sort': sort})
+
+       def __iter__(self):
+           req = snug.GET(f'https://api.github.com/orgs/{self.org}/issues',
+                          params=self.params)
+           resp = yield req
+           return json.loads(resp.content)
+
+
+The resulting query class can be used as follows:
+
+   >>> my_query = (issues(org='github')
+   ...            .filter(state='all')
+   ...            .filter(labels='bug,ui')
+   ...            .sort_by('updated')
+   ...            .ascending())
+   ...
+   >>> snug.execute(my_query, auth=('me', 'password'))
+   [{"number": ..., ...}, ...]
+
+
+Method chaining
+---------------
+
+With the following helper class, it is possible to
+access all query functionality by method chaining:
+
+.. code-block:: python3
+
+   import snug
+
+   class Explorer:
+
+       def __init__(self, obj, *, executor=snug.execute):
+           self.__wrapped__ = obj
+           self._executor = executor
+
+       def execute(self, **kwargs):
+           """execute the wrapped object as a query
+
+           Parameters
+           ----------
+           **kwargs
+               arguments passed to the executor
+           """
+           return self._executor(self.__wrapped__, **kwargs)
+
+       def __getattr__(self, name):
+           """return an attribute of the underlying object, wrapped"""
+           return Explorer(getattr(self.__wrapped__, name),
+                           executor=self._executor)
+
+       def __repr__(self):
+           return f'Explorer({self.__wrapped__!r})'
+
+       def __call__(self, *args, **kwargs):
+           """call the underlying object, wrapping the result"""
+           return Explorer(self.__wrapped__(*args, **kwargs),
+                           executor=self._executor)
+
+       def paginated(self):
+           """make the wrapped query paginated"""
+           return Explorer(snug.paginated(self.__wrapped__))
+
+
+This allows us to write expressions like this:
+
+.. code-block:: python3
+
+   import github
+
+   bound_ghub = Explorer(github, executor=...)
+   issues = (bound_ghub.repo('Hello-World', owner='octocat')
+             .issues(state='closed')
+             .paginated()
+             .execute())
+
+   # instead of:
+   issues = snug.execute(snug.paginated(
+       my_github.repo('Hello-World', owner='octocat')
+       .issues(state='closed')))

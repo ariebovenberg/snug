@@ -8,7 +8,6 @@ from gentools import (compose, map_yield, map_send, oneyield, reusable,
                       map_return)
 
 from .load import registry
-from .types import Page
 
 API_URL = 'https://slack.com/api/'
 
@@ -53,8 +52,6 @@ def paginated_retrieval(methodname, itemtype):
         reusable,
         basic_interaction,
         map_yield(partial(_params_as_get, methodname)),
-        map_send(registry(Page[itemtype])),
-        oneyield,
     )
 
 

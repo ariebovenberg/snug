@@ -1,4 +1,5 @@
-"""python 3 only objects"""
+"""python 3 only objects.
+In a separate module to prevent syntax-errors on python 2"""
 import asyncio
 
 import pytest

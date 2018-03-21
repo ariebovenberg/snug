@@ -85,12 +85,17 @@ Quickstart
   >>> snug.execute(query)
   {"description": "My first repository on Github!", ...}
 
-3. That's it
-
 Features
 --------
 
-1. **Flexibility**. Since queries are just generators,
+1. **Effortlessly async**. The same query can also be executed asynchronously:
+
+   .. code-block:: python
+
+      query = repo('Hello-World', owner='octocat')
+      repo = await snug.execute_async(query)
+
+2. **Flexibility**. Since queries are just generators,
    customizing them requires no special glue-code.
    For example: add validation logic, or use any serialization method:
 
@@ -105,13 +110,6 @@ Features
          request = snug.GET(f'https://api.github.com/users/{name}')
          response = yield request
          return UserSchema().load(json.loads(response.content))
-
-2. **Effortlessly async**. The same query can also be executed asynchronously:
-
-   .. code-block:: python
-
-      query = repo('Hello-World', owner='octocat')
-      repo = await snug.execute_async(query)
 
 3. **Pluggable clients**. Queries are fully agnostic of the HTTP client.
    For example, to use `requests <http://docs.python-requests.org/>`_
@@ -166,8 +164,28 @@ Features
       my_issue = repo('Hello-World', owner='octocat').issue(348)
       snug.execute(my_issue)
 
+7. **Pagination**. Define paginated queries for (asynchronous) iteration.
 
-7. **Function- or class-based? You decide**.
+   .. code-block:: python3
+
+      def organizations(since: int=None):
+          """retrieve a page of organizations since a particular id"""
+          resp = yield snug.GET('https://api.github.com/organizations',
+                                params={'since': since} if since else {})
+          orgs = json.loads(resp.content)
+          next_query = organizations(since=orgs[-1]['id'])
+          return snug.Page(orgs, next_query=next_query)
+
+      my_query = snug.paginated(organizations())
+
+      for orgs in snug.execute(my_query):
+          ...
+
+      # or, with async
+      async for orgs in snug.execute_async(my_query):
+          ...
+
+8. **Function- or class-based? You decide**.
    One option to keep everything DRY is to use
    class-based queries and inheritance:
 
@@ -236,6 +254,7 @@ Features
 
 
 For more info, check out the `tutorial <http://snug.readthedocs.io/en/latest/tutorial.html>`_,
+`advanced features <http://snug.readthedocs.io/en/latest/advanced.html>`_,
 `recipes <http://snug.readthedocs.io/en/latest/recipes.html>`_,
 or `examples <http://snug.readthedocs.io/en/latest/examples.html>`_.
 
@@ -255,8 +274,7 @@ and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
 
 .. code-block:: bash
 
-   pip install requests
-   pip install aiohttp
+   pip install requests aiohttp
 
 Python 2
 --------

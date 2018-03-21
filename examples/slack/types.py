@@ -1,6 +1,9 @@
 import typing as t
 from datetime import datetime
 from dataclasses import dataclass
+from operator import attrgetter
+
+import snug
 
 T = t.TypeVar('T')
 
@@ -51,16 +54,16 @@ class Message:
 
 
 @dataclass
-class Page(t.Sequence[T]):
+class Page(t.Generic[T]):
     """a page of objects"""
-    objects:     t.List[T]
-    next_cursor: str
+    content:    t.List[T]
+    next_query: snug.Query['Page']
 
     def __iter__(self):
-        yield from self.objects
+        yield from self.content
 
     def __getitem__(self, index):
-        return self.objects[index]
+        return self.content[index]
 
     def __len__(self):
-        return len(self.objects)
+        return len(self.content)
