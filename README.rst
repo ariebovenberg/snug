@@ -85,8 +85,6 @@ Quickstart
   >>> snug.execute(query)
   {"description": "My first repository on Github!", ...}
 
-3. That's it
-
 Features
 --------
 
@@ -256,6 +254,7 @@ Features
 
 
 For more info, check out the `tutorial <http://snug.readthedocs.io/en/latest/tutorial.html>`_,
+`advanced features <http://snug.readthedocs.io/en/latest/advanced.html>`_,
 `recipes <http://snug.readthedocs.io/en/latest/recipes.html>`_,
 or `examples <http://snug.readthedocs.io/en/latest/examples.html>`_.
 
