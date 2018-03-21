@@ -54,19 +54,16 @@ class Message:
 
 
 @dataclass
-class Page(snug.Pagelike[t.List[T]]):
+class Page(t.Generic[T]):
     """a page of objects"""
-    objects:    t.List[T]
+    content:    t.List[T]
     next_query: snug.Query['Page']
 
-    content = property(attrgetter('objects'))
-    next = property(attrgetter('next_query'))
-
     def __iter__(self):
-        yield from self.objects
+        yield from self.content
 
     def __getitem__(self, index):
-        return self.objects[index]
+        return self.content[index]
 
     def __len__(self):
-        return len(self.objects)
+        return len(self.content)

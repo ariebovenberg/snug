@@ -38,7 +38,7 @@ async def test_channel_list(exec):
     outcome = sendreturn(query, snug.Response(200, CHANNEL_LIST_RESULT))
     assert isinstance(outcome[0], slack.Channel)
     assert len(outcome[0].members) == 2
-    assert outcome.next.cursor == "dGVhbTpDMUg5UkVTR0w="
+    assert outcome.next_query.cursor == "dGVhbTpDMUg5UkVTR0w="
 
 
 @pytest.mark.asyncio
