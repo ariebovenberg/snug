@@ -117,7 +117,7 @@ This can be illustrated by github's
                                  params={'since': since} if since else {})
        orgs = json.loads(response.content)
        next_query = organizations(since=orgs[-1]['id']) if orgs else None
-       return snug.Page(orgs, next=next_query)
+       return snug.Page(orgs, next_query=next_query)
 
 The query can be executed as-is...
 

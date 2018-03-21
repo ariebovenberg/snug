@@ -25,7 +25,7 @@ if HAS_PEP492:  # pragma: no cover
 class Pagelike(t.Generic[T]):
     """Abstract base class for page-like objects.
     Any object implementing the attributes
-    :py:attr:`~Pagelike.content` and :py:attr:`~Pagelike.next`
+    :py:attr:`~Pagelike.content` and :py:attr:`~Pagelike.next_query`
     implements this interface.
     A query returning such an object may be :class:`paginated`.
 
@@ -52,7 +52,7 @@ class Pagelike(t.Generic[T]):
         raise NotImplementedError()
 
     @abc.abstractproperty
-    def next(self):
+    def next_query(self):
         """The query to retrieve the next page,
         or ``None`` if there is no next page.
 
@@ -71,16 +71,16 @@ class Page(Pagelike[T]):
     ----------
     content: T
         The page content.
-    next: ~snug.Query[Pagelike[T]]] or None
+    next_query: ~snug.Query[Pagelike[T]]] or None
         The query to retrieve the next page.
     """
-    __slots__ = '_content', '_next'
+    __slots__ = '_content', '_next_query'
 
-    def __init__(self, content, next=None):
-        self._content, self._next = content, next
+    def __init__(self, content, next_query=None):
+        self._content, self._next_query = content, next_query
 
     content = property(attrgetter('_content'))
-    next = property(attrgetter('_next'))
+    next_query = property(attrgetter('_next_query'))
 
     def __repr__(self):
         return 'Page({})'.format(self._content)
@@ -178,7 +178,7 @@ class Paginator(t.Iterator[T]):
         if self._next_query is None:
             raise StopIteration()
         page = self._executor(self._next_query)
-        self._next_query = page.next
+        self._next_query = page.next_query
         return page.content
 
     if not PY3:  # pragma: no cover

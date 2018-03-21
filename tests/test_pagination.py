@@ -22,7 +22,7 @@ class mylist(object):
         else:
             next_query = mylist(max_items=self.max_items,
                                 cursor=next_cursor)
-        return_(snug.Page(objs, next=next_query))
+        return_(snug.Page(objs, next_query=next_query))
 
 
 py35 = pytest.mark.skipif(sys.version_info < (3, 5, 2),

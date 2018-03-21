@@ -141,5 +141,5 @@ class AsyncPaginator(t.AsyncIterator[T] if HAS_PEP492 else object):
         if self._next_query is None:
             raise StopAsyncIteration()
         page = yield from self._executor(self._next_query)
-        self._next_query = page.next
+        self._next_query = page.next_query
         return page.content
