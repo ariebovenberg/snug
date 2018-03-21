@@ -1,4 +1,4 @@
-"""Tools for pagination.
+"""Tools for creating paginated queries
 
 .. versionadded:: 1.2
 """
