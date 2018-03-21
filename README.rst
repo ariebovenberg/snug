@@ -184,7 +184,7 @@ Features
           ...
 
       # or, with async
-      async for orgs in snug.execute_async(my_query)
+      async for orgs in snug.execute_async(my_query):
           ...
 
 8. **Function- or class-based? You decide**.
@@ -275,8 +275,7 @@ and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
 
 .. code-block:: bash
 
-   pip install requests
-   pip install aiohttp
+   pip install requests aiohttp
 
 Python 2
 --------
