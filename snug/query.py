@@ -1,6 +1,5 @@
 """Types and functionality relating to queries"""
 import typing as t
-import warnings
 from functools import partial
 
 from .clients import send
