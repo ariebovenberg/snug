@@ -4,6 +4,11 @@ Release history
 development
 +++++++++++
 
+1.3.0 (2018-??-??)
+++++++++++++++++++
+
+- remove ``auth_method`` parameter
+
 1.2.0 (2018-03-21)
 ++++++++++++++++++
 
