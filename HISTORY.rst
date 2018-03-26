@@ -9,6 +9,11 @@ development
 
 - remove ``auth_method`` parameter
 
+1.2.1 (2018-03-26)
+++++++++++++++++++
+
+- fix in README
+
 1.2.0 (2018-03-21)
 ++++++++++++++++++
 

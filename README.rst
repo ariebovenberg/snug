@@ -166,7 +166,7 @@ Features
 
 7. **Pagination**. Define paginated queries for (asynchronous) iteration.
 
-   .. code-block:: python3
+   .. code-block:: python
 
       def organizations(since: int=None):
           """retrieve a page of organizations since a particular id"""
