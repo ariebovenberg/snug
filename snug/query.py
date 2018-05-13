@@ -1,6 +1,5 @@
 """Types and functionality relating to queries"""
 import typing as t
-import warnings
 from functools import partial
 
 from .clients import send
@@ -181,21 +180,16 @@ class related(object):
         return self._cls if obj is None else partial(self._cls, obj)
 
 
-# a temporary routine until `auth_method` is removed in version 1.3
-def _make_auth(auth, auth_method):
+def _make_auth(auth):
     if auth is None:
         return _identity
-    elif auth_method is None:
-        return auth if callable(auth) else basic_auth(auth)
+    elif callable(auth):
+        return auth
     else:
-        warnings.warn('The `auth_method` parameter will be removed'
-                      'in version 1.3. Pass a callable to `auth` instead',
-                      DeprecationWarning)
-        return partial(auth_method, auth)
+        return basic_auth(auth)
 
 
-def execute(query, auth=None, client=urllib_request.build_opener(),
-            auth_method=None):
+def execute(query, auth=None, client=urllib_request.build_opener()):
     """Execute a query, returning its result
 
     Parameters
@@ -214,17 +208,6 @@ def execute(query, auth=None, client=urllib_request.build_opener(),
         Its type must have been registered
         with :func:`~snug.clients.send`.
         If not given, the built-in :mod:`urllib` module is used.
-    auth_method: ~typing.Callable[[T_auth, Request], Request]
-        The authentication method to use.
-
-        .. deprecated:: 1.2
-           the `auth_method`-parameter
-
-        .. warning::
-
-           The `auth_method` parameter will be removed in version 1.3.
-           Pass a callable to `auth` to implement different
-           authentication methods.
 
     Returns
     -------
@@ -232,10 +215,10 @@ def execute(query, auth=None, client=urllib_request.build_opener(),
         the query result
     """
     exec_fn = getattr(type(query), '__execute__', _default_execute_method)
-    return exec_fn(query, client, _make_auth(auth, auth_method))
+    return exec_fn(query, client, _make_auth(auth))
 
 
-def execute_async(query, auth=None, client=event_loop, auth_method=None):
+def execute_async(query, auth=None, client=event_loop):
     """Execute a query asynchronously, returning its result
 
     Parameters
@@ -254,17 +237,6 @@ def execute_async(query, auth=None, client=event_loop, auth_method=None):
         Its type must have been registered
         with :func:`~snug.clients.send_async`.
         If not given, the built-in :mod:`asyncio` module is used.
-    auth_method: ~typing.Callable[[T_auth, Request], Request]
-        The authentication method to use.
-
-        .. deprecated:: 1.2
-           the `auth_method`-parameter
-
-        .. warning::
-
-           The `auth_method` parameter will be removed in version 1.3.
-           Pass a callable to `auth` to implement different
-           authentication methods.
 
     Returns
     -------
@@ -277,7 +249,7 @@ def execute_async(query, auth=None, client=event_loop, auth_method=None):
     Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
     exc_fn = getattr(type(query), '__execute_async__', Query.__execute_async__)
-    return exc_fn(query, client, _make_auth(auth, auth_method))
+    return exc_fn(query, client, _make_auth(auth))
 
 
 def executor(**kwargs):

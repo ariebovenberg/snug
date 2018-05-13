@@ -126,23 +126,6 @@ class TestExecute:
         assert client.request == snug.GET(
             'my/url', headers={'X-My-Auth': 'letmein'})
 
-    def test_auth_method(self):
-
-        def token_auth(token, request):
-            return request.with_headers({
-                'Authorization': 'Bearer {}'.format(token)
-            })
-
-        client = MockClient(snug.Response(204))
-
-        with pytest.warns(DeprecationWarning, match='auth_method'):
-            result = snug.execute(myquery(), auth='foo', client=client,
-                                  auth_method=token_auth)
-
-        assert result == snug.Response(204)
-        assert client.request == snug.GET(
-            'my/url', headers={'Authorization': 'Bearer foo'})
-
 
 @py3
 class TestExecuteAsync:
@@ -218,24 +201,6 @@ class TestExecuteAsync:
         assert result == snug.Response(204)
         assert client.request == snug.GET(
             'my/url', headers={'X-My-Auth': 'letmein'})
-
-    def test_auth_method(self, loop):
-        from .py3_only import MockAsyncClient
-
-        def token_auth(token, request):
-            return request.with_headers({
-                'Authorization': 'Bearer {}'.format(token)
-            })
-
-        client = MockAsyncClient(snug.Response(204))
-        with pytest.warns(DeprecationWarning, match='auth_method'):
-            future = snug.execute_async(myquery(), auth='foo', client=client,
-                                        auth_method=token_auth)
-            result = loop.run_until_complete(future)
-
-        assert result == snug.Response(204)
-        assert client.request == snug.GET(
-            'my/url', headers={'Authorization': 'Bearer foo'})
 
 
 def test_executor():

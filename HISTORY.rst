@@ -4,6 +4,11 @@ Release history
 development
 +++++++++++
 
+1.3.0 (2018-05-13)
+++++++++++++++++++
+
+- remove deprecated ``auth_method`` parameter in ``execute()``
+
 1.2.1 (2018-03-26)
 ++++++++++++++++++
 
