@@ -258,7 +258,7 @@ def executor(**kwargs):
     Parameters
     ----------
     **kwargs
-        arguments to pass to :func:`execute`
+        arguments to pass to :func:`execute_async`
 
     Returns
     -------
