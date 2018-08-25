@@ -7,7 +7,10 @@ python:
   - "3.4"
   - "3.5"
   - "3.6"
-  - "3.7-dev"
+  # 3.7 added manually to test matrix,
+  # awaiting travis fix
+  # see https://github.com/travis-ci/travis-ci/issues/9815
+  # - "3.7"
 install: 
   - pip install tox-travis
   - pip install codecov
@@ -19,6 +22,10 @@ matrix:
       env: TOXENV=docs
     - python: 3.5
       env: TOXENV=isort-check
+    - python: 3.7
+      env: TOXENV=py37
+      dist: xenial
+      sudo: true
 script: tox
 after_success:
   - codecov

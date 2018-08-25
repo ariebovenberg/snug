@@ -4,6 +4,12 @@ Release history
 development
 +++++++++++
 
+1.3.1 (2018-08-25)
+++++++++++++++++++
+
+- official python 3.7 support
+- small fixes to documentation
+
 1.3.0 (2018-05-13)
 ++++++++++++++++++
 

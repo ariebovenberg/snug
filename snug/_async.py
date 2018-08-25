@@ -105,7 +105,7 @@ def __execute_async__(self, client, auth):
     Parameters
     ----------
     client
-        the client instance passed to :func:`execute`
+        the client instance passed to :func:`execute_async`
     auth: ~typing.Callable[[Request], Request]
         a callable to authenticate a :class:`~snug.http.Request`
 
