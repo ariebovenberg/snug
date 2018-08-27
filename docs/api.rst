@@ -22,13 +22,15 @@ HTTP
       ,__eq__,__ne__,__hash__,__len__
 
 
-.. autodata:: snug.GET
-.. autodata:: snug.POST
-.. autodata:: snug.PUT
-.. autodata:: snug.PATCH
-.. autodata:: snug.DELETE
-.. autodata:: snug.HEAD
-.. autodata:: snug.OPTIONS
+.. autofunction:: snug.http.GET
+.. autofunction:: snug.http.POST
+.. autofunction:: snug.http.PUT
+.. autofunction:: snug.http.PATCH
+.. autofunction:: snug.http.DELETE
+.. autofunction:: snug.http.HEAD
+.. autofunction:: snug.http.OPTIONS
+.. autodata:: snug.http.header_adder
+.. autodata:: snug.http.prefix_adder
 
 
 Pagination

@@ -10,6 +10,7 @@ __all__ = [
     'Response',
     'header_adder',
     'prefix_adder',
+    'basic_auth',
     'GET',
     'POST',
     'PUT',
@@ -136,7 +137,7 @@ class Response(_SlotsMixin):
     content: bytes or None
         The response content
     headers: Mapping
-        The headers of the response. Defaults to an empty :class:`dict`.
+        The headers of the response.
     """
     __slots__ = 'status_code', 'content', 'headers'
     __hash__ = None
@@ -152,26 +153,55 @@ class Response(_SlotsMixin):
 
 
 def basic_auth(credentials):
-    """Apply basic authentication to a request"""
+    """Create an HTTP basic authentication callable
+
+    Parameters
+    ----------
+    credentials: ~typing.Tuple[str, str]
+        The (username, password)-tuple
+
+    Returns
+    -------
+    ~typing.Callable[[Request], Request]
+        A callable which adds basic authentication to a :class:`Request`.
+    """
     encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
     return header_adder({'Authorization': 'Basic ' + encoded})
 
 
 prefix_adder = partial(methodcaller, 'with_prefix')
-prefix_adder.__doc__ = "make a callable which adds a prefix to a request url"
+prefix_adder.__doc__ = """
+Make a callable which adds a prefix to a request url
+
+Example
+-------
+
+>>> func = snug.prefix_adder('https://api.test.com/v1/')
+>>> func(snug.GET('foo/bar/')).url
+https://api.test.com/v1/foo/bar/
+"""
 header_adder = partial(methodcaller, 'with_headers')
-header_adder.__doc__ = "make a callable which adds headers to a request"
+header_adder.__doc__ = """
+Make a callable which adds headers to a request
+
+Example
+-------
+
+>>> func = snug.header_adder({'content-type': 'application/json'})
+>>> func(snug.GET('https://test.dev')).headers
+{'content-type': 'application/json'}
+"""
 GET = partial(Request, 'GET')
-GET.__doc__ = "shortcut for a GET request"
+GET.__doc__ = "Shortcut for a GET request"
 POST = partial(Request, 'POST')
-POST.__doc__ = "shortcut for a POST request"
+POST.__doc__ = "Shortcut for a POST request"
 PUT = partial(Request, 'PUT')
-PUT.__doc__ = "shortcut for a PUT request"
+PUT.__doc__ = "Shortcut for a PUT request"
 PATCH = partial(Request, 'PATCH')
-PATCH.__doc__ = "shortcut for a PATCH request"
+PATCH.__doc__ = "Shortcut for a PATCH request"
 DELETE = partial(Request, 'DELETE')
 DELETE.__doc__ = "shortcut for a DELETE request"
 HEAD = partial(Request, 'HEAD')
-HEAD.__doc__ = "shortcut for a HEAD request"
+HEAD.__doc__ = "Shortcut for a HEAD request"
 OPTIONS = partial(Request, 'OPTIONS')
-OPTIONS.__doc__ = "shortcut for a OPTIONS request"
+OPTIONS.__doc__ = "Shortcut for a OPTIONS request"
