@@ -1,7 +1,7 @@
 """
 The entire public API is available at root level::
 
-    from snug import Query, Request, send_async, ...
+    from snug import Query, Request, send_async, PATCH, paginated, ...
 """
 import sys
 
