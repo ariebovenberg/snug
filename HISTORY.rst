@@ -4,6 +4,11 @@ Release history
 development
 +++++++++++
 
+1.3.2 (2018-08-27)
+++++++++++++++++++
+
+- improvements to documentation
+
 1.3.1 (2018-08-25)
 ++++++++++++++++++
 
