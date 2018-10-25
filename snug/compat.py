@@ -19,7 +19,6 @@ if PY3:
     def func_from_method(method):
         return method
 
-
 else:  # pragma: no cover
     import urllib2 as urllib_request  # noqa
     from singledispatch import singledispatch  # noqa
