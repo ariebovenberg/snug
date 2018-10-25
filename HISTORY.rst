@@ -4,6 +4,12 @@ Release history
 development
 +++++++++++
 
+1.3.3 (2018-10-25)
+++++++++++++++++++
+
+- Fix issue where ``urllib`` client would 
+  raise ``HTTPError`` on HTTP error status codes (#33).
+
 1.3.2 (2018-08-27)
 ++++++++++++++++++
 
