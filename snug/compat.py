@@ -18,6 +18,8 @@ if PY3:
     def func_from_method(method):
         return method
 
+    from urllib.error import HTTPError as urllib_http_error_cls
+
 else:  # pragma: no cover
     import urllib2 as urllib_request  # noqa
     from singledispatch import singledispatch  # noqa
@@ -27,3 +29,5 @@ else:  # pragma: no cover
 
     def set_urllib_method(req, method):
         req.get_method = lambda: method
+
+    urllib_http_error_cls = urllib_request.HTTPError

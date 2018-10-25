@@ -76,6 +76,19 @@ class TestSendWithUrllib:
         assert data['data'] == 'foo'
         assert data['headers']['Content-Type'] == 'application/json'
 
+    def test_non_200_success(self):
+        req = snug.Request('POST', 'http://httpbin.org/status/204')
+        client = urllib.build_opener()
+        response = snug.send(client, req)
+        assert response == snug.Response(204, mock.ANY, headers=mock.ANY)
+
+    def test_http_error_status(self):
+        req = snug.Request('POST', 'http://httpbin.org/status/404')
+        client = urllib.build_opener()
+        response = snug.send(client, req)
+        assert response == snug.Response(404, b'', headers=mock.ANY)
+        assert response.headers['Content-Length'] == '0'
+
 
 @py3
 @live

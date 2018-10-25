@@ -1,6 +1,6 @@
 """Funtions for dealing with for HTTP clients in a unified manner"""
 from .compat import (set_urllib_method, singledispatch, urlencode,
-                     urllib_request)
+                     urllib_request, urllib_http_error_cls)
 from .http import Response
 
 __all__ = ['send', 'send_async']
@@ -95,7 +95,10 @@ def _urllib_send(opener, req, **kwargs):
     url = req.url + '?' + urlencode(req.params)
     raw_req = urllib_request.Request(url, req.content, headers=req.headers)
     set_urllib_method(raw_req, req.method)
-    res = opener.open(raw_req, **kwargs)
+    try:
+        res = opener.open(raw_req, **kwargs)
+    except urllib_http_error_cls as http_err:
+        res = http_err
     return Response(res.getcode(), content=res.read(), headers=res.headers)
 
 
