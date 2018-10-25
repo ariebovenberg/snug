@@ -11,6 +11,7 @@ if PY3:
     event_loop = __import__('asyncio').get_event_loop()
     from functools import singledispatch
     from urllib.parse import urlencode
+    from urllib.error import HTTPError as urllib_http_error_cls
 
     def set_urllib_method(req, method):
         req.method = method
@@ -18,7 +19,6 @@ if PY3:
     def func_from_method(method):
         return method
 
-    from urllib.error import HTTPError as urllib_http_error_cls
 
 else:  # pragma: no cover
     import urllib2 as urllib_request  # noqa
@@ -26,8 +26,7 @@ else:  # pragma: no cover
     event_loop = None  # noqa
     from urllib import urlencode  # noqa
     func_from_method = attrgetter('im_func')
+    urllib_http_error_cls = urllib_request.HTTPError  # noqa
 
     def set_urllib_method(req, method):
         req.get_method = lambda: method
-
-    urllib_http_error_cls = urllib_request.HTTPError

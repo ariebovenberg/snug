@@ -1,6 +1,6 @@
 """Funtions for dealing with for HTTP clients in a unified manner"""
 from .compat import (set_urllib_method, singledispatch, urlencode,
-                     urllib_request, urllib_http_error_cls)
+                     urllib_http_error_cls, urllib_request)
 from .http import Response
 
 __all__ = ['send', 'send_async']
