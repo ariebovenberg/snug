@@ -22,6 +22,8 @@ Snug 🧣
 .. image:: https://img.shields.io/codeclimate/maintainability/ariebovenberg/snug.svg
    :target: https://codeclimate.com/github/ariebovenberg/snug/maintainability
 
+.. image:: https://img.shields.io/badge/dependabot-enabled-brightgreen.svg?longCache=true&logo=dependabot
+
 
 **Snug** is a tiny toolkit for writing reusable interactions with web APIs. Key features:
 
