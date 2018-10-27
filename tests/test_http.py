@@ -1,7 +1,7 @@
-from snug.compat import Mapping
 from operator import attrgetter
 
 import snug
+from snug.compat import Mapping
 
 
 class AlwaysEquals:
