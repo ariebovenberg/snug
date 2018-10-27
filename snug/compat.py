@@ -27,7 +27,7 @@ else:  # pragma: no cover
     from urllib import urlencode  # noqa
     func_from_method = attrgetter('im_func')
     urllib_http_error_cls = urllib_request.HTTPError  # noqa
-    from collections import mapping
+    from collections import Mapping  # noqa
 
     def set_urllib_method(req, method):
         req.get_method = lambda: method
