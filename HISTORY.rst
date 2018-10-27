@@ -4,6 +4,11 @@ Release history
 development
 +++++++++++
 
+1.3.4 (2018-10-27)
+++++++++++++++++++
+
+- Fix deprecation warning on python 3.7 (#35)
+
 1.3.3 (2018-10-25)
 ++++++++++++++++++
 

@@ -1,4 +1,5 @@
 import os.path
+
 from setuptools import setup, find_packages
 
 
@@ -38,9 +39,13 @@ setup(
         'Programming Language :: Python :: 3.7',
     ],
     install_requires=[
-        'typing>=3.6.2 ; python_version<"3.5"',
-        'singledispatch>=3.4.0 ; python_version<"3.4"',
+        'typing>=3.6.6; python_version<"3.5"',
+        'singledispatch>=3.4.0; python_version<"3.4"',
     ],
+    extras_require={
+        'aiohttp': ['aiohttp~=3.4.4'],
+        'requests': ['requests~=2.20.0'],
+    },
     keywords=['api-wrapper', 'http', 'generators', 'async',
               'graphql', 'rest', 'rpc'],
     python_requires='>=2.7',

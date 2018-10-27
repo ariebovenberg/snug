@@ -9,10 +9,8 @@ import snug
 
 try:
     import urllib.request as urllib
-    from unittest import mock
 except ImportError:
     import urllib2 as urllib
-    import mock
 
 
 live = pytest.mark.skipif(not pytest.config.getoption('--live'),
@@ -70,8 +68,8 @@ def myquery():
 
 class TestExecute:
 
-    @mock.patch('snug.query.send', autospec=True)
-    def test_defaults(self, send):
+    def test_defaults(self, mocker):
+        send = mocker.patch('snug.query.send', autospec=True)
 
         assert snug.execute(myquery()) == send.return_value
         client, req = send.call_args[0]
@@ -130,19 +128,19 @@ class TestExecute:
 @py3
 class TestExecuteAsync:
 
-    def test_defaults(self, loop):
+    def test_defaults(self, loop, mocker):
         import asyncio
         from .py3_only import awaitable
 
-        with mock.patch('snug._async.send_async',
-                        return_value=awaitable(snug.Response(204))) as send:
+        send = mocker.patch('snug._async.send_async',
+                            return_value=awaitable(snug.Response(204)))
 
-            future = snug.execute_async(myquery())
-            result = loop.run_until_complete(future)
-            assert result == snug.Response(204)
-            client, req = send.call_args[0]
-            assert isinstance(client, asyncio.AbstractEventLoop)
-            assert req == snug.GET('my/url')
+        future = snug.execute_async(myquery())
+        result = loop.run_until_complete(future)
+        assert result == snug.Response(204)
+        client, req = send.call_args[0]
+        assert isinstance(client, asyncio.AbstractEventLoop)
+        assert req == snug.GET('my/url')
 
     def test_custom_client(self, loop):
         from .py3_only import MockAsyncClient
