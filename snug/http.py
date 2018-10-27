@@ -1,9 +1,10 @@
 """Basic HTTP abstractions and functionality"""
 from base64 import b64encode
-from collections import Mapping
 from functools import partial
 from itertools import chain
 from operator import attrgetter, methodcaller
+
+from .compat import Mapping
 
 __all__ = [
     'Request',

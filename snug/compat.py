@@ -12,6 +12,7 @@ if PY3:
     from functools import singledispatch
     from urllib.parse import urlencode
     from urllib.error import HTTPError as urllib_http_error_cls
+    from collections.abc import Mapping
 
     def set_urllib_method(req, method):
         req.method = method
@@ -26,6 +27,7 @@ else:  # pragma: no cover
     from urllib import urlencode  # noqa
     func_from_method = attrgetter('im_func')
     urllib_http_error_cls = urllib_request.HTTPError  # noqa
+    from collections import mapping
 
     def set_urllib_method(req, method):
         req.get_method = lambda: method

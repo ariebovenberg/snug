@@ -1,4 +1,4 @@
-from collections import Mapping
+from snug.compat import Mapping
 from operator import attrgetter
 
 import snug
