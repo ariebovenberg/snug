@@ -44,7 +44,7 @@ setup(
     ],
     extras_require={
         'aiohttp': ['aiohttp~=3.4.4'],
-        'requests': ['requests~=2.20.0'],
+        'requests': ['requests>=2.20,<2.22'],
     },
     keywords=['api-wrapper', 'http', 'generators', 'async',
               'graphql', 'rest', 'rpc'],
