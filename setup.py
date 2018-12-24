@@ -43,7 +43,7 @@ setup(
         'singledispatch>=3.4.0; python_version<"3.4"',
     ],
     extras_require={
-        'aiohttp': ['aiohttp~=3.4.4'],
+        'aiohttp': ['aiohttp>=3.4.4,<3.6.0'],
         'requests': ['requests>=2.20,<2.22'],
     },
     keywords=['api-wrapper', 'http', 'generators', 'async',
