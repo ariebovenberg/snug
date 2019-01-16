@@ -13,8 +13,6 @@ except ImportError:
     import urllib2 as urllib
 
 
-live = pytest.mark.skipif(not pytest.config.getoption('--live'),
-                          reason='skip live data test')
 py3 = pytest.mark.skipif(sys.version_info < (3, ), reason='python 3+ only')
 
 

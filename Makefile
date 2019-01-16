@@ -8,13 +8,13 @@ docs:
 	make -C docs/ html
 
 test:
-	detox
+	tox --parallel auto
 
 test-examples:
 	pytest examples/
 
 coverage:
-	pytest --live --cov=snug --cov-report html --cov-report term --cov-fail-under 100
+	pytest --live --cov=snug --cov-report html --cov-report term
 
 publish: clean
 	rm -rf build dist .egg snug.egg-info

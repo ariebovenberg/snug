@@ -11,9 +11,6 @@ try:
 except ImportError:
     import urllib2 as urllib
 
-live = pytest.mark.skipif(not pytest.config.getoption('--live'),
-                          reason='skip live data test')
-
 py3 = pytest.mark.skipif(sys.version_info < (3, ), reason='python 3+ only')
 
 
@@ -32,7 +29,7 @@ def test_async_send_with_unknown_client():
         snug.send_async(MyClass(), snug.GET('foo'))
 
 
-@live
+@pytest.mark.live
 class TestSendWithUrllib:
 
     def test_no_contenttype(self, mocker):
@@ -89,7 +86,7 @@ class TestSendWithUrllib:
 
 
 @py3
-@live
+@pytest.mark.live
 class TestSendWithAsyncio:
 
     def test_https(self, loop, mocker):
@@ -153,7 +150,7 @@ class TestSendWithAsyncio:
         assert response == snug.Response(302, mocker.ANY, headers=mocker.ANY)
 
 
-@live
+@pytest.mark.live
 def test_requests_send(mocker):
     requests = pytest.importorskip("requests")
     session = requests.Session()
@@ -172,7 +169,7 @@ def test_requests_send(mocker):
 
 
 @py3
-@live
+@pytest.mark.live
 class TestAiohttpSend:
 
     def test_ok(self, loop, mocker):

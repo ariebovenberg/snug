@@ -10,3 +10,13 @@ def pytest_addoption(parser):
 def loop(scope='session'):
     asyncio = pytest.importorskip('asyncio')
     return asyncio.get_event_loop()
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--live"):
+        # --live given in cli: do not skip live tests
+        return
+    skip_live = pytest.mark.skip(reason="need --live option to run")
+    for item in items:
+        if "live" in item.keywords:
+            item.add_marker(skip_live)
