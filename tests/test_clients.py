@@ -90,13 +90,13 @@ class TestSendWithUrllib:
 class TestSendWithAsyncio:
 
     def test_https(self, loop, mocker):
-        req = snug.Request('GET', 'https://httpbin.org/get',
+        req = snug.Request('GET', 'http://httpbin.org/get',
                            params={'param1': 'foo'},
                            headers={'Accept': 'application/json'})
         response = loop.run_until_complete(snug.send_async(loop, req))
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
         data = json.loads(response.content.decode())
-        assert data['url'] == 'https://httpbin.org/get?param1=foo'
+        assert data['url'].split(':', 1)[1] == '//httpbin.org/get?param1=foo'
         assert data['args'] == {'param1': 'foo'}
         assert data['headers']['Accept'] == 'application/json'
         assert data['headers']['User-Agent'].startswith('Python-asyncio/')
@@ -108,7 +108,7 @@ class TestSendWithAsyncio:
         response = loop.run_until_complete(snug.send_async(loop, req))
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
         data = json.loads(response.content.decode())
-        assert data['url'] == 'http://httpbin.org/post'
+        assert data['url'].split(':', 1)[1] == '//httpbin.org/post'
         assert data['args'] == {}
         assert json.loads(data['data']) == {'foo': 4}
         assert data['headers']['User-Agent'] == 'snug/dev'
@@ -119,7 +119,7 @@ class TestSendWithAsyncio:
         response = loop.run_until_complete(snug.send_async(loop, req))
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
         data = json.loads(response.content.decode())
-        assert data['url'] == 'http://httpbin.org/get'
+        assert data['url'].split(':', 1)[1] == '//httpbin.org/get'
         assert data['args'] == {}
         assert data['headers']['X-Foo'] == 'blå'
 
@@ -155,7 +155,7 @@ def test_requests_send(mocker):
     requests = pytest.importorskip("requests")
     session = requests.Session()
 
-    req = snug.POST('https://httpbin.org/post',
+    req = snug.POST('http://httpbin.org/post',
                     content=b'{"foo": 4}',
                     params={'bla': '99'},
                     headers={'Accept': 'application/json'})
@@ -175,7 +175,7 @@ class TestAiohttpSend:
     def test_ok(self, loop, mocker):
         from .py3_only import using_aiohttp
 
-        req = snug.POST('https://httpbin.org/post',
+        req = snug.POST('http://httpbin.org/post',
                         content=b'{"foo": 4}',
                         params={'bla': '99'},
                         headers={'Accept': 'application/json'})
@@ -191,7 +191,7 @@ class TestAiohttpSend:
         pytest.importorskip('aiohttp')
         from .py3_only import error, using_aiohttp
 
-        req = snug.POST('https://httpbin.org/post',
+        req = snug.POST('http://httpbin.org/post',
                         content=b'{"foo": 4}',
                         params={'bla': '99'},
                         headers={'Accept': 'application/json'})
