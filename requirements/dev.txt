@@ -3,5 +3,5 @@
 -r test.txt
 wheel~=0.33.1
 twine~=1.13.0
-isort~=4.3.10
+isort~=4.3.12
 tox~=3.7.0
