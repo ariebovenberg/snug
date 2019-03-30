@@ -4,6 +4,11 @@ Release history
 development
 +++++++++++
 
+1.4.1 (2019-03-30)
+++++++++++++++++++
+
+- Small fix in pypi package metadata
+
 1.4.0 (2019-03-30)
 ++++++++++++++++++
 
