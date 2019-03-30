@@ -3,7 +3,6 @@ import sys
 from operator import attrgetter
 
 PY3 = sys.version_info > (3, )
-HAS_PEP492 = sys.version_info > (3, 5, 2)
 
 
 if PY3:

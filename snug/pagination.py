@@ -6,7 +6,7 @@ import abc
 import typing as t
 from operator import attrgetter
 
-from .compat import HAS_PEP492, PY3
+from .compat import PY3
 from .query import Query, async_executor, executor
 
 __all__ = [
@@ -15,11 +15,13 @@ __all__ = [
     'Pagelike',
 ]
 
-AsyncIterator = t.AsyncIterator if HAS_PEP492 else t.Iterable
 T = t.TypeVar('T')
 
-if HAS_PEP492:  # pragma: no cover
+if PY3:
     from ._async import AsyncPaginator
+    _AsyncIterator = t.AsyncIterator
+else:  # pragma: no cover
+    _AsyncIterator = t.Iterator
 
 
 class Pagelike(t.Generic[T]):
@@ -86,7 +88,7 @@ class Page(Pagelike[T]):
         return 'Page({})'.format(self._content)
 
 
-class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
+class paginated(Query[t.Union[t.Iterator[T], _AsyncIterator[T]]]):
     """A paginated version of a query.
     Executing it returns an :term:`iterator`
     or :term:`async iterator <asynchronous iterator>`.
@@ -139,7 +141,7 @@ class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
         """
         return Paginator(self._query, executor(client=client, auth=auth))
 
-    if HAS_PEP492:
+    if PY3:
         def __execute_async__(self, client, auth):
             """Execute the paginated query asynchronously.
 
@@ -154,6 +156,7 @@ class paginated(Query[t.Union[t.Iterator[T], AsyncIterator[T]]]):
             """
             return AsyncPaginator(self._query,
                                   async_executor(client=client, auth=auth))
+
     else:  # pragma: no cover
         def __execute_async__(self, client, auth):
             raise NotImplementedError(
