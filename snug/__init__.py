@@ -5,15 +5,13 @@ The entire public API is available at root level::
 """
 import sys
 
-from .query import *  # noqa
-from .http import *  # noqa
+from . import clients, http  # noqa
+from .__about__ import (__author__, __copyright__, __description__,  # noqa
+                        __version__)
 from .clients import *  # noqa
+from .http import *  # noqa
 from .pagination import *  # noqa
-
-from . import http, clients  # noqa
-
-from .__about__ import (__author__, __copyright__,  # noqa
-                        __version__, __description__)
+from .query import *  # noqa
 
 if sys.version_info > (3, ):  # pragma: no cover
     from . import _async  # noqa
