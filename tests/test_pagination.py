@@ -25,8 +25,7 @@ class mylist(object):
         return_(snug.Page(objs, next_query=next_query))
 
 
-py35 = pytest.mark.skipif(sys.version_info < (3, 5, 2),
-                          reason='python 3.5.2+ only')
+py3 = pytest.mark.skipif(sys.version_info < (3, ), reason='python 3 only')
 
 
 class MockClient(object):
@@ -92,9 +91,9 @@ class TestPaginate:
         # is reusable
         assert list(snug.execute(paginated, client=mock_client))
 
-    @py35
+    @py3
     def test_execute_async(self, loop):
-        from .py35_only import consume_aiter
+        from .py3_only import consume_aiter
 
         mock_client = MockAsyncClient({
             ('max: 10', 'cursor: 0'): {
