@@ -3,6 +3,6 @@
 -r test.txt
 wheel~=0.33.4
 twine~=1.13.0
-isort==4.3.19
+isort==4.3.20
 tox~=3.10.0
 flake8==3.7.7
