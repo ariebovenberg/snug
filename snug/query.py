@@ -1,21 +1,22 @@
 """Types and functionality relating to queries"""
+import asyncio
 import typing as t
+import urllib.request
 from functools import partial
 
-from .clients import send
-from .compat import event_loop, func_from_method, urllib_request
+from .clients import send, send_async
 from .http import basic_auth
 
 __all__ = [
-    'Query',
-    'execute',
-    'execute_async',
-    'executor',
-    'async_executor',
-    'related',
+    "Query",
+    "execute",
+    "execute_async",
+    "executor",
+    "async_executor",
+    "related",
 ]
 
-T = t.TypeVar('T')
+T = t.TypeVar("T")
 
 
 def _identity(obj):
@@ -101,6 +102,7 @@ class Query(t.Generic[T]):
     >>> for chunk in response.iter_content():
     ...    ...
     """
+
     def __iter__(self):
         """A generator iterator which resolves the query
 
@@ -144,12 +146,39 @@ class Query(t.Generic[T]):
             except StopIteration as e:
                 return e.args[0]
 
-    # this method is overwritten when importing the _async module (py3 only)
-    def __execute_async__(self, client, auth):
-        raise NotImplementedError('python 3+ required to execute async')
+    async def __execute_async__(self, client, auth):
+        """Default asynchronous execution logic for a query,
+        which uses the query's :meth:`~Query.__iter__`.
+        May be overriden for full control of query execution,
+        at the cost of reusability.
 
+        .. versionadded:: 1.1
 
-_default_execute_method = func_from_method(Query.__execute__)
+        Note
+        ----
+        You shouldn't need to override this method, except in rare cases
+        where implementing :meth:`Query.__iter__` does not suffice.
+
+        Parameters
+        ----------
+        client
+            the client instance passed to :func:`execute_async`
+        auth: ~typing.Callable[[Request], Request]
+            a callable to authenticate a :class:`~snug.http.Request`
+
+        Returns
+        -------
+        T
+            the query result
+        """
+        gen = iter(self)
+        request = next(gen)
+        while True:
+            response = await send_async(client, auth(request))
+            try:
+                request = gen.send(response)
+            except StopIteration as e:
+                return e.value
 
 
 class related(object):
@@ -173,6 +202,7 @@ class related(object):
     >>> b.the_foo is f
     True
     """
+
     def __init__(self, cls):
         self._cls = cls
 
@@ -189,7 +219,7 @@ def _make_auth(auth):
         return basic_auth(auth)
 
 
-def execute(query, auth=None, client=urllib_request.build_opener()):
+def execute(query, auth=None, client=urllib.request.build_opener()):
     """Execute a query, returning its result
 
     Parameters
@@ -214,11 +244,11 @@ def execute(query, auth=None, client=urllib_request.build_opener()):
     T
         the query result
     """
-    exec_fn = getattr(type(query), '__execute__', _default_execute_method)
+    exec_fn = getattr(type(query), "__execute__", Query.__execute__)
     return exec_fn(query, client, _make_auth(auth))
 
 
-def execute_async(query, auth=None, client=event_loop):
+def execute_async(query, auth=None, client=None):
     """Execute a query asynchronously, returning its result
 
     Parameters
@@ -236,7 +266,7 @@ def execute_async(query, auth=None, client=event_loop):
         The HTTP client to use.
         Its type must have been registered
         with :func:`~snug.clients.send_async`.
-        If not given, the built-in :mod:`asyncio` module is used.
+        If not given, the current event loop from :mod:`asyncio` is used.
 
     Returns
     -------
@@ -248,8 +278,12 @@ def execute_async(query, auth=None, client=event_loop):
     The default client is very rudimentary.
     Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
-    exc_fn = getattr(type(query), '__execute_async__', Query.__execute_async__)
-    return exc_fn(query, client, _make_auth(auth))
+    exc_fn = getattr(type(query), "__execute_async__", Query.__execute_async__)
+    return exc_fn(
+        query,
+        asyncio.get_event_loop() if client is None else client,
+        _make_auth(auth),
+    )
 
 
 def executor(**kwargs):

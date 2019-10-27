@@ -24,6 +24,9 @@ Snug 🧣
 
 .. image:: https://img.shields.io/badge/dependabot-enabled-brightgreen.svg?longCache=true&logo=dependabot
 
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://github.com/psf/black
+
 
 **Snug** is a tiny toolkit for writing reusable interactions with web APIs. Key features:
 
@@ -264,7 +267,7 @@ or `examples <http://snug.readthedocs.io/en/latest/examples.html>`_.
 Installation
 ------------
 
-There are no required dependencies on python 3.5+. Installation is easy as:
+There are no required dependencies. Installation is easy as:
 
 .. code-block:: bash
 
@@ -277,29 +280,6 @@ and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
 .. code-block:: bash
 
    pip install requests aiohttp
-
-Python 2
---------
-
-Writing python2-compatible queries is supported, with two important caveats:
-
-1. Returning values from generators is not natively supported in python2.
-   Use the ``py2_compatible`` decorator (from `gentools <http://gentools.readthedocs.io/>`_) to do this.
-   The resulting query can be run on python 2 and 3.
-
-.. code-block:: python
-
-    from gentools import py2_compatible, return_
-
-    @py2_compatible
-    def repo(name, owner):
-        """get a github repo by owner and name"""
-        request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
-        response = yield request
-        return_(json.loads(response.content))
-
-2. Async functionality is not available on python2.
-   Python2-compatible queries will be able to be run asychronously on python3.
 
 
 Alternatives
