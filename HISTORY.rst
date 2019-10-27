@@ -7,6 +7,7 @@ development
 2.0.0 (2019-10-27)
 ++++++++++++++++++
 
+- Add Python 3.8 support
 - Drop Python 2 support
 - Adopt ``black`` autoformatter
 - Fix error on import when no event loop is available

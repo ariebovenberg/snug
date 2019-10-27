@@ -34,7 +34,6 @@ setup(
     ],
     install_requires=[
         'typing>=3.6.6; python_version<"3.5"',
-        'singledispatch>=3.4.0; python_version<"3.4"',
     ],
     extras_require={
         "aiohttp": ["aiohttp>=3.4.4,<3.7.0"],
