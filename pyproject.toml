@@ -16,6 +16,7 @@ exclude = '''
 '''
 
 [tool.isort]
+forced_separate = 'snug'
 # compatible settings with black
 multi_line_output = 3
 include_trailing_comma = true
