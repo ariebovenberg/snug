@@ -2,28 +2,29 @@ Snug 🧣
 =======
 
 .. image:: https://img.shields.io/pypi/v/snug.svg
-    :target: https://pypi.python.org/pypi/snug
+   :target: https://pypi.python.org/pypi/snug
 
 .. image:: https://img.shields.io/pypi/l/snug.svg
-    :target: https://pypi.python.org/pypi/snug
+   :target: https://pypi.python.org/pypi/snug
 
 .. image:: https://img.shields.io/pypi/pyversions/snug.svg
-    :target: https://pypi.python.org/pypi/snug
+   :target: https://pypi.python.org/pypi/snug
 
 .. image:: https://img.shields.io/travis/ariebovenberg/snug.svg
-    :target: https://travis-ci.org/ariebovenberg/snug
+   :target: https://travis-ci.org/ariebovenberg/snug
 
 .. image:: https://img.shields.io/codecov/c/github/ariebovenberg/snug.svg
-  :target: https://codecov.io/gh/ariebovenberg/snug
+   :target: https://codecov.io/gh/ariebovenberg/snug
 
 .. image:: https://img.shields.io/readthedocs/snug.svg
-    :target: http://snug.readthedocs.io/
+   :target: http://snug.readthedocs.io/
 
 .. image:: https://img.shields.io/codeclimate/maintainability/ariebovenberg/snug.svg
    :target: https://codeclimate.com/github/ariebovenberg/snug/maintainability
 
 .. image:: https://img.shields.io/badge/dependabot-enabled-brightgreen.svg?longCache=true&logo=dependabot
-
+   :target: https://dependabot.com
+   
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
    :target: https://github.com/psf/black
 
