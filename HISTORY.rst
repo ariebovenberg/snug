@@ -9,6 +9,7 @@ development
 
 - Drop Python 2 support
 - Adopt ``black`` autoformatter
+- Fix error on import when no event loop is available
 
 1.4.1 (2019-03-30)
 ++++++++++++++++++

@@ -248,7 +248,7 @@ def execute(query, auth=None, client=urllib.request.build_opener()):
     return exec_fn(query, client, _make_auth(auth))
 
 
-def execute_async(query, auth=None, client=asyncio.get_event_loop()):
+def execute_async(query, auth=None, client=None):
     """Execute a query asynchronously, returning its result
 
     Parameters
@@ -266,7 +266,7 @@ def execute_async(query, auth=None, client=asyncio.get_event_loop()):
         The HTTP client to use.
         Its type must have been registered
         with :func:`~snug.clients.send_async`.
-        If not given, the built-in :mod:`asyncio` module is used.
+        If not given, the current event loop from :mod:`asyncio` is used.
 
     Returns
     -------
@@ -279,7 +279,11 @@ def execute_async(query, auth=None, client=asyncio.get_event_loop()):
     Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
     exc_fn = getattr(type(query), "__execute_async__", Query.__execute_async__)
-    return exc_fn(query, client, _make_auth(auth))
+    return exc_fn(
+        query,
+        asyncio.get_event_loop() if client is None else client,
+        _make_auth(auth),
+    )
 
 
 def executor(**kwargs):
