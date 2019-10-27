@@ -2,12 +2,13 @@
 import sys
 from operator import attrgetter
 
-PY3 = sys.version_info > (3, )
+PY3 = sys.version_info > (3,)
 
 
 if PY3:
     import urllib.request as urllib_request
-    event_loop = __import__('asyncio').get_event_loop()
+
+    event_loop = __import__("asyncio").get_event_loop()
     from functools import singledispatch
     from urllib.parse import urlencode
     from urllib.error import HTTPError as urllib_http_error_cls
@@ -19,12 +20,15 @@ if PY3:
     def func_from_method(method):
         return method
 
+
 else:  # pragma: no cover
     import urllib2 as urllib_request  # noqa
     from singledispatch import singledispatch  # noqa
+
     event_loop = None  # noqa
     from urllib import urlencode  # noqa
-    func_from_method = attrgetter('im_func')
+
+    func_from_method = attrgetter("im_func")
     urllib_http_error_cls = urllib_request.HTTPError  # noqa
     from collections import Mapping  # noqa
 

@@ -25,3 +25,7 @@ clean:
 	make -C docs/ clean
 	find . | grep -E "(__pycache__|\.pyc|\.pyo$$)" | xargs rm -rf
 	python setup.py clean --all
+
+format:
+	black snug tests
+	isort -rc snug tests

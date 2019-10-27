@@ -24,6 +24,9 @@ Snug 🧣
 
 .. image:: https://img.shields.io/badge/dependabot-enabled-brightgreen.svg?longCache=true&logo=dependabot
 
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://github.com/psf/black
+
 
 **Snug** is a tiny toolkit for writing reusable interactions with web APIs. Key features:
 

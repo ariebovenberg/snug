@@ -7,31 +7,31 @@ from operator import attrgetter, methodcaller
 from .compat import Mapping
 
 __all__ = [
-    'Request',
-    'Response',
-    'header_adder',
-    'prefix_adder',
-    'basic_auth',
-    'GET',
-    'POST',
-    'PUT',
-    'PATCH',
-    'DELETE',
-    'HEAD',
-    'OPTIONS',
+    "Request",
+    "Response",
+    "header_adder",
+    "prefix_adder",
+    "basic_auth",
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "HEAD",
+    "OPTIONS",
 ]
 
 
 class _FrozenDict(Mapping):
-    __slots__ = '_inner'
+    __slots__ = "_inner"
 
     def __init__(self, inner=()):
         self._inner = dict(inner)
 
-    __len__ = property(attrgetter('_inner.__len__'))
-    __iter__ = property(attrgetter('_inner.__iter__'))
-    __getitem__ = property(attrgetter('_inner.__getitem__'))
-    __repr__ = property(attrgetter('_inner.__repr__'))
+    __len__ = property(attrgetter("_inner.__len__"))
+    __iter__ = property(attrgetter("_inner.__iter__"))
+    __getitem__ = property(attrgetter("_inner.__getitem__"))
+    __repr__ = property(attrgetter("_inner.__repr__"))
 
 
 class _SlotsMixin(object):
@@ -82,11 +82,18 @@ class Request(_SlotsMixin):
     headers: Mapping
         Request headers.
     """
-    __slots__ = 'method', 'url', 'content', 'params', 'headers'
+
+    __slots__ = "method", "url", "content", "params", "headers"
     __hash__ = None
 
-    def __init__(self, method, url, content=None,
-                 params=_FrozenDict(), headers=_FrozenDict()):
+    def __init__(
+        self,
+        method,
+        url,
+        content=None,
+        params=_FrozenDict(),
+        headers=_FrozenDict(),
+    ):
         self.method = method
         self.url = url
         self.content = content
@@ -124,8 +131,10 @@ class Request(_SlotsMixin):
         return self.replace(params=_merge_maps(self.params, params))
 
     def __repr__(self):
-        return ('<Request: {0.method} {0.url}, params={0.params!r}, '
-                'headers={0.headers!r}>').format(self)
+        return (
+            "<Request: {0.method} {0.url}, params={0.params!r}, "
+            "headers={0.headers!r}>"
+        ).format(self)
 
 
 class Response(_SlotsMixin):
@@ -140,7 +149,8 @@ class Response(_SlotsMixin):
     headers: Mapping
         The headers of the response.
     """
-    __slots__ = 'status_code', 'content', 'headers'
+
+    __slots__ = "status_code", "content", "headers"
     __hash__ = None
 
     def __init__(self, status_code, content=None, headers=_FrozenDict()):
@@ -149,8 +159,9 @@ class Response(_SlotsMixin):
         self.headers = headers
 
     def __repr__(self):
-        return ('<Response: {0.status_code}, '
-                'headers={0.headers!r}>').format(self)
+        return (
+            "<Response: {0.status_code}, " "headers={0.headers!r}>"
+        ).format(self)
 
 
 def basic_auth(credentials):
@@ -166,11 +177,11 @@ def basic_auth(credentials):
     ~typing.Callable[[Request], Request]
         A callable which adds basic authentication to a :class:`Request`.
     """
-    encoded = b64encode(':'.join(credentials).encode('ascii')).decode()
-    return header_adder({'Authorization': 'Basic ' + encoded})
+    encoded = b64encode(":".join(credentials).encode("ascii")).decode()
+    return header_adder({"Authorization": "Basic " + encoded})
 
 
-prefix_adder = partial(methodcaller, 'with_prefix')
+prefix_adder = partial(methodcaller, "with_prefix")
 prefix_adder.__doc__ = """
 Make a callable which adds a prefix to a request url
 
@@ -181,7 +192,7 @@ Example
 >>> func(snug.GET('foo/bar/')).url
 https://api.test.com/v1/foo/bar/
 """
-header_adder = partial(methodcaller, 'with_headers')
+header_adder = partial(methodcaller, "with_headers")
 header_adder.__doc__ = """
 Make a callable which adds headers to a request
 
@@ -192,17 +203,17 @@ Example
 >>> func(snug.GET('https://test.dev')).headers
 {'content-type': 'application/json'}
 """
-GET = partial(Request, 'GET')
+GET = partial(Request, "GET")
 GET.__doc__ = "Shortcut for a GET request"
-POST = partial(Request, 'POST')
+POST = partial(Request, "POST")
 POST.__doc__ = "Shortcut for a POST request"
-PUT = partial(Request, 'PUT')
+PUT = partial(Request, "PUT")
 PUT.__doc__ = "Shortcut for a PUT request"
-PATCH = partial(Request, 'PATCH')
+PATCH = partial(Request, "PATCH")
 PATCH.__doc__ = "Shortcut for a PATCH request"
-DELETE = partial(Request, 'DELETE')
+DELETE = partial(Request, "DELETE")
 DELETE.__doc__ = "shortcut for a DELETE request"
-HEAD = partial(Request, 'HEAD')
+HEAD = partial(Request, "HEAD")
 HEAD.__doc__ = "Shortcut for a HEAD request"
-OPTIONS = partial(Request, 'OPTIONS')
+OPTIONS = partial(Request, "OPTIONS")
 OPTIONS.__doc__ = "Shortcut for a OPTIONS request"

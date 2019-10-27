@@ -1,9 +1,14 @@
 """Funtions for dealing with for HTTP clients in a unified manner"""
-from .compat import (set_urllib_method, singledispatch, urlencode,
-                     urllib_http_error_cls, urllib_request)
+from .compat import (
+    set_urllib_method,
+    singledispatch,
+    urlencode,
+    urllib_http_error_cls,
+    urllib_request,
+)
 from .http import Response
 
-__all__ = ['send', 'send_async']
+__all__ = ["send", "send_async"]
 
 
 @singledispatch
@@ -41,7 +46,7 @@ def send(client, request):
     ...     r = client.send(request)
     ...     return Response(r.status, r.read(), headers=r.get_headers())
     """
-    raise TypeError('client {!r} not registered'.format(client))
+    raise TypeError("client {!r} not registered".format(client))
 
 
 @singledispatch
@@ -83,16 +88,17 @@ def send_async(client, request):
     ...     r = await client.send(request)
     ...     return Response(r.status, r.read(), headers=r.get_headers())
     """
-    raise TypeError('client {!r} not registered'.format(client))
+    raise TypeError("client {!r} not registered".format(client))
 
 
 @send.register(urllib_request.OpenerDirector)
 def _urllib_send(opener, req, **kwargs):
     """Send a request with an :mod:`urllib` opener"""
-    if req.content and not any(h.lower() == 'content-type'
-                               for h in req.headers):
-        req = req.with_headers({'Content-Type': 'application/octet-stream'})
-    url = req.url + '?' + urlencode(req.params)
+    if req.content and not any(
+        h.lower() == "content-type" for h in req.headers
+    ):
+        req = req.with_headers({"Content-Type": "application/octet-stream"})
+    url = req.url + "?" + urlencode(req.params)
     raw_req = urllib_request.Request(url, req.content, headers=req.headers)
     set_urllib_method(raw_req, req.method)
     try:
@@ -107,11 +113,15 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
+
     @send.register(requests.Session)
     def _requests_send(session, req):
         """send a request with the `requests` library"""
-        res = session.request(req.method, req.url,
-                              data=req.content,
-                              params=req.params,
-                              headers=req.headers)
+        res = session.request(
+            req.method,
+            req.url,
+            data=req.content,
+            params=req.params,
+            headers=req.headers,
+        )
         return Response(res.status_code, res.content, headers=res.headers)

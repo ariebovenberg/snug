@@ -4,6 +4,12 @@ Release history
 development
 +++++++++++
 
+2.0.0 (2019-10-27)
+++++++++++++++++++
+
+- Drop Python 2 support
+- Adopt ``black`` autoformatter
+
 1.4.1 (2019-03-30)
 ++++++++++++++++++
 

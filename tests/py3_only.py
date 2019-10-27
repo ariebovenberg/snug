@@ -9,11 +9,11 @@ import snug
 
 async def error(self):
     await asyncio.sleep(0)
-    raise ValueError('foo')
+    raise ValueError("foo")
 
 
 async def using_aiohttp(req):
-    aiohttp = pytest.importorskip('aiohttp')
+    aiohttp = pytest.importorskip("aiohttp")
     session = aiohttp.ClientSession()
     try:
         return await snug.send_async(session, req)

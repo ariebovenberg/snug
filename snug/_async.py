@@ -12,8 +12,8 @@ from .clients import send_async
 from .http import Response
 from .query import Query
 
-T = t.TypeVar('T')
-_ASYNCIO_USER_AGENT = 'Python-asyncio/3.{}'.format(sys.version_info.minor)
+T = t.TypeVar("T")
+_ASYNCIO_USER_AGENT = "Python-asyncio/3.{}".format(sys.version_info.minor)
 
 
 class _SocketAdaptor:
@@ -27,37 +27,47 @@ class _SocketAdaptor:
 @send_async.register(asyncio.AbstractEventLoop)
 async def _asyncio_send(loop, req, *, timeout=10, max_redirects=10):
     """A rudimentary HTTP client using :mod:`asyncio`"""
-    if not any(h.lower() == 'user-agent' for h in req.headers):
-        req = req.with_headers({'User-Agent': _ASYNCIO_USER_AGENT})
+    if not any(h.lower() == "user-agent" for h in req.headers):
+        req = req.with_headers({"User-Agent": _ASYNCIO_USER_AGENT})
     url = urllib.parse.urlsplit(
-        req.url + '?' + urllib.parse.urlencode(req.params))
+        req.url + "?" + urllib.parse.urlencode(req.params)
+    )
     open_ = partial(asyncio.open_connection, url.hostname, loop=loop)
-    connect = open_(443, ssl=True) if url.scheme == 'https' else open_(80)
+    connect = open_(443, ssl=True) if url.scheme == "https" else open_(80)
     reader, writer = await connect
     try:
-        headers = '\r\n'.join([
-            '{} {} HTTP/1.1'.format(req.method, url.path + '?' + url.query),
-            'Host: ' + url.hostname,
-            'Connection: close',
-            'Content-Length: {}'.format(len(req.content or b'')),
-            '\r\n'.join(starmap('{}: {}'.format, req.headers.items())),
-        ])
-        writer.write(b'\r\n'.join([headers.encode('latin-1'),
-                                   b'', req.content or b'']))
+        headers = "\r\n".join(
+            [
+                "{} {} HTTP/1.1".format(
+                    req.method, url.path + "?" + url.query
+                ),
+                "Host: " + url.hostname,
+                "Connection: close",
+                "Content-Length: {}".format(len(req.content or b"")),
+                "\r\n".join(starmap("{}: {}".format, req.headers.items())),
+            ]
+        )
+        writer.write(
+            b"\r\n".join([headers.encode("latin-1"), b"", req.content or b""])
+        )
         response_bytes = BytesIO(
-            await asyncio.wait_for(reader.read(), timeout=timeout))
+            await asyncio.wait_for(reader.read(), timeout=timeout)
+        )
     finally:
         writer.close()
-    resp = HTTPResponse(_SocketAdaptor(response_bytes),
-                        method=req.method, url=req.url)
+    resp = HTTPResponse(
+        _SocketAdaptor(response_bytes), method=req.method, url=req.url
+    )
     resp.begin()
     status = resp.getcode()
-    if 300 <= status < 400 and 'Location' in resp.headers and max_redirects:
-        new_url = urllib.parse.urljoin(req.url, resp.headers['Location'])
+    if 300 <= status < 400 and "Location" in resp.headers and max_redirects:
+        new_url = urllib.parse.urljoin(req.url, resp.headers["Location"])
         return await _asyncio_send(
-            loop, req.replace(url=new_url),
+            loop,
+            req.replace(url=new_url),
             timeout=timeout,
-            max_redirects=max_redirects-1)
+            max_redirects=max_redirects - 1,
+        )
     return Response(status, content=resp.read(), headers=resp.headers)
 
 
@@ -66,19 +76,23 @@ try:
 except ImportError:  # pragma: no cover
     pass
 else:
+
     @send_async.register(aiohttp.ClientSession)
     async def _aiohttp_send(session, req):
         """send a request with the `aiohttp` library"""
         async with session.request(
-                req.method, req.url,
-                params=req.params,
-                data=req.content,
-                headers=req.headers) as resp:
-            return Response(resp.status, content=await resp.read(),
-                            headers=resp.headers)
+            req.method,
+            req.url,
+            params=req.params,
+            data=req.content,
+            headers=req.headers,
+        ) as resp:
+            return Response(
+                resp.status, content=await resp.read(), headers=resp.headers
+            )
 
 
-@partial(setattr, Query, '__execute_async__')
+@partial(setattr, Query, "__execute_async__")
 async def __execute_async__(self, client, auth):
     """Default asynchronous execution logic for a query,
     which uses the query's :meth:`~Query.__iter__`.
@@ -117,7 +131,8 @@ async def __execute_async__(self, client, auth):
 class AsyncPaginator(t.AsyncIterator[T]):
     """An async iterator which keeps executing
     the next query in the page sequence"""
-    __slots__ = '_executor', '_next_query'
+
+    __slots__ = "_executor", "_next_query"
 
     def __init__(self, next_query, executor):
         self._next_query, self._executor = next_query, executor

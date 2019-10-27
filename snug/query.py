@@ -7,15 +7,15 @@ from .compat import event_loop, func_from_method, urllib_request
 from .http import basic_auth
 
 __all__ = [
-    'Query',
-    'execute',
-    'execute_async',
-    'executor',
-    'async_executor',
-    'related',
+    "Query",
+    "execute",
+    "execute_async",
+    "executor",
+    "async_executor",
+    "related",
 ]
 
-T = t.TypeVar('T')
+T = t.TypeVar("T")
 
 
 def _identity(obj):
@@ -101,6 +101,7 @@ class Query(t.Generic[T]):
     >>> for chunk in response.iter_content():
     ...    ...
     """
+
     def __iter__(self):
         """A generator iterator which resolves the query
 
@@ -146,7 +147,7 @@ class Query(t.Generic[T]):
 
     # this method is overwritten when importing the _async module (py3 only)
     def __execute_async__(self, client, auth):
-        raise NotImplementedError('python 3+ required to execute async')
+        raise NotImplementedError("python 3+ required to execute async")
 
 
 _default_execute_method = func_from_method(Query.__execute__)
@@ -173,6 +174,7 @@ class related(object):
     >>> b.the_foo is f
     True
     """
+
     def __init__(self, cls):
         self._cls = cls
 
@@ -214,7 +216,7 @@ def execute(query, auth=None, client=urllib_request.build_opener()):
     T
         the query result
     """
-    exec_fn = getattr(type(query), '__execute__', _default_execute_method)
+    exec_fn = getattr(type(query), "__execute__", _default_execute_method)
     return exec_fn(query, client, _make_auth(auth))
 
 
@@ -248,7 +250,7 @@ def execute_async(query, auth=None, client=event_loop):
     The default client is very rudimentary.
     Consider using a :class:`aiohttp.ClientSession` instance as ``client``.
     """
-    exc_fn = getattr(type(query), '__execute_async__', Query.__execute_async__)
+    exc_fn = getattr(type(query), "__execute_async__", Query.__execute_async__)
     return exc_fn(query, client, _make_auth(auth))
 
 
