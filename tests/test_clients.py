@@ -1,17 +1,30 @@
-# -*- coding: utf-8 -*-
+import asyncio
 import json
-import sys
+import urllib.request
 
 import pytest
 
 import snug
 
-try:
-    import urllib.request as urllib
-except ImportError:
-    import urllib2 as urllib
 
-py3 = pytest.mark.skipif(sys.version_info < (3,), reason="python 3+ only")
+async def error(self):
+    await asyncio.sleep(0)
+    raise ValueError("foo")
+
+
+async def awaitable(obj):
+    """an awaitable returning given object"""
+    await asyncio.sleep(0)
+    return obj
+
+
+async def using_aiohttp(req):
+    aiohttp = pytest.importorskip("aiohttp")
+    session = aiohttp.ClientSession()
+    try:
+        return await snug.send_async(session, req)
+    finally:
+        await session.close()
 
 
 def test_send_with_unknown_client():
@@ -40,7 +53,7 @@ class TestSendWithUrllib:
             headers={"Accept": "application/json"},
             params={"foo": "bar"},
         )
-        client = urllib.build_opener()
+        client = urllib.request.build_opener()
         response = snug.send(client, req)
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
         data = json.loads(response.content.decode())
@@ -56,7 +69,7 @@ class TestSendWithUrllib:
             headers={"Accept": "application/json"},
             params={"foo": "bar"},
         )
-        client = urllib.build_opener()
+        client = urllib.request.build_opener()
         response = snug.send(client, req)
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
         data = json.loads(response.content.decode())
@@ -72,7 +85,7 @@ class TestSendWithUrllib:
             headers={"content-Type": "application/json"},
             params={"foo": "bar"},
         )
-        client = urllib.build_opener()
+        client = urllib.request.build_opener()
         response = snug.send(client, req)
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
         data = json.loads(response.content.decode())
@@ -82,19 +95,18 @@ class TestSendWithUrllib:
 
     def test_non_200_success(self, mocker):
         req = snug.Request("POST", "http://httpbin.org/status/204")
-        client = urllib.build_opener()
+        client = urllib.request.build_opener()
         response = snug.send(client, req)
         assert response == snug.Response(204, mocker.ANY, headers=mocker.ANY)
 
     def test_http_error_status(self, mocker):
         req = snug.Request("POST", "http://httpbin.org/status/404")
-        client = urllib.build_opener()
+        client = urllib.request.build_opener()
         response = snug.send(client, req)
         assert response == snug.Response(404, b"", headers=mocker.ANY)
         assert response.headers["Content-Length"] == "0"
 
 
-@py3
 @pytest.mark.live
 class TestSendWithAsyncio:
     def test_https(self, loop, mocker):
@@ -147,7 +159,6 @@ class TestSendWithAsyncio:
         assert "Content-Type" in response.headers
 
     def test_timeout(self, loop):
-        import asyncio
 
         req = snug.Request("GET", "http://httpbin.org/delay/2")
         with pytest.raises(asyncio.TimeoutError):
@@ -186,11 +197,9 @@ def test_requests_send(mocker):
     assert data["headers"]["Accept"] == "application/json"
 
 
-@py3
 @pytest.mark.live
 class TestAiohttpSend:
     def test_ok(self, loop, mocker):
-        from .py3_only import using_aiohttp
 
         req = snug.POST(
             "http://httpbin.org/post",
@@ -208,7 +217,6 @@ class TestAiohttpSend:
 
     def test_error(self, loop, mocker):
         pytest.importorskip("aiohttp")
-        from .py3_only import error, using_aiohttp
 
         req = snug.POST(
             "http://httpbin.org/post",

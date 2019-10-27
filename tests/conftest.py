@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 
@@ -12,7 +14,6 @@ def pytest_addoption(parser):
 
 @pytest.fixture
 def loop(scope="session"):
-    asyncio = pytest.importorskip("asyncio")
     return asyncio.get_event_loop()
 
 

@@ -275,29 +275,6 @@ A new client type can be registered as follows:
            status_code=raw_response.status_code,
            ...)
 
-Python 2 support
-----------------
-
-Writing python2-compatible queries is supported, with two important caveats:
-
-1. Returning values from generators is not natively supported in python2.
-   Use the :func:`~gentools.core.py2_compatible` decorator
-   from `gentools <http://gentools.readthedocs.io/>`_ to do this.
-   The resulting query can be run on python 2 and 3.
-
-.. code-block:: python
-
-    from gentools import py2_compatible, return_
-
-    @py2_compatible
-    def repo(name, owner):
-        """get a github repo by owner and name"""
-        request = snug.GET(f'https://api.github.com/repos/{owner}/{name}')
-        response = yield request
-        return_(json.loads(response.content))
-
-2. Async functionality is not available on python2. Nonetheless,
-   Python2-compatible queries can be run asychronously on python3.
 
 .. _composing:
 

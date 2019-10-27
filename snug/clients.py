@@ -1,14 +1,20 @@
 """Funtions for dealing with for HTTP clients in a unified manner"""
-from .compat import (
-    set_urllib_method,
-    singledispatch,
-    urlencode,
-    urllib_http_error_cls,
-    urllib_request,
-)
+import asyncio
+import sys
+import urllib.request
+from functools import partial, singledispatch
+from http.client import HTTPResponse
+from io import BytesIO
+from itertools import starmap
+from urllib.error import HTTPError
+from urllib.parse import urlencode
+
 from .http import Response
 
 __all__ = ["send", "send_async"]
+
+
+_ASYNCIO_USER_AGENT = "Python-asyncio/3.{}".format(sys.version_info.minor)
 
 
 @singledispatch
@@ -91,7 +97,7 @@ def send_async(client, request):
     raise TypeError("client {!r} not registered".format(client))
 
 
-@send.register(urllib_request.OpenerDirector)
+@send.register(urllib.request.OpenerDirector)
 def _urllib_send(opener, req, **kwargs):
     """Send a request with an :mod:`urllib` opener"""
     if req.content and not any(
@@ -99,13 +105,68 @@ def _urllib_send(opener, req, **kwargs):
     ):
         req = req.with_headers({"Content-Type": "application/octet-stream"})
     url = req.url + "?" + urlencode(req.params)
-    raw_req = urllib_request.Request(url, req.content, headers=req.headers)
-    set_urllib_method(raw_req, req.method)
+    raw_req = urllib.request.Request(url, req.content, headers=req.headers)
+    raw_req.method = req.method
     try:
         res = opener.open(raw_req, **kwargs)
-    except urllib_http_error_cls as http_err:
+    except HTTPError as http_err:
         res = http_err
     return Response(res.getcode(), content=res.read(), headers=res.headers)
+
+
+class _SocketAdaptor:
+    def __init__(self, io):
+        self._file = io
+
+    def makefile(self, *args, **kwargs):
+        return self._file
+
+
+@send_async.register(asyncio.AbstractEventLoop)
+async def _asyncio_send(loop, req, *, timeout=10, max_redirects=10):
+    """A rudimentary HTTP client using :mod:`asyncio`"""
+    if not any(h.lower() == "user-agent" for h in req.headers):
+        req = req.with_headers({"User-Agent": _ASYNCIO_USER_AGENT})
+    url = urllib.parse.urlsplit(
+        req.url + "?" + urllib.parse.urlencode(req.params)
+    )
+    open_ = partial(asyncio.open_connection, url.hostname, loop=loop)
+    connect = open_(443, ssl=True) if url.scheme == "https" else open_(80)
+    reader, writer = await connect
+    try:
+        headers = "\r\n".join(
+            [
+                "{} {} HTTP/1.1".format(
+                    req.method, url.path + "?" + url.query
+                ),
+                "Host: " + url.hostname,
+                "Connection: close",
+                "Content-Length: {}".format(len(req.content or b"")),
+                "\r\n".join(starmap("{}: {}".format, req.headers.items())),
+            ]
+        )
+        writer.write(
+            b"\r\n".join([headers.encode("latin-1"), b"", req.content or b""])
+        )
+        response_bytes = BytesIO(
+            await asyncio.wait_for(reader.read(), timeout=timeout)
+        )
+    finally:
+        writer.close()
+    resp = HTTPResponse(
+        _SocketAdaptor(response_bytes), method=req.method, url=req.url
+    )
+    resp.begin()
+    status = resp.getcode()
+    if 300 <= status < 400 and "Location" in resp.headers and max_redirects:
+        new_url = urllib.parse.urljoin(req.url, resp.headers["Location"])
+        return await _asyncio_send(
+            loop,
+            req.replace(url=new_url),
+            timeout=timeout,
+            max_redirects=max_redirects - 1,
+        )
+    return Response(status, content=resp.read(), headers=resp.headers)
 
 
 try:
@@ -125,3 +186,24 @@ else:
             headers=req.headers,
         )
         return Response(res.status_code, res.content, headers=res.headers)
+
+
+try:
+    import aiohttp
+except ImportError:  # pragma: no cover
+    pass
+else:
+
+    @send_async.register(aiohttp.ClientSession)
+    async def _aiohttp_send(session, req):
+        """send a request with the `aiohttp` library"""
+        async with session.request(
+            req.method,
+            req.url,
+            params=req.params,
+            data=req.content,
+            headers=req.headers,
+        ) as resp:
+            return Response(
+                resp.status, content=await resp.read(), headers=resp.headers
+            )

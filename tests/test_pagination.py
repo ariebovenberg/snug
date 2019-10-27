@@ -1,16 +1,26 @@
-import sys
-
-import pytest
-from gentools import py2_compatible, return_
+import asyncio
 
 import snug
+
+
+async def awaitable(obj):
+    """an awaitable returning given object"""
+    await asyncio.sleep(0)
+    return obj
+
+
+async def consume_aiter(iterable):
+    """consume an async iterable to a list"""
+    result = []
+    async for item in iterable:
+        result.append(item)
+    return result
 
 
 class mylist(object):
     def __init__(self, max_items=5, cursor=0):
         self.max_items, self.cursor = max_items, cursor
 
-    @py2_compatible
     def __iter__(self):
         response = yield (
             "max: {}".format(self.max_items),
@@ -22,10 +32,7 @@ class mylist(object):
             next_query = None
         else:
             next_query = mylist(max_items=self.max_items, cursor=next_cursor)
-        return_(snug.Page(objs, next_query=next_query))
-
-
-py3 = pytest.mark.skipif(sys.version_info < (3,), reason="python 3 only")
+        return snug.Page(objs, next_query=next_query)
 
 
 class MockClient(object):
@@ -41,7 +48,6 @@ class MockAsyncClient(object):
         self.responses = responses
 
     def send(self, req):
-        from .py3_only import awaitable
 
         return awaitable(self.responses[req])
 
@@ -87,9 +93,7 @@ class TestPaginate:
         # is reusable
         assert list(snug.execute(paginated, client=mock_client))
 
-    @py3
     def test_execute_async(self, loop):
-        from .py3_only import consume_aiter
 
         mock_client = MockAsyncClient(
             {

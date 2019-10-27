@@ -6,19 +6,11 @@ import abc
 import typing as t
 from operator import attrgetter
 
-from .compat import PY3
 from .query import Query, async_executor, executor
 
 __all__ = ["paginated", "Page", "Pagelike"]
 
 T = t.TypeVar("T")
-
-if PY3:
-    from ._async import AsyncPaginator
-
-    _AsyncIterator = t.AsyncIterator
-else:  # pragma: no cover
-    _AsyncIterator = t.Iterator
 
 
 class Pagelike(t.Generic[T]):
@@ -87,7 +79,7 @@ class Page(Pagelike[T]):
         return "Page({})".format(self._content)
 
 
-class paginated(Query[t.Union[t.Iterator[T], _AsyncIterator[T]]]):
+class paginated(Query[t.Union[t.Iterator[T], t.AsyncIterator[T]]]):
     """A paginated version of a query.
     Executing it returns an :term:`iterator`
     or :term:`async iterator <asynchronous iterator>`.
@@ -141,30 +133,21 @@ class paginated(Query[t.Union[t.Iterator[T], _AsyncIterator[T]]]):
         """
         return Paginator(self._query, executor(client=client, auth=auth))
 
-    if PY3:
+    def __execute_async__(self, client, auth):
+        """Execute the paginated query asynchronously.
 
-        def __execute_async__(self, client, auth):
-            """Execute the paginated query asynchronously.
+        Note
+        ----
+        This method does not need to be awaited.
 
-            Note
-            ----
-            This method does not need to be awaited.
-
-            Returns
-            -------
-            ~typing.AsyncIterator[T]
-                An asynchronous iterator yielding page content.
-            """
-            return AsyncPaginator(
-                self._query, async_executor(client=client, auth=auth)
-            )
-
-    else:  # pragma: no cover
-
-        def __execute_async__(self, client, auth):
-            raise NotImplementedError(
-                "async execution of paginated queries is python 3.5.2+ only"
-            )
+        Returns
+        -------
+        ~typing.AsyncIterator[T]
+            An asynchronous iterator yielding page content.
+        """
+        return AsyncPaginator(
+            self._query, async_executor(client=client, auth=auth)
+        )
 
     def __repr__(self):
         return "paginated({})".format(self._query)
@@ -189,5 +172,23 @@ class Paginator(t.Iterator[T]):
         self._next_query = page.next_query
         return page.content
 
-    if not PY3:  # pragma: no cover
-        next = __next__
+
+class AsyncPaginator(t.AsyncIterator[T]):
+    """An async iterator which keeps executing
+    the next query in the page sequence"""
+
+    __slots__ = "_executor", "_next_query"
+
+    def __init__(self, next_query, executor):
+        self._next_query, self._executor = next_query, executor
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        """the content of the next page"""
+        if self._next_query is None:
+            raise StopAsyncIteration()
+        page = await self._executor(self._next_query)
+        self._next_query = page.next_query
+        return page.content

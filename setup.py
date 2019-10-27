@@ -1,6 +1,6 @@
 import os.path
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 
 def read(fname):
@@ -49,6 +49,6 @@ setup(
         "rest",
         "rpc",
     ],
-    python_requires=">=3.5",
+    python_requires=">=3.5.2",
     packages=find_packages(exclude=("examples", "tests", "docs", "tutorial")),
 )
