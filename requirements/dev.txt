@@ -2,7 +2,7 @@
 -r docs.txt
 -r test.txt
 wheel~=0.33.6
-twine~=2.0.0
+twine~=3.0.0
 isort==4.3.21
 tox~=3.14.1
 flake8==3.7.9
