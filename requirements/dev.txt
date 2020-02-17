@@ -4,6 +4,6 @@
 wheel~=0.34.2
 twine~=3.1.1
 isort==4.3.21
-tox~=3.14.3
+tox~=3.14.5
 flake8==3.7.9
 black~=19.10b0
