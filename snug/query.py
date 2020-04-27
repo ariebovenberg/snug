@@ -31,7 +31,7 @@ class Query(t.Generic[T]):
 
     Note
     ----
-    :term:`Generator iterator`\\s themselves also implement this interface
+    Generator iterators themselves also implement this interface
     (i.e. :meth:`~object.__iter__` returns the generator itself).
 
     Note
