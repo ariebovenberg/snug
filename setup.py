@@ -37,7 +37,7 @@ setup(
     ],
     extras_require={
         "aiohttp": ["aiohttp>=3.4.4,<3.7.0"],
-        "requests": ["requests>=2.20,<2.24"],
+        "requests": ["requests>=2.20,<2.25"],
     },
     keywords=[
         "api-wrapper",
