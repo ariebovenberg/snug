@@ -1,6 +1,6 @@
 -r dev.txt
 pytest-asyncio~=0.14.0
-aiohttp~=3.6.3
+aiohttp~=3.7.1
 valuable~=0.1.1
 gentools~=1.1.0
 toolz~=0.11.1

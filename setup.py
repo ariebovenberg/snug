@@ -36,7 +36,7 @@ setup(
         'typing>=3.6.6; python_version<"3.5"',
     ],
     extras_require={
-        "aiohttp": ["aiohttp>=3.4.4,<3.7.0"],
+        "aiohttp": ["aiohttp>=3.4.4,<3.8.0"],
         "requests": ["requests>=2.20,<2.25"],
     },
     keywords=[
