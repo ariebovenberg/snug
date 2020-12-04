@@ -93,13 +93,6 @@ class paginated(Query[t.Union[t.Iterator[T], t.AsyncIterator[T]]]):
         The query to paginate.
         This query must return a :class:`Pagelike` object.
 
-    Note
-    ----
-    Async iterators were introduced in
-    `PEP 492 <https://www.python.org/dev/peps/pep-0492>`_.
-    Therefore, async execution of :class:`paginated`
-    queries is only supported on python 3.5.2+.
-
     Example
     -------
 
@@ -114,7 +107,7 @@ class paginated(Query[t.Union[t.Iterator[T], t.AsyncIterator[T]]]):
         for foo in execute(query):
             ...
 
-        async for foo in execute_async(query):  # python 3.5.2+ only
+        async for foo in execute_async(query):
             ...
     """
 
