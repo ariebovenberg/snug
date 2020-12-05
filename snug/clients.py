@@ -74,10 +74,6 @@ def send_async(client, request):
         * :class:`aiohttp.ClientSession`
           (if `aiohttp <http://aiohttp.readthedocs.io/>`_ is installed)
 
-        Note
-        ----
-        ``aiohttp`` is only supported on python 3.5.3+
-
     request: Request
         The request to send
 
