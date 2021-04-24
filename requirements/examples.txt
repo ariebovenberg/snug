@@ -1,5 +1,5 @@
 -r dev.txt
-pytest-asyncio~=0.15.0
+pytest-asyncio~=0.15.1
 aiohttp~=3.7.4
 valuable~=0.1.1
 gentools~=1.1.0
