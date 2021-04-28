@@ -6,4 +6,4 @@ twine~=3.4.1
 isort==5.8.0
 tox~=3.23.0
 flake8==3.9.1
-black~=21.4b0
+black~=21.4b1
