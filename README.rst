@@ -10,8 +10,8 @@ Snug 🧣
 .. image:: https://img.shields.io/pypi/pyversions/snug.svg
    :target: https://pypi.python.org/pypi/snug
 
-.. image:: https://img.shields.io/travis/ariebovenberg/snug.svg
-   :target: https://travis-ci.org/ariebovenberg/snug
+.. image:: https://github.com/ariebovenberg/snug/actions/workflows/tests.yml/badge.svg
+   :target: https://github.com/ariebovenberg/snug
 
 .. image:: https://img.shields.io/codecov/c/github/ariebovenberg/snug.svg
    :target: https://codecov.io/gh/ariebovenberg/snug

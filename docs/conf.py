@@ -80,7 +80,7 @@ html_theme_options = {
     "github_type": 'star',
     'fixed_sidebar': True,
     'code_font_size': '0.8em',
-    'travis_button': True,
+    'travis_button': False,
     'pre_bg': '#FFF6E5',
     'note_bg': '#DAF2ED',
     'note_border': '#DAF2ED',
