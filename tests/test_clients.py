@@ -165,12 +165,12 @@ class TestSendWithAsyncio:
             loop.run_until_complete(snug.send_async(loop, req, timeout=0.5))
 
     def test_redirects(self, loop, mocker):
-        req = snug.Request("GET", "http://httpbin.org/redirect/4")
+        req = snug.Request("GET", "http://httpbingo.org/redirect/4")
         response = loop.run_until_complete(snug.send_async(loop, req))
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
 
     def test_too_many_redirects(self, loop, mocker):
-        req = snug.Request("GET", "http://httpbin.org/redirect/3")
+        req = snug.Request("GET", "http://httpbingo.org/redirect/3")
         response = loop.run_until_complete(
             snug.send_async(loop, req, max_redirects=1)
         )

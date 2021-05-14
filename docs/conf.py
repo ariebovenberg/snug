@@ -13,15 +13,16 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-import os
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# -- Project information -----------------------------------------------------
+import importlib.metadata
 
-import snug  # noqa
+metadata = importlib.metadata.metadata("snug")
+
+project = metadata["Name"]
+author = metadata["Author"]
+
+version = metadata["Version"]
+release = metadata["Version"]
 
 
 # -- General configuration ------------------------------------------------
@@ -50,19 +51,6 @@ source_suffix = '.rst'
 # The master toctree document.
 master_doc = 'index'
 
-# General information about the project.
-project = 'Snug'
-copyright = snug.__copyright__
-author = snug.__author__
-
-# The version info for the project you're documenting, acts as replacement for
-# |version| and |release|, also used in various other places throughout the
-# built documents.
-#
-# The short X.Y version.
-version = snug.__version__
-# The full version, including alpha/beta/rc tags.
-release = snug.__version__
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -83,7 +71,7 @@ highlight_language = 'python3'
 # documentation.
 #
 html_theme_options = {
-    "description": snug.__description__,
+    "description": metadata['Description'],
     'description_font_style': 'italic',
     "github_user": 'ariebovenberg',
     "github_repo": 'snug',
