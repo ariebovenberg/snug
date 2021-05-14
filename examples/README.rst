@@ -11,7 +11,6 @@ Requirements
 
 To keep the examples simple, they target python 3.6,
 and make use of external libraries.
-These are listed in ``requirements/examples.txt``.
 
 List of examples
 ----------------
