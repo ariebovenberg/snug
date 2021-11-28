@@ -126,7 +126,7 @@ async def _asyncio_send(loop, req, *, timeout=10, max_redirects=10):
     url = urllib.parse.urlsplit(
         req.url + "?" + urllib.parse.urlencode(req.params)
     )
-    open_ = partial(asyncio.open_connection, url.hostname, loop=loop)
+    open_ = partial(asyncio.open_connection, url.hostname)
     connect = open_(443, ssl=True) if url.scheme == "https" else open_(80)
     reader, writer = await connect
     try:
