@@ -203,3 +203,34 @@ else:
             return Response(
                 resp.status, content=await resp.read(), headers=resp.headers
             )
+
+
+try:
+    import httpx
+except ImportError:  # pragma: no cover
+    pass
+else:
+
+    @send.register(httpx.Client)
+    def _httpx_send_sync(client, req):
+        """send a request with the `httpx` library"""
+        res = client.request(
+            req.method,
+            req.url,
+            params=req.params,
+            content=req.content,
+            headers=req.headers,
+        )
+        return Response(res.status_code, res.content, headers=res.headers)
+
+    @send_async.register(httpx.AsyncClient)
+    async def _httpx_send_async(client, req):
+        """send a request with the `httpx` library"""
+        res = await client.request(
+            req.method,
+            req.url,
+            params=req.params,
+            content=req.content,
+            headers=req.headers,
+        )
+        return Response(res.status_code, res.content, headers=res.headers)

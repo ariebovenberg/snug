@@ -27,6 +27,18 @@ async def using_aiohttp(req):
         await session.close()
 
 
+async def using_httpx_async(req):
+    httpx = pytest.importorskip("httpx")
+    async with httpx.AsyncClient() as client:
+        return await snug.send_async(client, req)
+
+
+def using_httpx_sync(req):
+    httpx = pytest.importorskip("httpx")
+    with httpx.Client() as client:
+        return snug.send(client, req)
+
+
 def test_send_with_unknown_client():
     class MyClass(object):
         pass
@@ -228,3 +240,34 @@ class TestAiohttpSend:
 
         with pytest.raises(ValueError, match="foo"):
             loop.run_until_complete(using_aiohttp(req))
+
+
+@pytest.mark.live
+class TestHttpxSend:
+    def test_ok_sync(self, mocker):
+        req = snug.POST(
+            "http://httpbin.org/post",
+            content=b'{"foo": 4}',
+            params={"bla": "99"},
+            headers={"Accept": "application/json"},
+        )
+        response = using_httpx_sync(req)
+        assert snug.Response(200, mocker.ANY, mocker.ANY) == response
+        data = json.loads(response.content.decode())
+        assert data["args"] == {"bla": "99"}
+        assert json.loads(data["data"]) == {"foo": 4}
+        assert data["headers"]["Accept"] == "application/json"
+
+    def test_ok_async(self, loop, mocker):
+        req = snug.POST(
+            "http://httpbin.org/post",
+            content=b'{"foo": 4}',
+            params={"bla": "99"},
+            headers={"Accept": "application/json"},
+        )
+        response = loop.run_until_complete(using_httpx_async(req))
+        assert snug.Response(200, mocker.ANY, mocker.ANY) == response
+        data = json.loads(response.content.decode())
+        assert data["args"] == {"bla": "99"}
+        assert json.loads(data["data"]) == {"foo": 4}
+        assert data["headers"]["Accept"] == "application/json"
