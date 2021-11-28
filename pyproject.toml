@@ -1,7 +1,6 @@
-
 [tool.poetry]
 name = "snug"
-version = "2.2.0"
+version = "2.3.0"
 description = "Write reusable web API interactions"
 authors = ["Arie Bovenberg <a.c.bovenberg@gmail.com>"]
 license = "MIT"
@@ -12,6 +11,7 @@ classifiers = [
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
 ]
 packages = [
     { include = "snug", from = "src" },
@@ -28,19 +28,19 @@ keywords = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.6.2"
+python = "^3.6.2,<4.0"
 importlib-metadata = {version = ">=1,<5", python = "<3.8"}
 aiohttp = {version = "^3.4.4", optional = true}
 requests = {version = "^2.20", optional = true}
 httpx = {version = "^0.21.1", optional = true}
 
 [tool.poetry.dev-dependencies]
-flake8 = "^3.9.0"
+flake8 = "^4.0.1"
 isort = "^5.7.0"
 mypy = "^0.910"
 pytest = "^6.2.5"
 tox = "^3.24.4"
-black = "^20.8b1"
+black = "^21.11b1"
 pytest-cov = "^3.0.0"
 pytest-mock = "^3.6.1"
 
