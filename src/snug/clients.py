@@ -207,12 +207,12 @@ else:
 
 try:
     import httpx
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 else:
 
     @send.register(httpx.Client)
-    def _httpx_send(client, req):
+    def _httpx_send_sync(client, req):
         """send a request with the `httpx` library"""
         res = client.request(
             req.method,
@@ -224,7 +224,7 @@ else:
         return Response(res.status_code, res.content, headers=res.headers)
 
     @send_async.register(httpx.AsyncClient)
-    async def _httpx_send(client, req):
+    async def _httpx_send_async(client, req):
         """send a request with the `httpx` library"""
         res = await client.request(
             req.method,
