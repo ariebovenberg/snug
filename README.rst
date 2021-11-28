@@ -17,7 +17,7 @@ Snug 🧣
    :target: https://codecov.io/gh/ariebovenberg/snug
 
 .. image:: https://img.shields.io/readthedocs/snug.svg
-   :target: http://snug.readthedocs.io/
+   :target: https://snug.readthedocs.io/
 
 .. image:: https://img.shields.io/codeclimate/maintainability/ariebovenberg/snug.svg
    :target: https://codeclimate.com/github/ariebovenberg/snug/maintainability
@@ -118,7 +118,7 @@ Features
          return UserSchema().load(json.loads(response.content))
 
 3. **Pluggable clients**. Queries are fully agnostic of the HTTP client.
-   For example, to use `requests <http://docs.python-requests.org/>`_
+   For example, to use `requests <https://docs.python-requests.org/>`_
    instead of the standard library:
 
    .. code-block:: python
@@ -126,6 +126,9 @@ Features
       import requests
       query = repo('Hello-World', owner='octocat')
       snug.execute(query, client=requests.Session())
+
+   Read `here <https://snug.readthedocs.io/en/latest/advanced.html#registering-http-clients>`_
+   how to register your own.
 
 4. **Testability**. Queries can easily be run without touching the network.
    No need for complex mocks or monkeypatching.
@@ -226,7 +229,7 @@ Features
               return response.status_code == 204
 
    Or, if you're comfortable with higher-order functions and decorators,
-   make use of `gentools <http://gentools.readthedocs.io/>`_
+   make use of `gentools <https://gentools.readthedocs.io/>`_
    to modify query ``yield``, ``send``, and ``return`` values:
 
    .. code-block:: python
@@ -259,10 +262,10 @@ Features
           return response.status_code == 204
 
 
-For more info, check out the `tutorial <http://snug.readthedocs.io/en/latest/tutorial.html>`_,
-`advanced features <http://snug.readthedocs.io/en/latest/advanced.html>`_,
-`recipes <http://snug.readthedocs.io/en/latest/recipes.html>`_,
-or `examples <http://snug.readthedocs.io/en/latest/examples.html>`_.
+For more info, check out the `tutorial <https://snug.readthedocs.io/en/latest/tutorial.html>`_,
+`advanced features <https://snug.readthedocs.io/en/latest/advanced.html>`_,
+`recipes <https://snug.readthedocs.io/en/latest/recipes.html>`_,
+or `examples <https://snug.readthedocs.io/en/latest/examples.html>`_.
 
 
 Installation
@@ -275,17 +278,18 @@ There are no required dependencies. Installation is easy as:
    pip install snug
 
 Although snug includes basic sync and async HTTP clients,
-you may wish to install `requests <http://docs.python-requests.org/>`_
-and/or `aiohttp <http://aiohttp.readthedocs.io/>`_.
+you may wish to install `requests <https://docs.python-requests.org/>`_,
+`httpx <https://www.python-httpx.org/>`_,
+and/or `aiohttp <https://aiohttp.readthedocs.io/>`_.
 
 .. code-block:: bash
 
-   pip install requests aiohttp
+   pip install requests aiohttp httpx
 
 
 Alternatives
 ------------
 
 If you're looking for a less minimalistic API client toolkit,
-check out `uplink <http://uplink.readthedocs.io/>`_
-or `tapioca <http://tapioca-wrapper.readthedocs.io/>`_.
+check out `uplink <https://uplink.readthedocs.io/>`_
+or `tapioca <https://tapioca-wrapper.readthedocs.io/>`_.

@@ -253,7 +253,8 @@ We can then write:
 Registering HTTP clients
 ------------------------
 
-By default, clients for `requests <http://docs.python-requests.org/>`_
+By default, clients for `requests <https://docs.python-requests.org/>`_,
+`httpx <https://www.python-httpx.org/>`_,
 and `aiohttp <http://aiohttp.readthedocs.io/>`_ are registered.
 Register new clients with :func:`~snug.clients.send` or :func:`~snug.clients.send_async`.
 
