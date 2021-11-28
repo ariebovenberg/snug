@@ -46,6 +46,7 @@ pytest-mock = "^3.6.1"
 [tool.poetry.extras]
 aiohttp = ["aiohttp"]
 requests = ["requests"]
+httpx = ["httpx"]
 
 [tool.black]
 line-length = 79
