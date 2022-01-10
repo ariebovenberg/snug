@@ -37,7 +37,7 @@ httpx = {version = "^0.21.1", optional = true}
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"
 isort = "^5.7.0"
-mypy = "^0.930"
+mypy = "^0.931"
 pytest = "^6.2.5"
 tox = "^3.24.5"
 black = "^21.12b0"
