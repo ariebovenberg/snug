@@ -103,6 +103,8 @@ class Query(t.Generic[T]):
     ...    ...
     """
 
+    __slots__ = ()
+
     def __iter__(self):
         """A generator iterator which resolves the query
 
