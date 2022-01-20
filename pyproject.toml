@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "snug"
-version = "2.3.0"
+version = "2.3.1"
 description = "Write reusable web API interactions"
 authors = ["Arie Bovenberg <a.c.bovenberg@gmail.com>"]
 license = "MIT"

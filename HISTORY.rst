@@ -4,11 +4,16 @@ Release history
 development
 +++++++++++
 
+2.3.1 (2022-01-20)
+++++++++++++++++++
+
+- Add missing ``__slots__`` to ``Query`` class
+
 2.3.0 (2021-11-28)
 ++++++++++++++++++
 
-- Added support for `httpx` client
-- Fixed `asyncio` deprecation warning
+- Added support for ``httpx`` client
+- Fixed ``asyncio`` deprecation warning
 - Added official Python 3.10 support
 
 2.2.0 (2021-05-14)
