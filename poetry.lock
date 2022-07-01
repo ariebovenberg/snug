@@ -646,7 +646,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "tox"
-version = "3.25.0"
+version = "3.25.1"
 description = "tox is a generic virtualenv management and test command line tool"
 category = "dev"
 optional = false
@@ -750,7 +750,7 @@ requests = ["requests"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.2,<4.0"
-content-hash = "3d07f2033d11659921ef7c2d838b18ddaae09b5f979efeb64cbd100894bcd406"
+content-hash = "b1133a9eb8b1cc4af7526d195efecae6ccafcf552a8206e18a50c85eee56e732"
 
 [metadata.files]
 aiohttp = [
@@ -1286,8 +1286,8 @@ tomli = [
     {file = "tomli-1.2.2.tar.gz", hash = "sha256:c6ce0015eb38820eaf32b5db832dbc26deb3dd427bd5f6556cf0acac2c214fee"},
 ]
 tox = [
-    {file = "tox-3.25.0-py2.py3-none-any.whl", hash = "sha256:0805727eb4d6b049de304977dfc9ce315a1938e6619c3ab9f38682bb04662a5a"},
-    {file = "tox-3.25.0.tar.gz", hash = "sha256:37888f3092aa4e9f835fc8cc6dadbaaa0782651c41ef359e3a5743fcb0308160"},
+    {file = "tox-3.25.1-py2.py3-none-any.whl", hash = "sha256:c38e15f4733683a9cc0129fba078633e07eb0961f550a010ada879e95fb32632"},
+    {file = "tox-3.25.1.tar.gz", hash = "sha256:c138327815f53bc6da4fe56baec5f25f00622ae69ef3fe4e1e385720e22486f9"},
 ]
 typed-ast = [
     {file = "typed_ast-1.4.3-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:2068531575a125b87a41802130fa7e29f26c09a2833fea68d9a40cf33902eba6"},
