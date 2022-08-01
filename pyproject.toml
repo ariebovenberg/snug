@@ -35,7 +35,7 @@ requests = {version = "^2.20", optional = true}
 httpx = {version = ">=0.21.1,<0.23.0", optional = true}
 
 [tool.poetry.dev-dependencies]
-flake8 = "^4.0.1"
+flake8 = "^5.0.1"
 isort = "^5.7.0"
 mypy = "^0.971"
 pytest = "^7.0.1"
