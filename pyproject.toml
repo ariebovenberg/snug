@@ -43,7 +43,7 @@ tox = "^3.25.1"
 black = "^22.6"
 pytest-cov = "^3.0.0"
 pytest-mock = "^3.6.1"
-slotscheck = "^0.14.1"
+slotscheck = "^0.15.0"
 
 [tool.poetry.extras]
 aiohttp = ["aiohttp"]
