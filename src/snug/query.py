@@ -1,5 +1,4 @@
 """Types and functionality relating to queries"""
-import asyncio
 import typing as t
 import urllib.request
 from functools import partial
@@ -283,7 +282,7 @@ def execute_async(query, auth=None, client=None):
     exc_fn = getattr(type(query), "__execute_async__", Query.__execute_async__)
     return exc_fn(
         query,
-        asyncio.get_event_loop() if client is None else client,
+        client,
         _make_auth(auth),
     )
 
