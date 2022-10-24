@@ -41,7 +41,7 @@ mypy = "^0.971"
 pytest = "^7.0.1"
 tox = "^3.25.1"
 black = "^22.6"
-pytest-cov = "^3.0.0"
+pytest-cov = "^4.0.0"
 pytest-mock = "^3.6.1"
 slotscheck = "^0.15.0"
 
