@@ -141,10 +141,9 @@ We can make use of the module as follows:
 
    >>> # the same options are available for execute_async
    >>> import asyncio
-   >>> future = snug.execute_async(follow_the_octocat,
-   ...                             auth=('me', 'password'))
-   >>> loop = asyncio.get_event_loop()
-   >>> loop.run_until_complete(future)
+   >>> coro = snug.execute_async(follow_the_octocat,
+   ...                           auth=('me', 'password'))
+   >>> asyncio.run(coro)
    True
 
 Read on about more advanced features :ref:`here <advanced_topics>`.

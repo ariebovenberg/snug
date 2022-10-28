@@ -6,12 +6,6 @@ The examples can be found in the
 These are not meant to be feature complete API wrappers,
 but to demonstrate different use-cases.
 
-Requirements
-------------
-
-To keep the examples simple, they target python 3.6,
-and make use of external libraries.
-
 List of examples
 ----------------
 

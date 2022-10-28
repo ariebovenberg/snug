@@ -118,8 +118,8 @@ class _SocketAdaptor:
         return self._file
 
 
-@send_async.register(asyncio.AbstractEventLoop)
-async def _asyncio_send(loop, req, *, timeout=10, max_redirects=10):
+@send_async.register(type(None))
+async def _asyncio_send(_, req, *, timeout=10, max_redirects=10):
     """A rudimentary HTTP client using :mod:`asyncio`"""
     if not any(h.lower() == "user-agent" for h in req.headers):
         req = req.with_headers({"User-Agent": _ASYNCIO_USER_AGENT})
@@ -157,7 +157,7 @@ async def _asyncio_send(loop, req, *, timeout=10, max_redirects=10):
     if 300 <= status < 400 and "Location" in resp.headers and max_redirects:
         new_url = urllib.parse.urljoin(req.url, resp.headers["Location"])
         return await _asyncio_send(
-            loop,
+            None,
             req.replace(url=new_url),
             timeout=timeout,
             max_redirects=max_redirects - 1,

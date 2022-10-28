@@ -121,14 +121,14 @@ class TestSendWithUrllib:
 
 @pytest.mark.live
 class TestSendWithAsyncio:
-    def test_https(self, loop, mocker):
+    def test_https(self, mocker):
         req = snug.Request(
             "GET",
             "http://httpbin.org/get",
             params={"param1": "foo"},
             headers={"Accept": "application/json"},
         )
-        response = loop.run_until_complete(snug.send_async(loop, req))
+        response = asyncio.run(snug.send_async(None, req))
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
         data = json.loads(response.content.decode())
         assert data["url"].split(":", 1)[1] == "//httpbin.org/get?param1=foo"
@@ -136,14 +136,14 @@ class TestSendWithAsyncio:
         assert data["headers"]["Accept"] == "application/json"
         assert data["headers"]["User-Agent"].startswith("Python-asyncio/")
 
-    def test_http(self, loop, mocker):
+    def test_http(self, mocker):
         req = snug.Request(
             "POST",
             "http://httpbin.org/post",
             content=json.dumps({"foo": 4}).encode(),
             headers={"User-agent": "snug/dev"},
         )
-        response = loop.run_until_complete(snug.send_async(loop, req))
+        response = asyncio.run(snug.send_async(None, req))
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
         data = json.loads(response.content.decode())
         assert data["url"].split(":", 1)[1] == "//httpbin.org/post"
@@ -151,41 +151,39 @@ class TestSendWithAsyncio:
         assert json.loads(data["data"]) == {"foo": 4}
         assert data["headers"]["User-Agent"] == "snug/dev"
 
-    def test_nonascii_headers(self, loop, mocker):
+    def test_nonascii_headers(self, mocker):
         req = snug.Request(
             "GET", "http://httpbin.org/get", headers={"X-Foo": "blå"}
         )
-        response = loop.run_until_complete(snug.send_async(loop, req))
+        response = asyncio.run(snug.send_async(None, req))
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
         data = json.loads(response.content.decode())
         assert data["url"].split(":", 1)[1] == "//httpbin.org/get"
         assert data["args"] == {}
         assert data["headers"]["X-Foo"] == "blå"
 
-    def test_head(self, loop, mocker):
+    def test_head(self, mocker):
         req = snug.Request(
             "HEAD", "http://httpbin.org/anything", headers={"X-Foo": "foo"}
         )
-        response = loop.run_until_complete(snug.send_async(loop, req))
+        response = asyncio.run(snug.send_async(None, req))
         assert response == snug.Response(200, b"", headers=mocker.ANY)
         assert "Content-Type" in response.headers
 
-    def test_timeout(self, loop):
+    def test_timeout(self):
 
         req = snug.Request("GET", "http://httpbin.org/delay/2")
         with pytest.raises(asyncio.TimeoutError):
-            loop.run_until_complete(snug.send_async(loop, req, timeout=0.5))
+            asyncio.run(snug.send_async(None, req, timeout=0.5))
 
-    def test_redirects(self, loop, mocker):
+    def test_redirects(self, mocker):
         req = snug.Request("GET", "http://httpbingo.org/redirect/4")
-        response = loop.run_until_complete(snug.send_async(loop, req))
+        response = asyncio.run(snug.send_async(None, req))
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
 
-    def test_too_many_redirects(self, loop, mocker):
+    def test_too_many_redirects(self, mocker):
         req = snug.Request("GET", "http://httpbingo.org/redirect/3")
-        response = loop.run_until_complete(
-            snug.send_async(loop, req, max_redirects=1)
-        )
+        response = asyncio.run(snug.send_async(None, req, max_redirects=1))
         assert response == snug.Response(302, mocker.ANY, headers=mocker.ANY)
 
 
@@ -211,7 +209,7 @@ def test_requests_send(mocker):
 
 @pytest.mark.live
 class TestAiohttpSend:
-    def test_ok(self, loop, mocker):
+    def test_ok(self, mocker):
 
         req = snug.POST(
             "http://httpbin.org/post",
@@ -220,14 +218,14 @@ class TestAiohttpSend:
             headers={"Accept": "application/json"},
         )
 
-        response = loop.run_until_complete(using_aiohttp(req))
+        response = asyncio.run(using_aiohttp(req))
         assert response == snug.Response(200, mocker.ANY, headers=mocker.ANY)
         data = json.loads(response.content.decode())
         assert data["args"] == {"bla": "99"}
         assert json.loads(data["data"]) == {"foo": 4}
         assert data["headers"]["Accept"] == "application/json"
 
-    def test_error(self, loop, mocker):
+    def test_error(self, mocker):
         pytest.importorskip("aiohttp")
 
         req = snug.POST(
@@ -239,7 +237,7 @@ class TestAiohttpSend:
         mocker.patch("aiohttp.client_reqrep.ClientResponse.read", error)
 
         with pytest.raises(ValueError, match="foo"):
-            loop.run_until_complete(using_aiohttp(req))
+            asyncio.run(using_aiohttp(req))
 
 
 @pytest.mark.live
@@ -258,14 +256,14 @@ class TestHttpxSend:
         assert json.loads(data["data"]) == {"foo": 4}
         assert data["headers"]["Accept"] == "application/json"
 
-    def test_ok_async(self, loop, mocker):
+    def test_ok_async(self, mocker):
         req = snug.POST(
             "http://httpbin.org/post",
             content=b'{"foo": 4}',
             params={"bla": "99"},
             headers={"Accept": "application/json"},
         )
-        response = loop.run_until_complete(using_httpx_async(req))
+        response = asyncio.run(using_httpx_async(req))
         assert snug.Response(200, mocker.ANY, mocker.ANY) == response
         data = json.loads(response.content.decode())
         assert data["args"] == {"bla": "99"}

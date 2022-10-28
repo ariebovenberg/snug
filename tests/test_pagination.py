@@ -93,7 +93,7 @@ class TestPaginate:
         # is reusable
         assert list(snug.execute(paginated, client=mock_client))
 
-    def test_execute_async(self, loop):
+    def test_execute_async(self):
 
         mock_client = MockAsyncClient(
             {
@@ -115,10 +115,10 @@ class TestPaginate:
         assert isinstance(paginated, snug.Query)
         paginator = snug.execute_async(paginated, client=mock_client)
 
-        result = loop.run_until_complete(consume_aiter(paginator))
+        result = asyncio.run(consume_aiter(paginator))
         assert result == [list(range(3, 13)), list(range(13, 23)), [1, 4]]
 
         # is reusable
-        assert loop.run_until_complete(
+        assert asyncio.run(
             consume_aiter(snug.execute_async(paginated, client=mock_client))
         )

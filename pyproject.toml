@@ -1,23 +1,23 @@
 [tool.poetry]
 name = "snug"
-version = "2.3.1"
+version = "2.4.0"
 description = "Write reusable web API interactions"
 authors = ["Arie Bovenberg <a.c.bovenberg@gmail.com>"]
 license = "MIT"
 classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Development Status :: 4 - Beta",
-    "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
 packages = [
     { include = "snug", from = "src" },
 ]
 readme = "README.rst"
-include = ["HISTORY.rst", "README.rst"]
+include = ["CHANGELOG.rst", "README.rst"]
 repository = "https://github.com/ariebovenberg/snug"
 keywords = [
     "api-wrapper",
@@ -28,22 +28,28 @@ keywords = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.6.2,<4.0"
+python = "^3.7,<4.0"
 importlib-metadata = {version = ">=1,<5", python = "<3.8"}
 aiohttp = {version = "^3.4.4", optional = true}
 requests = {version = "^2.20", optional = true}
 httpx = {version = ">=0.21.1,<0.23.0", optional = true}
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.test.dependencies]
+pytest = "^7.0.1"
+pytest-cov = "^4.0.0"
+pytest-mock = "^3.10"
+
+[tool.poetry.group.typecheck.dependencies]
+mypy = "^0.982"
+
+[tool.poetry.group.linting.dependencies]
+black = "^22.10"
 flake8 = "^5.0.4"
 isort = "^5.7.0"
-mypy = "^0.971"
-pytest = "^7.0.1"
-tox = "^3.25.1"
-black = "^22.6"
-pytest-cov = "^3.0.0"
-pytest-mock = "^3.6.1"
 slotscheck = "^0.15.0"
+
+[tool.poetry.group.dev.dependencies]
+tox = "^3.26"
 
 [tool.poetry.extras]
 aiohttp = ["aiohttp"]
@@ -75,5 +81,5 @@ strict-imports = true
 require-superclass = true
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.1.0"]
 build-backend = "poetry.core.masonry.api"

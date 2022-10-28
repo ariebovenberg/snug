@@ -8,6 +8,6 @@ everything is ready for review.
 - [ ] Changes finished
 - [ ] Tests added (if applicable)
 - [ ] Documentation adjusted (if applicable)
-- [ ] Added entry to changelog (`HISTORY.rst`)
+- [ ] Added entry to changelog
 - [ ] `tox` runs OK
 - [ ] Build runs OK
