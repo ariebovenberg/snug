@@ -48,9 +48,6 @@ flake8 = "^5.0.4"
 isort = "^5.7.0"
 slotscheck = "^0.15.0"
 
-[tool.poetry.group.dev.dependencies]
-tox = "^3.26"
-
 [tool.poetry.extras]
 aiohttp = ["aiohttp"]
 requests = ["requests"]
