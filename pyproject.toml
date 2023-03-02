@@ -40,13 +40,13 @@ pytest-cov = "^4.0.0"
 pytest-mock = "^3.10"
 
 [tool.poetry.group.typecheck.dependencies]
-mypy = "^0.982"
+mypy = "^1.0"
 
 [tool.poetry.group.linting.dependencies]
-black = "^22.10"
+black = "^23"
 flake8 = "^5.0.4"
 isort = "^5.7.0"
-slotscheck = "^0.15.0"
+slotscheck = "^0.16.0"
 
 [tool.poetry.extras]
 aiohttp = ["aiohttp"]

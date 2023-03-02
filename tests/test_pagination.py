@@ -48,7 +48,6 @@ class MockAsyncClient(object):
         self.responses = responses
 
     def send(self, req):
-
         return awaitable(self.responses[req])
 
 
@@ -94,7 +93,6 @@ class TestPaginate:
         assert list(snug.execute(paginated, client=mock_client))
 
     def test_execute_async(self):
-
         mock_client = MockAsyncClient(
             {
                 ("max: 10", "cursor: 0"): {

@@ -171,7 +171,6 @@ class TestSendWithAsyncio:
         assert "Content-Type" in response.headers
 
     def test_timeout(self):
-
         req = snug.Request("GET", "http://httpbin.org/delay/2")
         with pytest.raises(asyncio.TimeoutError):
             asyncio.run(snug.send_async(None, req, timeout=0.5))
@@ -210,7 +209,6 @@ def test_requests_send(mocker):
 @pytest.mark.live
 class TestAiohttpSend:
     def test_ok(self, mocker):
-
         req = snug.POST(
             "http://httpbin.org/post",
             content=b'{"foo": 4}',

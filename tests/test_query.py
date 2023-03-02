@@ -140,7 +140,6 @@ class TestExecuteAsync:
         assert req == snug.GET("my/url")
 
     def test_custom_client(self):
-
         client = MockAsyncClient(snug.Response(204))
 
         coro = snug.execute_async(myquery(), client=client)
@@ -149,7 +148,6 @@ class TestExecuteAsync:
         assert client.request == snug.GET("my/url")
 
     def test_custom_execute(self):
-
         client = MockAsyncClient(snug.Response(204))
 
         class MyQuery:
@@ -162,7 +160,6 @@ class TestExecuteAsync:
         assert client.request == snug.GET("my/url")
 
     def test_auth(self):
-
         client = MockAsyncClient(snug.Response(204))
 
         coro = snug.execute_async(
@@ -175,7 +172,6 @@ class TestExecuteAsync:
         )
 
     def test_none_auth(self):
-
         client = MockAsyncClient(snug.Response(204))
 
         coro = snug.execute_async(myquery(), auth=None, client=client)
@@ -184,7 +180,6 @@ class TestExecuteAsync:
         assert client.request == snug.GET("my/url")
 
     def test_auth_callable(self):
-
         client = MockAsyncClient(snug.Response(204))
         auther = methodcaller("with_headers", {"X-My-Auth": "letmein"})
 
