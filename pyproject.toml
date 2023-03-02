@@ -46,7 +46,7 @@ mypy = "^0.982"
 black = "^22.10"
 flake8 = "^5.0.4"
 isort = "^5.7.0"
-slotscheck = "^0.15.0"
+slotscheck = ">=0.15,<0.17"
 
 [tool.poetry.extras]
 aiohttp = ["aiohttp"]

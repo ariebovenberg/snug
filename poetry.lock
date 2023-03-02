@@ -1019,20 +1019,21 @@ idna2008 = ["idna"]
 
 [[package]]
 name = "slotscheck"
-version = "0.15.0"
+version = "0.16.5"
 description = "Ensure your __slots__ are working properly."
 category = "dev"
 optional = false
-python-versions = ">=3.6.2,<4"
+python-versions = ">=3.7,<4"
 files = [
-    {file = "slotscheck-0.15.0-py3-none-any.whl", hash = "sha256:b8a9918483751409d62bd250b55da74f7273ca469b02ade5a6ab04c5e62d0355"},
-    {file = "slotscheck-0.15.0.tar.gz", hash = "sha256:9d41639a4566133f8cfedf6eb27e88fb53eb8dcac7f7c1f4e4408dbb4b17950d"},
+    {file = "slotscheck-0.16.5-py3-none-any.whl", hash = "sha256:b202def7a1d4559575a6a1926aabe461bf780c1584275eff2d3ee4465c52d8c6"},
+    {file = "slotscheck-0.16.5.tar.gz", hash = "sha256:6cae3e73808121cf63c1bc638c3b5ae7e10f651323ad3cf38790ce005b77e221"},
 ]
 
 [package.dependencies]
 click = ">=8.0,<9.0"
-importlib-metadata = {version = ">=1,<5", markers = "python_version < \"3.8\""}
-tomli = ">=0.2.6,<3.0.0"
+importlib-metadata = {version = ">=1,<6", markers = "python_version < \"3.8\""}
+tomli = {version = ">=0.2.6,<3.0.0", markers = "python_version < \"3.11\""}
+typing-extensions = {version = ">=4.1,<5", markers = "python_version < \"3.10\""}
 
 [[package]]
 name = "sniffio"
@@ -1234,4 +1235,4 @@ requests = ["requests"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7,<4.0"
-content-hash = "d9eb20ca6ad5c67e780fb16a6e00e967858de53468e88ac24030430491d63f17"
+content-hash = "84114530ee386d30c5aff3da95bc156b05ea58b466fffdbe8e5ddef0c3a15de6"
