@@ -11,3 +11,7 @@ everything is ready for review.
 - [ ] Added entry to changelog
 - [ ] `tox` runs OK
 - [ ] Build runs OK
+- [ ] Branch merged
+- [ ] Tag created
+- [ ] Published to PyPI
+- [ ] Release created in GitHub
