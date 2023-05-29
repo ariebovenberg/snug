@@ -41,7 +41,7 @@ pytest-mock = "^3.10"
 pytest-httpbin = "^2.0.0"
 # Werkzeug == 2.1.0 does not work with httpbin
 #    https://github.com/postmanlabs/httpbin/issues/673
-Werkzeug = "==2.0.3"
+Werkzeug = "==2.2.3"
 
 [tool.poetry.group.typecheck.dependencies]
 mypy = "^1.0"
