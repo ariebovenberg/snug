@@ -1,4 +1,5 @@
 """Basic HTTP abstractions and functionality"""
+
 from base64 import b64encode
 from collections.abc import Mapping
 from functools import partial

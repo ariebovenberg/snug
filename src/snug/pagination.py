@@ -2,6 +2,7 @@
 
 .. versionadded:: 1.2
 """
+
 import abc
 import typing as t
 from operator import attrgetter

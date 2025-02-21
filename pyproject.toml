@@ -46,7 +46,7 @@ Werkzeug = "==2.0.3"
 mypy = "^1.0"
 
 [tool.poetry.group.linting.dependencies]
-black = "^23"
+black = "^25"
 flake8 = "^7"
 isort = "^6"
 slotscheck = "^0.19.1"

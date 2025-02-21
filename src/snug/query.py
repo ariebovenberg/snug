@@ -1,4 +1,5 @@
 """Types and functionality relating to queries"""
+
 import typing as t
 import urllib.request
 from functools import partial
