@@ -35,7 +35,7 @@ httpx = {version = ">=0.21.1,<0.29.0", optional = true}
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8"
-pytest-cov = "^6"
+pytest-cov = ">=6,<8"
 pytest-mock = "^3.10"
 pytest-httpbin = "^2.0.0"
 # Werkzeug == 2.1.0 does not work with httpbin
