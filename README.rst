@@ -1,6 +1,11 @@
 Snug 🧣
 =======
 
+**Archived:** this project is no longer maintained, and no further
+releases or fixes are planned. The code stays available as-is.
+The documentation from before archiving is in the
+`docs folder <https://github.com/ariebovenberg/snug/tree/582e3be1e4c21a47b163a9ab16ca29371ede4f08/docs>`_.
+
 .. image:: https://img.shields.io/pypi/v/snug.svg
    :target: https://pypi.python.org/pypi/snug
 
@@ -16,15 +21,9 @@ Snug 🧣
 .. image:: https://img.shields.io/codecov/c/github/ariebovenberg/snug.svg
    :target: https://codecov.io/gh/ariebovenberg/snug
 
-.. image:: https://img.shields.io/readthedocs/snug.svg
-   :target: https://snug.readthedocs.io/
-
 .. image:: https://img.shields.io/codeclimate/maintainability/ariebovenberg/snug.svg
    :target: https://codeclimate.com/github/ariebovenberg/snug/maintainability
 
-.. image:: https://img.shields.io/badge/dependabot-enabled-brightgreen.svg?longCache=true&logo=dependabot
-   :target: https://dependabot.com
-   
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
    :target: https://github.com/psf/black
 
@@ -127,7 +126,7 @@ Features
       query = repo('Hello-World', owner='octocat')
       snug.execute(query, client=requests.Session())
 
-   Read `here <https://snug.readthedocs.io/en/latest/advanced.html#registering-http-clients>`_
+   Read `here <https://github.com/ariebovenberg/snug/blob/582e3be1e4c21a47b163a9ab16ca29371ede4f08/docs/advanced.rst#registering-http-clients>`_
    how to register your own.
 
 4. **Testability**. Queries can easily be run without touching the network.
@@ -229,7 +228,7 @@ Features
               return response.status_code == 204
 
    Or, if you're comfortable with higher-order functions and decorators,
-   make use of `gentools <https://gentools.readthedocs.io/>`_
+   make use of `gentools <https://github.com/ariebovenberg/gentools>`_
    to modify query ``yield``, ``send``, and ``return`` values:
 
    .. code-block:: python
@@ -262,10 +261,10 @@ Features
           return response.status_code == 204
 
 
-For more info, check out the `tutorial <https://snug.readthedocs.io/en/latest/tutorial.html>`_,
-`advanced features <https://snug.readthedocs.io/en/latest/advanced.html>`_,
-`recipes <https://snug.readthedocs.io/en/latest/recipes.html>`_,
-or `examples <https://snug.readthedocs.io/en/latest/examples.html>`_.
+For more info, check out the `tutorial <https://github.com/ariebovenberg/snug/blob/582e3be1e4c21a47b163a9ab16ca29371ede4f08/docs/tutorial.rst>`_,
+`advanced features <https://github.com/ariebovenberg/snug/blob/582e3be1e4c21a47b163a9ab16ca29371ede4f08/docs/advanced.rst>`_,
+`recipes <https://github.com/ariebovenberg/snug/blob/582e3be1e4c21a47b163a9ab16ca29371ede4f08/docs/recipes.rst>`_,
+or `examples <https://github.com/ariebovenberg/snug/blob/582e3be1e4c21a47b163a9ab16ca29371ede4f08/docs/examples.rst>`_.
 
 
 Installation
